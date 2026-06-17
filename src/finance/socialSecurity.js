@@ -1,7 +1,7 @@
 import { BEND, SS_CAP } from "../retirementData.js";
 
 export const piaFromIncome = (income) => {
-  const aime = Math.min(Number(income) || 0, SS_CAP) / 12;
+  const aime = Math.min(Math.max(0, Number(income) || 0), SS_CAP) / 12;
   return 0.9 * Math.min(aime, BEND[0])
     + 0.32 * Math.max(0, Math.min(aime, BEND[1]) - BEND[0])
     + 0.15 * Math.max(0, aime - BEND[1]);
@@ -13,7 +13,8 @@ export const piaFromIncome = (income) => {
 export const proratedFraEstimate = (income, coveredYears) =>
   piaFromIncome(income) * 12 * (Math.min(Math.max(0, Number(coveredYears) || 0), 35) / 35);
 
-export const ownBenefitAtClaimMonthly = (pia, claimAge) => {
+export const ownBenefitAtClaimMonthly = (pia, claimAgeRaw) => {
+  const claimAge = Math.max(62, claimAgeRaw); // SSA minimum claim age
   if (claimAge < 67) {
     const months = (67 - claimAge) * 12;
     const reduction = months <= 36
@@ -28,7 +29,8 @@ export const ownBenefitAtClaimMonthly = (pia, claimAge) => {
   return pia;
 };
 
-export const spousalBenefitAtClaimMonthly = (workerPia, claimAge) => {
+export const spousalBenefitAtClaimMonthly = (workerPia, claimAgeRaw) => {
+  const claimAge = Math.max(62, claimAgeRaw); // SSA minimum claim age
   const fullSpousal = 0.5 * workerPia;
   if (claimAge >= 67) return fullSpousal;
   const months = (67 - claimAge) * 12;

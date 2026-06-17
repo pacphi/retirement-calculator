@@ -552,3 +552,15 @@ describe("configurable plan horizon", () => {
     expect(() => calculatePlan({ ...baseState, ageA: 96, ageB: 96, horizonAge: 95 })).not.toThrow();
   });
 });
+
+describe("Social Security lower-bound guards", () => {
+  it("never returns a negative own or spousal benefit and floors claim age at 62", () => {
+    expect(ownBenefitAtClaimMonthly(1000, 45)).toBeGreaterThanOrEqual(0);
+    expect(ownBenefitAtClaimMonthly(1000, 50)).toBe(ownBenefitAtClaimMonthly(1000, 62));
+    expect(spousalBenefitAtClaimMonthly(2000, 55)).toBe(spousalBenefitAtClaimMonthly(2000, 62));
+  });
+
+  it("floors AIME at 0 for negative income", () => {
+    expect(piaFromIncome(-50000)).toBe(0);
+  });
+});
