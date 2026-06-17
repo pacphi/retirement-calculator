@@ -30,8 +30,14 @@
   - [3.15 UC-15 Places Affordability and Sorting](#315-uc-15-places-affordability-and-sorting)
   - [3.16 UC-16 Two-Location Comparison](#316-uc-16-two-location-comparison)
   - [3.17 UC-17 Chart Data Derivation](#317-uc-17-chart-data-derivation)
-- [4. Worked Example: The Default Scenario](#4-worked-example-the-default-scenario)
-- [5. Known Simplifications and Rationale](#5-known-simplifications-and-rationale)
+- [4. Life Events & Downside Modeling](#4-life-events--downside-modeling)
+  - [4.1 Discretionary Travel Spending](#41-discretionary-travel-spending)
+  - [4.2 One-Time Life Events](#42-one-time-life-events)
+  - [4.3 Survivor Transition](#43-survivor-transition)
+  - [4.4 Sequence-of-Returns Stress Path](#44-sequence-of-returns-stress-path)
+  - [4.5 Headline Reconciliation: Modeled Spend, Capacity, and Surplus](#45-headline-reconciliation-modeled-spend-capacity-and-surplus)
+- [5. Worked Example: The Default Scenario](#5-worked-example-the-default-scenario)
+- [6. Known Simplifications and Rationale](#6-known-simplifications-and-rationale)
 
 ---
 
@@ -586,7 +592,126 @@ annualDifference = |totalsA - totalsB|
 
 ---
 
-## 4. Worked Example: The Default Scenario
+## 4. Life Events & Downside Modeling
+
+This section documents the four features added in the Tasks 1–8 pass: discretionary travel spending, one-time life events, a survivor-transition mode, and a sequence-of-returns stress path. It also clarifies how the headline reconciles modeled spend, sustainable capacity, and surplus.
+
+### 4.1 Discretionary Travel Spending
+
+**Purpose.** Budget a "go-go" travel phase that tapers naturally as retirement matures.
+
+**Inputs.** `travel.on` (toggle), `travel.amount` (dollars/year, default $15,000), `travel.years` (number of years, default 15), `travel.taper` (boolean, default true). All amounts are in today's (real) dollars.
+
+**Logic.**
+
+```js
+retireCal = TAX_YEAR + max(stopA - ageA, stopB - ageB)   // first year both are retired
+
+function travelSpendForYear(travel, cal, retireCal) {
+  idx = cal - retireCal                                   // 0-based retirement year
+  if (!travel.on || idx < 0 || idx >= travel.years) return 0
+  if (travel.taper && idx >= 10) return 0.5 * travel.amount
+  return travel.amount
+}
+```
+
+Travel spending is added to the year's spending `need`, which is then covered by the existing after-tax solver (salary, benefits, and if necessary a grossed-up portfolio withdrawal).
+
+**Rationale.** The taper from full to 50% after year 10 reflects the well-documented go-go/slow-go/no-go pattern in retirement spending research. All amounts are user-overrideable; no external citation anchors any specific dollar figure.
+
+**Edge cases.** Travel is active only during the years `[0, years)` counting from the first year both spouses are retired. If the toggle is off (`travel.on = false`) the function returns 0 for every year.
+
+---
+
+### 4.2 One-Time Life Events
+
+**Purpose.** Model large, discrete after-tax outflows (gifts, home-purchase help, milestone celebrations) in the years they occur.
+
+**Inputs.** `events[]` — an array of event objects `{ id, label, on, year, amount }`. Defaults are provided for common milestones (child weddings, home-purchase help, grandchild 529 seed); all are **off by default**. Users can edit labels, years, and amounts, and add or remove events dynamically. All amounts are in today's (real) dollars.
+
+**Logic.**
+
+```js
+function oneTimeSpendForYear(events, cal) {
+  return events.reduce(
+    (sum, e) => (e.on && Number(e.year) === cal ? sum + (Number(e.amount) || 0) : sum),
+    0,
+  )
+}
+```
+
+The total for the calendar year is added to the spending `need` for that year alongside travel. Because `need` is an after-tax target, the solver grosses up the portfolio withdrawal automatically to cover taxes on the extra draw.
+
+**Edge cases.** Events are deterministic — they fire in exactly the year specified and are zero in all other years. An event with `on = false` is never included. Multiple events in the same calendar year accumulate correctly.
+
+---
+
+### 4.3 Survivor Transition
+
+**Purpose.** Model the household income and tax change that follows the death of one spouse.
+
+**Inputs.** `survivor.on` (toggle, default false), `survivor.year` (the calendar year the transition takes effect).
+
+**Logic.**
+
+```js
+isSurvivor = survivor.on && cal >= survivor.year
+
+if (isSurvivor) {
+  larger = max(ssAy, ssBy)
+  ssAyEff = larger      // household keeps the larger Social Security benefit
+  ssByEff = 0           // the smaller benefit is dropped
+  yearStatus = "single" // federal tax brackets switch to single-filer tables
+}
+```
+
+The pension is assumed to continue at the same level (the model does not apply survivorship reductions to the DRS defined-benefit). All downstream calculations — federal tax, the healthcare-aware spending need, and the portfolio solver — receive the updated `yearStatus` and benefit amounts.
+
+**Edge cases.** When the toggle is off, `yearStatus` and both SS amounts remain unchanged for the entire timeline. The transition is permanent once the `survivor.year` threshold is crossed; there is no provision for a remarriage scenario.
+
+---
+
+### 4.4 Sequence-of-Returns Stress Path
+
+**Purpose.** Illustrate how a bad-return sequence in the first years of retirement can deplete a portfolio faster than the long-run average return suggests.
+
+**Inputs.** `stress` flag passed to `simulate()`; `realReturn` from the household inputs.
+
+**Logic.**
+
+```js
+function stressReturnForYear(realReturn, yearIndex) {
+  if (yearIndex <= 2) return -0.10       // years 1-3: −10% (STRESS_EARLY_DROP)
+  if (yearIndex <= 5) return realReturn - 0.02  // years 4-6: realReturn − 2%
+  return realReturn                      // year 7 onward: base assumption
+}
+```
+
+`yearIndex` is 0-based from simulation start (year 1 of retirement = index 0). The stress simulation is run in parallel with the base simulation and shown as a **brass dotted line** on the long-run portfolio balance chart.
+
+**Important:** This is a **deterministic, illustrative scenario** — not a forecast, a Monte Carlo draw, or a probability-weighted outcome. Its purpose is to show the directional effect of sequence risk so users can judge whether their plan has enough buffer. Do not interpret the stress-path balance as a likely outcome.
+
+---
+
+### 4.5 Headline Reconciliation: Modeled Spend, Capacity, and Surplus
+
+**Purpose.** Separate what the household actually plans to spend from what the portfolio could support, so the difference is not mistaken for additional spendable income.
+
+The steady-state report now surfaces three distinct quantities:
+
+| Field | Definition |
+| --- | --- |
+| `modeledSpend` | The household's projected spending `need` in the steady-state year — the healthcare-aware base plus any active travel or events. |
+| `sustainableCapacity` | After-tax income the portfolio can sustain at the chosen withdrawal rate (`net = gross − tax`). |
+| `surplus` | `max(0, sustainableCapacity − modeledSpend)` — the portion of sustainable capacity not consumed by the modeled spend. |
+
+The surplus compounds inside the portfolio rather than being paid out. It represents planning headroom — for unmodeled expenses, long-term care, inflation surprises, or bequest — and should not be treated as additional spendable income in the year it appears.
+
+**Edge cases.** Surplus is floored at 0; the report does not show a negative surplus (that condition surfaces separately as the plan being short of the spending need).
+
+---
+
+## 5. Worked Example: The Default Scenario
 
 Using the shipped defaults (both spouses 45; incomes $90k and $75k; savings $300k; saving $18k/yr; 30% spending goal; stop work at 62/60; claim Social Security at 67; Plan 2 pension, 20 years, AFC $78k, start 65; Social Security modeled at the Trustees' 81% from 2034; Texas home rented, Klagenfurt home lived‑in; U.S.‑national healthcare basis):
 
@@ -600,7 +725,7 @@ This illustrates the interaction the tool is designed to expose: the pre‑65 cl
 
 ---
 
-## 5. Known Simplifications and Rationale
+## 6. Known Simplifications and Rationale
 
 | Simplification | Why it is acceptable here | Where to be careful |
 | --- | --- | --- |

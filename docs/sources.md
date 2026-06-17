@@ -16,16 +16,17 @@
 - [4. Social Security — Benefit Formula and Claiming](#4-social-security--benefit-formula-and-claiming)
 - [5. Social Security — Trust-Fund Solvency (2025 Trustees)](#5-social-security--trust-fund-solvency-2025-trustees)
 - [6. Retirement Accounts — RMDs and Contribution Limits](#6-retirement-accounts--rmds-and-contribution-limits)
-- [7. Safe Withdrawal Rate Research](#7-safe-withdrawal-rate-research)
-- [8. Washington State DRS Pensions](#8-washington-state-drs-pensions)
-- [9. Healthcare — Medicare 2026 and Pre-65 ACA](#9-healthcare--medicare-2026-and-pre-65-aca)
-- [10. Cost of Living — United States](#10-cost-of-living--united-states)
-- [11. Cost of Living — Europe](#11-cost-of-living--europe)
-- [12. Cost of Living — Caribbean (Bahamas)](#12-cost-of-living--caribbean-bahamas)
-- [13. Retiring Abroad and Cross-Border Income Tax](#13-retiring-abroad-and-cross-border-income-tax)
-- [14. Inherited Real Estate — United States and Texas](#14-inherited-real-estate--united-states-and-texas)
-- [15. Inherited Real Estate — Austria](#15-inherited-real-estate--austria)
-- [16. Full URL Index](#16-full-url-index)
+- [7. Illustrative Modeling Assumptions (No External Citation Required)](#7-illustrative-modeling-assumptions-no-external-citation-required)
+- [8. Safe Withdrawal Rate Research](#8-safe-withdrawal-rate-research)
+- [9. Washington State DRS Pensions](#9-washington-state-drs-pensions)
+- [10. Healthcare — Medicare 2026 and Pre-65 ACA](#10-healthcare--medicare-2026-and-pre-65-aca)
+- [11. Cost of Living — United States](#11-cost-of-living--united-states)
+- [12. Cost of Living — Europe](#12-cost-of-living--europe)
+- [13. Cost of Living — Caribbean (Bahamas)](#13-cost-of-living--caribbean-bahamas)
+- [14. Retiring Abroad and Cross-Border Income Tax](#14-retiring-abroad-and-cross-border-income-tax)
+- [15. Inherited Real Estate — United States and Texas](#15-inherited-real-estate--united-states-and-texas)
+- [16. Inherited Real Estate — Austria](#16-inherited-real-estate--austria)
+- [17. Full URL Index](#17-full-url-index)
 
 ---
 
@@ -98,7 +99,20 @@ Where a fact has an authoritative origin (an IRS newsroom release, an SSA press 
 
 ---
 
-## 7. Safe Withdrawal Rate Research
+## 7. Illustrative Modeling Assumptions (No External Citation Required)
+
+The following features use internally derived assumptions rather than externally cited constants. They are documented here for completeness and auditability.
+
+**Sequence-of-returns stress path.** The stress scenario applies −10% in retirement years 1–3, `realReturn − 2%` in years 4–6, and `realReturn` from year 7 onward. This is a **deterministic, illustrative scenario** — not a forecast, not a Monte Carlo draw, and not sourced from any specific study. Its sole purpose is to show directional sequence-of-returns risk so households can judge whether their plan has sufficient buffer. The specific return values (`STRESS_EARLY_DROP = −0.10`) are hard-coded in `src/retirementData.js` as planning parameters, not empirically derived constants requiring citation.
+
+**Discretionary travel taper.** The default travel budget ($15,000/yr for 15 years, tapering to 50% after year 10) reflects the well-documented go-go / slow-go / no-go pattern in retirement spending research — the observation that real household spending tends to decline in real terms as retirees age and activity levels fall. The specific default amounts are user-overrideable inputs, not cited constants; no single numeric source is authoritative. For supporting context see generally: Blanchett, D. (2014). "Exploring the Retirement Consumption Puzzle." *Journal of Financial Planning* — which found inflation-adjusted retirement spending declines on average 1–2% per year in real terms.
+
+**One-time life events.** Default event amounts (e.g., wedding gifts, home-purchase assistance) are illustrative starting points only. Every amount is a user input. No external source is cited because the figures carry no normative weight; the engine treats them as after-tax outflows that raise the year's spending need and trigger a grossed-up withdrawal via the existing tax solver.
+
+---
+
+## 8. Safe Withdrawal Rate Research
+
 
 - **[Morningstar — What's a safe retirement withdrawal rate for 2026](https://www.morningstar.com/retirement/whats-safe-retirement-withdrawal-rate-2026)** — the 2026 base‑case rate (3.9%).
 - **[Morningstar — What your retirement spending rate should be (2026)](https://www.morningstar.com/retirement/heres-what-your-retirement-spending-rate-should-be-2026)** and **[Morningstar — Finding your safe withdrawal rate](https://www.morningstar.com/retirement/morningstars-retirement-income-research-finding-your-safe-withdrawal-rate)** — flexible/guardrail rates up to 5.7%.
@@ -108,7 +122,7 @@ Where a fact has an authoritative origin (an IRS newsroom release, an SSA press 
 
 ---
 
-## 8. Washington State DRS Pensions
+## 9. Washington State DRS Pensions
 
 - **[Washington DRS — TRS Plan 2](https://www.drs.wa.gov/plan/trs2/)** **(primary)** — 2% multiplier, AFC definition, retirement eligibility.
 - **[Washington DRS — TRS Plan 3](https://www.drs.wa.gov/plan/trs3/)** **(primary)** — 1% defined‑benefit multiplier plus the separate defined‑contribution account.
@@ -121,7 +135,7 @@ Where a fact has an authoritative origin (an IRS newsroom release, an SSA press 
 
 ---
 
-## 9. Healthcare — Medicare 2026 and Pre-65 ACA
+## 10. Healthcare — Medicare 2026 and Pre-65 ACA
 
 - **[CMS — 2026 Medicare Parts B premiums and deductibles (fact sheet)](https://www.cms.gov/newsroom/fact-sheets/2026-medicare-parts-b-premiums-and-deductibles)** **(primary)** — standard Part B premium $202.90/mo, deductible $283.
 - **[Federal Register — Medicare Part B premium rates beginning Jan 1, 2026](https://www.federalregister.gov/documents/2025/11/19/2025-20251/medicare-program-medicare-part-b-monthly-actuarial-rates-premium-rates-and-annual-deductible)** **(primary)** — the official rate notice.
@@ -133,7 +147,7 @@ Where a fact has an authoritative origin (an IRS newsroom release, an SSA press 
 
 ---
 
-## 10. Cost of Living — United States
+## 11. Cost of Living — United States
 
 - **[U.S. Bureau of Labor Statistics — Consumer Expenditure Survey](https://www.bls.gov/cex/)** **(primary)** — household spending baselines.
 - **[World Population Review — Cost of living index by state](https://worldpopulationreview.com/state-rankings/cost-of-living-index-by-state)** — state cost tiers.
@@ -144,7 +158,7 @@ Where a fact has an authoritative origin (an IRS newsroom release, an SSA press 
 
 ---
 
-## 11. Cost of Living — Europe
+## 12. Cost of Living — Europe
 
 - **[Numbeo — Cost of living database](https://www.numbeo.com/cost-of-living/)** — primary aggregator; city pages used include **[Vienna](https://www.numbeo.com/cost-of-living/in/Vienna)** and **[Lisbon](https://www.numbeo.com/cost-of-living/in/Lisbon)**, plus **[Austria country result](https://www.numbeo.com/cost-of-living/country_result.jsp?country=Austria)**.
 - **[Wise — Cost of living: Vienna](https://wise.com/gb/cost-of-living/austria/vienna)** and **[Lisbon](https://wise.com/gb/cost-of-living/portugal/lisbon)** — line‑item cross‑checks.
@@ -157,7 +171,7 @@ Where a fact has an authoritative origin (an IRS newsroom release, an SSA press 
 
 ---
 
-## 12. Cost of Living — Caribbean (Bahamas)
+## 13. Cost of Living — Caribbean (Bahamas)
 
 - **[ERI (Economic Research Institute) — Nassau cost of living](https://www.erieri.com/cost-of-living/bahamas/nassau)** — salary/cost database figures.
 - **[Expatistan — Bahamas cost of living](https://www.expatistan.com/cost-of-living/country/bahamas)** — line‑item cross‑check.
@@ -168,7 +182,7 @@ Where a fact has an authoritative origin (an IRS newsroom release, an SSA press 
 
 ---
 
-## 13. Retiring Abroad and Cross-Border Income Tax
+## 14. Retiring Abroad and Cross-Border Income Tax
 
 - **[Greenback — Retire abroad tax planning](https://www.greenbacktaxservices.com/knowledge-center/retire-abroad-tax-planning/)** — worldwide taxation, foreign tax credit basics.
 - **[Greenback — Foreign pensions and U.S. taxation](https://www.greenbacktaxservices.com/knowledge-center/foreign-pensions-treatment-us-taxation/)** — treaty interactions for pensions.
@@ -179,7 +193,7 @@ Where a fact has an authoritative origin (an IRS newsroom release, an SSA press 
 
 ---
 
-## 14. Inherited Real Estate — United States and Texas
+## 15. Inherited Real Estate — United States and Texas
 
 - **[IRS — Estate tax](https://www.irs.gov/businesses/small-businesses-self-employed/estate-tax)** **(primary)** — federal estate‑tax mechanics and the exemption framework.
 - **[Guardian — Estate tax for noncitizens / $15M 2026 exemption](https://www.guardianlife.com/individuals-families/life-insurance/foreign-nationals/estate-tax)** — 2026 exemption ($15M/person, $30M couple), 40% top rate.
@@ -193,7 +207,7 @@ Where a fact has an authoritative origin (an IRS newsroom release, an SSA press 
 
 ---
 
-## 15. Inherited Real Estate — Austria
+## 16. Inherited Real Estate — Austria
 
 - **[USP.gv.at (Austrian Business Service Portal) — Real estate transfer tax (Grunderwerbsteuer)](https://www.usp.gv.at/en/themen/steuern-finanzen/weitere-steuern-und-abgaben/grunderwerbsteuer.html)** **(primary)** — transfer tax applies to inheritance; graduated gratuitous rates.
 - **[RSM Austria — Sale and transfer of Austrian real estate](https://www.rsm.global/austria/en/insights/sector-insights/sale-transfer-austrian-real-estate)** — transfer‑tax rates (0.5%–3.5%) and the 30% / 4.2% (pre‑2002) capital‑gains regime.
@@ -207,7 +221,7 @@ Where a fact has an authoritative origin (an IRS newsroom release, an SSA press 
 
 ---
 
-## 16. Full URL Index
+## 17. Full URL Index
 
 > A flat, alphabetized list of every content source above, for archival and link‑checking. Asset/CDN/favicon URLs are excluded.
 
