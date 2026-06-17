@@ -7,6 +7,7 @@ import {
   fedTax,
   ltcSpendForYear,
   oneTimeSpendForYear,
+  ownBenefitAtClaimMonthly,
   pensionERF,
   resolveAfc,
   runMonteCarlo,
@@ -467,5 +468,59 @@ describe("Monte Carlo lognormal returns", () => {
     const last = r.balanceFan[r.balanceFan.length - 1];
     expect(last.p10).toBe(last.p50);
     expect(last.p50).toBe(last.p90);
+  });
+});
+
+describe("numeric guards (mutation hardening)", () => {
+  // --- tax.js ---
+  it("fedTax is linear in the lowest bracket and matches a known point", () => {
+    expect(fedTax(24800, "married")).toBeCloseTo(2480, 6); // 10% up to the 12% floor
+    expect(fedTax(0, "married")).toBe(0);
+  });
+
+  it("taxableSS is capped at 85% of the benefit for high provisional income", () => {
+    expect(taxableSS(200000, 30000, "married")).toBeCloseTo(0.85 * 30000, 6);
+  });
+
+  it("calculateFederalTaxYear subtracts the deduction and includes rental + pension in ordinary income", () => {
+    const r = calculateFederalTaxYear({ status: "married", ageA: 70, ageB: 70, wages: 0, pension: 20000, rental: 12000, grossWithdrawal: 0, socialSecurity: 0, tradFrac: 0.7 });
+    expect(r.ordinary).toBe(32000);              // rental + pension both counted
+    expect(r.taxableIncome).toBeLessThan(r.agi); // deduction subtracts, not adds
+  });
+
+  // --- socialSecurity.js ---
+  it("piaFromIncome caps at the wage base and rises across bend segments", () => {
+    expect(piaFromIncome(400000)).toBeCloseTo(piaFromIncome(184500), 6); // cap enforced
+    expect(piaFromIncome(50000)).toBeGreaterThan(piaFromIncome(10000));  // monotone up
+  });
+
+  it("ownBenefitAtClaimMonthly reduces before FRA and adds credits after", () => {
+    expect(ownBenefitAtClaimMonthly(1000, 62)).toBeLessThan(1000);
+    expect(ownBenefitAtClaimMonthly(1000, 62)).toBeGreaterThan(0);
+    expect(ownBenefitAtClaimMonthly(1000, 70)).toBeGreaterThan(1000);
+  });
+
+  // --- pension.js ---
+  it("pensionERF honors the age-65 and minimum-age guards and plan service minimums", () => {
+    expect(pensionERF(65, 20, 2)).toBe(1);
+    expect(pensionERF(64, 20, 2)).toBeLessThan(1);
+    expect(pensionERF(54, 30, 2)).toBe(0);
+    expect(pensionERF(60, 15, 3)).toBeGreaterThan(0); // Plan 3: 10-yr min met
+    expect(pensionERF(60, 15, 2)).toBe(0);            // Plan 2: 20-yr min not met
+  });
+
+  // --- simulate.js (row-level dollar identities) ---
+  it("annualizes pension and Social Security correctly in the simulated rows", () => {
+    const i = {
+      ...baseState, ageA: 65, ageB: 65, stopA: 65, stopB: 65, claimA: 65, claimB: 65,
+      pensionOn: true, pensionAge: 65, plan: 2, pYears: 20, afc: 78000,
+      ssModeA: "statement", ssFraA: 24000, ssModeB: "statement", ssFraB: 0,
+      savings: 800000, contrib: 0, tx: { ...baseState.tx, on: false }, at: { ...baseState.at, on: false },
+      inher: [], incomeHH: 0, hcPre: 2450, hcPost: 1000, ltcAnnual: 129000,
+      travel: { on: false }, events: [], survivor: { on: false, year: 9999, pensionPct: 0 }, ltc: { on: false },
+    };
+    const row = simulate(i, { haircut: 1, cutYear: 9999 }).rows.find((r) => r.cal === 2026);
+    expect(row.pens).toBeCloseTo(0.02 * 20 * 78000, 0);                       // 31,200/yr, not /12 or *12
+    expect(row.ssA).toBeCloseTo(2000 * (1 - 24 * (5 / 9) / 100) * 12, 0);     // FRA 24k, claim 65 reduction, annualized
   });
 });
