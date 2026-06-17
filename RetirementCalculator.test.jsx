@@ -130,3 +130,11 @@ describe("long-term care disclosure", () => {
     expect(screen.getByText(/Long-term care is not modeled/i)).toBeInTheDocument();
   });
 });
+
+describe("deterministic headline caveat", () => {
+  it("flags that the headline assumes steady returns and points to Monte Carlo", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByText(/best-case-within-average, not a median/i)).toBeInTheDocument();
+    expect(screen.getByText(/Run Monte Carlo \(below\) for the realistic range/i)).toBeInTheDocument();
+  });
+});
