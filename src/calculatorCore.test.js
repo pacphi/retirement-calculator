@@ -631,3 +631,23 @@ describe("senior bonus 2028 sunset", () => {
     expect(standardDeduction({ status: "married", ageA: 65, ageB: 65, agi: 100000 })).toBe(47500);
   });
 });
+
+describe("location-aware additional income tax", () => {
+  it("adds the state/foreign rate on top of federal tax", () => {
+    const fed = calculateFederalTaxYear({ status: "married", ageA: 70, ageB: 70, pension: 60000, year: 2030 });
+    const withState = calculateFederalTaxYear({ status: "married", ageA: 70, ageB: 70, pension: 60000, year: 2030, stateRate: 0.05 });
+    expect(withState.tax - fed.tax).toBeCloseTo(0.05 * fed.taxableIncome, 6);
+  });
+
+  it("applies a higher modeled tax in a high-tax locale than a no-tax one", () => {
+    const nl = calculatePlan({ ...baseState, retireLoc: "Netherlands" });   // addlTaxRate 0.08
+    const tx = calculatePlan({ ...baseState, retireLoc: "US -- Texas / Florida" }); // 0%
+    expect(nl.steady.tax).toBeGreaterThan(tx.steady.tax);
+  });
+
+  it("lets an explicit stateRate override the location default", () => {
+    const base = calculatePlan({ ...baseState, retireLoc: "US -- Texas / Florida" });        // 0%
+    const overridden = calculatePlan({ ...baseState, retireLoc: "US -- Texas / Florida", stateRate: 0.05 });
+    expect(overridden.steady.tax).toBeGreaterThan(base.steady.tax);
+  });
+});

@@ -103,6 +103,7 @@ export default function RetirementCalculator() {
     survivor: { on:false, year:2055, pensionPct:0 },
     ltc: { on:false, startAge:80, years:3, annual:null },
     horizonAge: 95,
+    stateRate: null,
   });
   const [couple, setCouple] = useState(true);
   const [stage, setStage] = useState("post");
@@ -428,6 +429,10 @@ export default function RetirementCalculator() {
                 <Field label="Plan horizon (age)" hint="How long to project. Defaults to 95; can't be set below the older spouse's current age.">
                   <NumberInput value={s.horizonAge} min={Math.max(Number(s.ageA)||0, Number(s.ageB)||0)}
                     onChange={(v)=>set("horizonAge")(Math.max(Number(s.ageA)||0, Number(s.ageB)||0, Number(v)||95))} />
+                </Field>
+                <Field label="Extra income tax (state / foreign)" hint={`On top of US federal. ${locByName(s.retireLoc)?.region==="US"?"State rate on retirement income.":"Net of treaty + Foreign Tax Credit (you pay the higher, not both)."} Default for ${s.retireLoc}: ${Math.round((locByName(s.retireLoc)?.addlTaxRate||0)*100)}%. Leave blank to use it.`}>
+                  <NumberInput value={s.stateRate==null ? "" : Math.round(s.stateRate*1000)/10} suffix="%"
+                    onChange={(v)=>set("stateRate")(v===""||v==null ? null : (Number(v)||0)/100)} />
                 </Field>
                 <Field label={`Travel budget — ${usd0(s.travel.amount)}/yr for ${s.travel.years} yrs`} hint="First years of retirement; tapers to half after year 10.">
                   <NumberInput value={s.travel.amount} onChange={(v)=>set("travel")({ ...s.travel, amount:Number(v)||0 })} prefix="$" />

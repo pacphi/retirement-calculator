@@ -60,12 +60,16 @@ export const calculateFederalTaxYear = ({
   tradFrac = 0.7,
   socialSecurity = 0,
   year,
+  stateRate = 0,
 }) => {
   const ordinary = wages + pension + rental + grossWithdrawal * tradFrac;
   const taxableSocialSecurity = taxableSS(ordinary, socialSecurity, status);
   const agi = ordinary + taxableSocialSecurity;
   const deduction = standardDeduction({ status, ageA, ageB, agi, year });
   const taxableIncome = Math.max(0, agi - deduction);
-  const tax = fedTax(taxableIncome, status);
-  return { ordinary, taxableSocialSecurity, agi, deduction, taxableIncome, tax };
+  const federalTax = fedTax(taxableIncome, status);
+  // Additional effective state (US) / net-of-treaty foreign income tax on the
+  // same taxable base. See docs/sources.md for the per-location rates.
+  const stateTax = (Number(stateRate) || 0) * taxableIncome;
+  return { ordinary, taxableSocialSecurity, agi, deduction, taxableIncome, federalTax, stateTax, tax: federalTax + stateTax };
 };

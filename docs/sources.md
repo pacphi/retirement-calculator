@@ -27,7 +27,8 @@
 - [15. Inherited Real Estate — United States and Texas](#15-inherited-real-estate--united-states-and-texas)
 - [16. Inherited Real Estate — Austria](#16-inherited-real-estate--austria)
 - [17. Long-Term Care Costs by Location](#17-long-term-care-costs-by-location)
-- [18. Full URL Index](#18-full-url-index)
+- [18. Income Tax by Location (State & Foreign)](#18-income-tax-by-location-state--foreign)
+- [19. Full URL Index](#19-full-url-index)
 
 ---
 
@@ -264,7 +265,33 @@ and pre-subsidy. The model applies LTC as one episode (default 3 years from the 
 spouse's age 80) added to spending need; ~70% of 65-year-olds need some LTC (US HHS/SSA
 actuarial guidance).
 
-## 18. Full URL Index
+## 18. Income Tax by Location (State & Foreign)
+
+A US citizen owes **US federal** income tax everywhere (always modeled). On top of that, the model applies a single **additional effective rate** on taxable income, defaulting to the selected location (overrideable in Advanced):
+
+- **US states:** the effective state income-tax rate on retirement income (pension + IRA withdrawals). Most states exempt Social Security; some exempt pensions.
+- **Foreign:** the *net-of-treaty/Foreign-Tax-Credit* additional burden. The FTC (IRS Form 1116) and tax treaties mean a US citizen abroad effectively pays the **higher** of US vs. local tax, **not both** — so treaty-favorable regimes land near 0 additional, and only locations whose effective rate on pension income exceeds the US federal rate carry a positive additional rate.
+
+| Location | Additional rate beyond US federal | Basis |
+|---|---|---|
+| US — Texas / Florida | 0% | No state income tax |
+| US — low-cost (WV/OK/MS) | 2% | Low effective state rate; pension exemptions common |
+| US — national average | 3% | Representative state rate; SS exempt |
+| US — California | 6.5% | Taxes pension/IRA fully (SS exempt) |
+| US — Hawaii / NYC | 8% | HI taxes some pensions; NY/NYC high |
+| Bulgaria / Romania | 0% | Flat 10% local ≤ US effective → absorbed by FTC |
+| Greece | 0% | 7% flat foreign-pension regime ≤ US → absorbed by FTC |
+| Italy | 0% | 7% southern flat regime ≤ US → absorbed by FTC |
+| France | 0% | US–France treaty assigns US-source pensions to the US |
+| Portugal | 3% | NHR closed (Apr 2025); IFICI excludes retirees — progressive rates, partly offset by FTC (low confidence) |
+| Spain | 4% | Worldwide taxation above US effective |
+| Austria | 5% | Worldwide taxation (~37–40% on pension) above US |
+| Netherlands | 8% | Box system; effective rate well above US |
+| Bahamas | 0% | No income tax |
+
+**Treaty & FTC mechanics.** US citizens are taxed on worldwide income regardless of residence, but the Foreign Tax Credit (Form 1116) credits foreign income tax against US liability, and treaties allocate taxing rights — together preventing double taxation. The practical result for retirement income is "pay the higher of the two," which is why most foreign additional rates above are 0. Per-location sources and method notes: `docs/audits/tax-research.md`. **Caveats:** these are single-rate effective simplifications (not marginal); cross-border tax is highly fact-specific — confirm with a qualified cross-border professional. Key sources: IRS FTC/Form 1116 (<https://www.irs.gov/individuals/international-taxpayers/foreign-tax-credit>), PwC Worldwide Tax Summaries (<https://taxsummaries.pwc.com/>), and per-country guides listed in `docs/audits/tax-research.md`.
+
+## 19. Full URL Index
 
 > A flat, alphabetized list of every content source above, for archival and link‑checking. Asset/CDN/favicon URLs are excluded.
 

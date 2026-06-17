@@ -41,6 +41,7 @@ const taxForYear = (i, aA, aB, wages, pens, rent, ss, grossWithdrawal, statusOve
     grossWithdrawal,
     tradFrac: i.tradFrac,
     year,
+    stateRate: i.taxRate,
   }).tax;
 
 const solveWithdrawal = (i, aA, aB, wages, pens, rent, ss, need, bal, statusOverride, year) => {
@@ -204,6 +205,7 @@ export function steadyState(i, sim) {
     grossWithdrawal: wd,
     tradFrac: i.tradFrac,
     year: row.cal,
+    stateRate: i.taxRate,
   });
   const guaranteedTaxDetails = calculateFederalTaxYear({
     status: yearStatus,
@@ -215,6 +217,7 @@ export function steadyState(i, sim) {
     grossWithdrawal: 0,
     tradFrac: i.tradFrac,
     year: row.cal,
+    stateRate: i.taxRate,
   });
   const targetNeed = row.need; // sourced from the simulated row so events/healthcare flow through
   const net = gross - taxDetails.tax;
