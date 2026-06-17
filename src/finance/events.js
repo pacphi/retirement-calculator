@@ -4,7 +4,10 @@ export const travelSpendForYear = (travel, cal, retireCal) => {
   const years = Number(travel.years) || 0;
   const idx = cal - retireCal; // 0-based year of retirement
   if (idx < 0 || idx >= years) return 0;
-  if (travel.taper && idx >= 10) return 0.5 * amount;
+  // Go-go/slow-go: full budget through year 10 for long plans; for plans of 10
+  // years or fewer, taper from the midpoint so the toggle isn't a no-op.
+  const pivot = years > 10 ? 10 : Math.ceil(years / 2);
+  if (travel.taper && idx >= pivot) return 0.5 * amount;
   return amount;
 };
 

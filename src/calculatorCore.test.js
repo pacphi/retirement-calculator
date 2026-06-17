@@ -572,3 +572,12 @@ describe("pensionERF age rounding", () => {
     expect(pensionERF(65, 20, 2)).toBe(1);
   });
 });
+
+describe("travel taper for short plans", () => {
+  it("tapers from the midpoint when the window is 10 years or fewer", () => {
+    const t = { on: true, amount: 15000, years: 8, taper: true };
+    expect(travelSpendForYear(t, 2034, 2034)).toBe(15000); // year 1, full
+    expect(travelSpendForYear(t, 2037, 2034)).toBe(15000); // year 4 (idx 3 < pivot 4)
+    expect(travelSpendForYear(t, 2038, 2034)).toBe(7500);  // year 5 (idx 4 >= pivot 4)
+  });
+});
