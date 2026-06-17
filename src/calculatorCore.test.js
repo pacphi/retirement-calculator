@@ -10,6 +10,7 @@ import {
   resolveAfc,
   runMonteCarlo,
   simulate,
+  spendingNeed,
   spousalBenefitAtClaimMonthly,
   standardDeduction,
   steadyState,
@@ -377,5 +378,20 @@ describe("steadyState survivor handling", () => {
     const iRent = { ...i, inher: [{ type: "rent", year: 2040, rent: 12000 }] };
     const s = steadyState(iRent, { rows: [mkRow(false)] });
     expect(s.rentInc).toBe(12000);
+  });
+});
+
+describe("spendingNeed survivor healthcare", () => {
+  const hc = { incomeHH: 100000, targetPct: 0.4, hcPre: 2450, hcPost: 1000 };
+  const perPersonHCyr = ((2450 - 1000) / 2) * 12;
+
+  it("charges one pre-65 healthcare bump for a survivor (younger spouse), not two", () => {
+    const couple = spendingNeed(hc, 60, 55, 0, false);
+    const survivor = spendingNeed(hc, 60, 55, 0, true);
+    expect(couple - survivor).toBeCloseTo(perPersonHCyr, 6);
+  });
+
+  it("charges no pre-65 bump for a survivor already 65+", () => {
+    expect(spendingNeed(hc, 67, 66, 0, true)).toBe(0.4 * 100000);
   });
 });

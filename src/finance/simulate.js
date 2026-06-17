@@ -59,10 +59,14 @@ const solveWithdrawal = (i, aA, aB, wages, pens, rent, ss, need, bal, statusOver
   return { withdrawal: hi, tax: taxForYear(i, aA, aB, wages, pens, rent, ss, hi, statusOverride) };
 };
 
-export function spendingNeed(i, ageA, ageB, liveSav = 0) {
+export function spendingNeed(i, ageA, ageB, liveSav = 0, isSurvivor = false) {
   const base = i.incomeHH * i.targetPct;
   const perPersonHC = Math.max(0, (i.hcPre - i.hcPost)) / 2;
-  const under65 = (ageA < 65 ? 1 : 0) + (ageB < 65 ? 1 : 0);
+  // After a survivor transition only one person remains; assume the younger
+  // spouse survives, so only their pre-65 healthcare gap is counted.
+  const under65 = isSurvivor
+    ? (Math.min(ageA, ageB) < 65 ? 1 : 0)
+    : (ageA < 65 ? 1 : 0) + (ageB < 65 ? 1 : 0);
   const hcBump = perPersonHC * under65 * 12;
   return Math.max(0.35 * base, base + hcBump - liveSav);
 }
@@ -112,7 +116,7 @@ export function simulate(i, ssOpt) {
     }
     const extraSpend =
       travelSpendForYear(i.travel, cal, retireCal) + oneTimeSpendForYear(i.events, cal);
-    const need = spendingNeed(i, aA, aB, liveSav) + extraSpend;
+    const need = spendingNeed(i, aA, aB, liveSav, isSurvivor) + extraSpend;
     const yearReturn = ssOpt.returns
       ? (ssOpt.returns[y] ?? i.realReturn)
       : ssOpt.stress
