@@ -1,5 +1,7 @@
 export const TAX_YEAR = 2026;
 
+export const DEFAULT_TRAVEL = { on: true, amount: 15000, years: 15, taper: true };
+
 export const SOURCES = {
   irs2026: "https://www.irs.gov/newsroom/irs-releases-tax-inflation-adjustments-for-tax-year-2026-including-amendments-from-the-one-big-beautiful-bill",
   ssaPia: "https://www.ssa.gov/oact/progdata/retirebenefit2.html",

@@ -10,6 +10,7 @@ import {
   spousalBenefitAtClaimMonthly,
   standardDeduction,
   taxableSS,
+  travelSpendForYear,
 } from "./calculatorCore.js";
 
 const baseState = {
@@ -120,6 +121,31 @@ describe("WA DRS pension", () => {
     const seeded = benefits({ ...baseState, afc: null, incomeB: 75000 });
     const explicit = benefits({ ...baseState, afc: 75000 });
     expect(seeded.pension).toBeCloseTo(explicit.pension, 6);
+  });
+});
+
+describe("travel spending", () => {
+  it("pays the full budget in the first 10 retirement years", () => {
+    const t = { on: true, amount: 15000, years: 15, taper: true };
+    expect(travelSpendForYear(t, 2034, 2034)).toBe(15000); // year 1
+    expect(travelSpendForYear(t, 2043, 2034)).toBe(15000); // year 10
+  });
+
+  it("tapers to half for the slow-go years 11..N", () => {
+    const t = { on: true, amount: 15000, years: 15, taper: true };
+    expect(travelSpendForYear(t, 2044, 2034)).toBe(7500); // year 11
+    expect(travelSpendForYear(t, 2048, 2034)).toBe(7500); // year 15
+  });
+
+  it("stops after the travel window and before retirement", () => {
+    const t = { on: true, amount: 15000, years: 15, taper: true };
+    expect(travelSpendForYear(t, 2049, 2034)).toBe(0); // year 16
+    expect(travelSpendForYear(t, 2033, 2034)).toBe(0); // pre-retirement
+  });
+
+  it("returns 0 when travel is disabled and honors a flat (non-taper) budget", () => {
+    expect(travelSpendForYear({ on: false, amount: 15000, years: 15, taper: true }, 2034, 2034)).toBe(0);
+    expect(travelSpendForYear({ on: true, amount: 20000, years: 15, taper: false }, 2046, 2034)).toBe(20000);
   });
 });
 
