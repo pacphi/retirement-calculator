@@ -651,3 +651,19 @@ describe("location-aware additional income tax", () => {
     expect(overridden.steady.tax).toBeGreaterThan(base.steady.tax);
   });
 });
+
+describe("live-in inheritance timing", () => {
+  it("credits the live-in housing saving only from the year after inheritance", () => {
+    const i = {
+      ...baseState, ageA: 65, ageB: 65, stopA: 65, stopB: 65, claimA: 65, claimB: 65,
+      pensionOn: false, savings: 800000, contrib: 0, targetPct: 0.5,
+      incomeHH: 100000, hcPre: 2450, hcPost: 1000, ltcAnnual: 129000,
+      travel: { on: false }, events: [], survivor: { on: false, year: 9999, pensionPct: 0 }, ltc: { on: false }, horizonAge: 95,
+      inher: [{ type: "live", year: 2030, live: 12000 }],
+    };
+    const sim = simulate(i, { haircut: 1, cutYear: 9999 });
+    const moveYear = sim.rows.find((r) => r.cal === 2030).need;
+    const after = sim.rows.find((r) => r.cal === 2031).need;
+    expect(moveYear - after).toBe(12000); // saving applies in 2031, not the 2030 move year
+  });
+});

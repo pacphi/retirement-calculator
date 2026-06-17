@@ -862,7 +862,7 @@ export default function RetirementCalculator() {
               Estimates for planning only — not financial, tax, or legal advice. Figures are in today's dollars; breakdowns also show a
               future-dollar equivalent. Inheritance outcomes use simplified net factors (Texas ~93% on sale via basis step-up; Austria ~90%
               after transfer + capital-gains tax) and assume the estate stays under the $15M federal exemption — confirm the decedent's
-              acquisition history, currency basis, and treaty treatment with a cross-border tax professional. 2026 federal brackets.
+              acquisition history, currency basis, and treaty treatment with a cross-border tax professional. 2026 federal brackets. Inherited-home live-in savings begin the year after inheritance; one-time relocation costs are not modeled.
               {!s.ltc.on && " Long-term care is not modeled (about 70% of retirees need it; roughly $50k–$200k/yr depending on location) — enable it under Step Five → Advanced to stress-test."}
             </p>
           </div>

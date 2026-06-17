@@ -117,7 +117,7 @@ export function simulate(i, ssOpt) {
     let sellLump = 0;
     for (const p of (i.inher || [])) {
       if (p.type === "rent" && cal >= p.year) rent += p.rent;
-      if (p.type === "live" && cal >= p.year) liveSav += p.live;
+      if (p.type === "live" && cal > p.year) liveSav += p.live; // year+1: skip the relocation/transition year
       if (p.type === "sell" && cal === p.year) sellLump += p.sell;
     }
     const extraSpend =
@@ -175,7 +175,7 @@ export function steadyState(i, sim) {
   for (const p of i.inher) {
     if (p.type === "sell" && p.year > row.cal) sellAfter += p.sell;
     if (p.type === "rent" && p.year <= row.cal) rentInc += p.rent;
-    if (p.type === "live" && p.year <= row.cal) liveSav += p.live;
+    if (p.type === "live" && p.year < row.cal) liveSav += p.live; // year+1: skip the relocation/transition year
   }
   const FV = row.bal + sellAfter;
   const wd = FV * i.swr;
