@@ -366,4 +366,16 @@ describe("steadyState survivor handling", () => {
     expect(s.ssA).toBe(30000);
     expect(s.ssB).toBe(0);
   });
+
+  it("excludes inherited rental income that starts after the steady-state year", () => {
+    const iRent = { ...i, inher: [{ type: "rent", year: 2099, rent: 12000 }] };
+    const s = steadyState(iRent, { rows: [mkRow(false)] });
+    expect(s.rentInc).toBe(0);
+  });
+
+  it("includes inherited rental income already available by the steady-state year", () => {
+    const iRent = { ...i, inher: [{ type: "rent", year: 2040, rent: 12000 }] };
+    const s = steadyState(iRent, { rows: [mkRow(false)] });
+    expect(s.rentInc).toBe(12000);
+  });
 });

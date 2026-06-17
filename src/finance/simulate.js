@@ -162,8 +162,8 @@ export function steadyState(i, sim) {
   let liveSav = 0;
   for (const p of i.inher) {
     if (p.type === "sell" && p.year > row.cal) sellAfter += p.sell;
-    if (p.type === "rent") rentInc += p.rent;
-    if (p.type === "live") liveSav += p.live;
+    if (p.type === "rent" && p.year <= row.cal) rentInc += p.rent;
+    if (p.type === "live" && p.year <= row.cal) liveSav += p.live;
   }
   const FV = row.bal + sellAfter;
   const wd = FV * i.swr;
