@@ -43,6 +43,14 @@ describe("RetirementCalculator UI", () => {
   });
 });
 
+describe("reframed headline", () => {
+  it("labels the headline as spending capacity, not guaranteed income", () => {
+    render(<RetirementCalculator />);
+    // The tile must distinguish what you spend from what you could spend.
+    expect(screen.getByText(/could spend up to/i)).toBeInTheDocument();
+  });
+});
+
 describe("dynamic life events", () => {
   it("adds a new event row when 'Add event' is clicked", () => {
     render(<RetirementCalculator />);

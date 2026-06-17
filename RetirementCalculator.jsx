@@ -111,7 +111,7 @@ export default function RetirementCalculator() {
   const afcAuto = afcIsAuto(s);
   const afcEff = resolveAfc(s);
 
-  const { incomeHH, inher, simChosen, simFull, simTrust, simNone, steady, sFull, sTrust, sNone, effHaircut, effCutYear } = calc;
+  const { incomeHH, inher, simChosen, simFull, simTrust, simNone, simStress, steady, sFull, sTrust, sNone, effHaircut, effCutYear } = calc;
   const simSS = simChosen, simNo = simNone;
 
   const onTrack = steady.net >= steady.targetNeed;
@@ -131,9 +131,14 @@ export default function RetirementCalculator() {
   const compRows = simSS.rows.filter(r => r.aA >= firstEvent-2).map(r => ({
     age:r.aA, ageB:r.aB, "Salary (you)":Math.round(r.salA), "Salary (spouse)":Math.round(r.salB),
     "Rental":Math.round(r.rent), "Pension":Math.round(r.pens), "SS (you)":Math.round(r.ssA),
-    "SS (spouse)":Math.round(r.ssB), "Portfolio":r.wd, need:r.need,
+    "SS (spouse)":Math.round(r.ssB), "Portfolio":r.wd, need:r.need, extraSpend:r.extraSpend || 0,
   }));
-  const balRows = simSS.rows.map((r, idx) => ({ age:r.aA, withSS:r.bal, withoutSS: simNo.rows[idx] ? simNo.rows[idx].bal : 0 }));
+  const balRows = simSS.rows.map((r, idx) => ({
+    age:r.aA,
+    withSS:r.bal,
+    withoutSS: simNo.rows[idx] ? simNo.rows[idx].bal : 0,
+    stress: simStress.rows[idx] ? simStress.rows[idx].bal : 0,
+  }));
   const sellDots = simSS.rows.filter(r => r.sellLump > 0).map(r => ({ age:r.aA, bal:r.bal }));
   const hasRental = inher.some(p => p.type === "rent");
 
@@ -401,6 +406,9 @@ export default function RetirementCalculator() {
               <div style={{ marginTop:6, fontSize:13.5, color:"#C9D3CF" }}>
                 {usd0(steady.net/12)}/mo starting around your age {steady.startAgeA} · spending need then {usd0(steady.targetNeed)}/yr{steady.liveSav>0?` · includes ${usd0(steady.liveSav)}/yr lower housing cost`:""}
               </div>
+              <div style={{ fontSize:12, color:C.slate, marginTop:4 }}>
+                You're modeling spending of <b>{usd0(steady.modeledSpend)}/yr</b>; you could spend up to <b>{usd0(steady.sustainableCapacity)}/yr</b> at your withdrawal rate.{steady.surplus>0 ? ` The ${usd0(steady.surplus)}/yr you don't spend is what compounds in the chart below.` : ""}
+              </div>
               <div style={{ marginTop:14, display:"inline-flex", alignItems:"center", gap:8, background:onTrack?"rgba(30,122,94,.22)":"rgba(190,74,43,.22)", border:`1px solid ${onTrack?C.viridian:C.clay}`, borderRadius:999, padding:"6px 13px", fontSize:13, fontWeight:600 }}>
                 <span style={{ width:8, height:8, borderRadius:99, background:onTrack?"#5BD6A8":"#F09B82" }} />
                 {onTrack ? `On track -- after-tax income covers the modeled spending need` : `Short of the modeled spending need`}
@@ -508,6 +516,9 @@ export default function RetirementCalculator() {
                   <Area type="stepAfter" dataKey="SS (spouse)" stackId="1" stroke="none" fill={SRC.ssB} />
                   <Area type="stepAfter" dataKey="Portfolio" stackId="1" stroke="none" fill={SRC.wd} />
                   <Line type="stepAfter" dataKey="need" stroke={C.clay} strokeWidth={1.6} strokeDasharray="5 4" dot={false} />
+                  {compRows.filter(r=>r.extraSpend>0).map((r,i)=>(
+                    <ReferenceDot key={`ev${i}`} x={r.age} y={r.need} r={3.5} fill={C.brass} stroke="#fff" strokeWidth={1.2} ifOverflow="extendDomain" />
+                  ))}
                 </ComposedChart>
               </ResponsiveContainer>
               <div style={{ display:"flex", gap:"6px 14px", flexWrap:"wrap", padding:"8px 6px 2px" }}>
@@ -523,7 +534,7 @@ export default function RetirementCalculator() {
               <div style={{ padding:"0 4px 6px" }}>
                 <div style={{ fontSize:11, letterSpacing:1.5, textTransform:"uppercase", color:C.brassDeep, fontWeight:700 }}>The long run</div>
                 <h3 style={{ margin:"2px 0 2px", fontFamily:"'Newsreader',serif", fontWeight:500, fontSize:19 }}>How far the savings stretch</h3>
-                <p style={{ margin:"2px 0 8px", fontSize:12.5, color:C.slate, lineHeight:1.5 }}>The green line is your plan as modeled ({s.ssMode==="full"?"full SS":`${Math.round(effHaircut*100)}% SS`}); the dashed line is the worst case where Social Security disappears entirely. With it your savings last {lastsTxt(simSS.depAge)}; without any SS, {lastsTxt(simNo.depAge)}.{sellDots.length>0?" The step up is an inherited home being sold.":""}</p>
+                <p style={{ margin:"2px 0 8px", fontSize:12.5, color:C.slate, lineHeight:1.5 }}>The green line is your plan as modeled ({s.ssMode==="full"?"full SS":`${Math.round(effHaircut*100)}% SS`}). The clay dashed line drops Social Security entirely. The brass dotted line is a sequence-risk stress test — a market crash in your first retirement years — which is the realistic downside this kind of plan most often understates.{sellDots.length>0?" The step up is an inherited home being sold.":""}</p>
               </div>
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={balRows} margin={{ top:6, right:14, left:4, bottom:0 }}>
@@ -533,12 +544,14 @@ export default function RetirementCalculator() {
                   <Tooltip formatter={(v,n)=>[usd0(v), n==="withSS"?"With SS":"Without SS"]} labelFormatter={(a)=>`Age ${a}`} contentStyle={{ borderRadius:8, border:`1px solid ${C.line}`, fontSize:12, fontFamily:"'JetBrains Mono',monospace" }} />
                   <Line type="monotone" dataKey="withSS" stroke={C.viridian} strokeWidth={2.6} dot={false} name="withSS" />
                   <Line type="monotone" dataKey="withoutSS" stroke={C.clay} strokeWidth={2} strokeDasharray="5 4" dot={false} name="withoutSS" />
+                  <Line type="monotone" dataKey="stress" stroke={C.brassDeep} strokeWidth={2} strokeDasharray="2 3" dot={false} name="stress" />
                   {sellDots.map((d,i)=><ReferenceDot key={i} x={d.age} y={d.bal} r={4} fill={C.brass} stroke="#fff" strokeWidth={1.5} />)}
                 </LineChart>
               </ResponsiveContainer>
-              <div style={{ display:"flex", gap:16, padding:"6px 6px 2px" }}>
+              <div style={{ display:"flex", gap:16, flexWrap:"wrap", padding:"6px 6px 2px" }}>
                 <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:C.slate }}><span style={{ width:16, height:3, background:C.viridian, borderRadius:2 }} />With Social Security</span>
-                <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:C.slate }}><span style={{ width:16, height:3, background:C.clay, borderRadius:2 }} />Without</span>
+                <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:C.slate }}><span style={{ width:16, height:3, background:C.clay, borderRadius:2, borderTop:`2px dashed ${C.clay}` }} />Without SS</span>
+                <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:C.slate }}><span style={{ width:16, height:3, background:C.brassDeep, borderRadius:2 }} />Sequence-risk stress</span>
               </div>
             </div>
 
