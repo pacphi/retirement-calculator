@@ -32,7 +32,7 @@ export const SOURCES = {
    NOTE: DRS_ERF_30_PLUS uses the post-May-2013 "5% ERF" schedule for 30+ year members.
    Members hired BEFORE May 1, 2013 with 30+ years use the gentler "2008 ERF" (e.g. age 62
    is unreduced) — not modeled here, so this engine understates the pension for that
-   specific group. See docs/sources.md section 9 and docs/audits/drs-verification.md. */
+   specific group. See docs/sources.md section 9 and docs/archive/audits/drs-verification.md. */
 export const FED = {
   single: [[0, .10], [12400, .12], [50400, .22], [105700, .24], [201775, .32], [256225, .35], [640600, .37]],
   married: [[0, .10], [24800, .12], [100800, .22], [211400, .24], [403550, .32], [512450, .35], [768700, .37]],

@@ -22,3 +22,8 @@ ruvector.db
 
 # Local MCP server configuration — may contain machine-specific paths or credentials.
 .mcp.json
+
+# Audit/test scratch & generated reports (not part of the committed project)
+/reports/
+/.stryker-tmp/
+/audits/

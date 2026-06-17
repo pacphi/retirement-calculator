@@ -725,7 +725,7 @@ ltcSpendForYear(ltc, ageA, locAnnual):
   return ltc.annual (explicit override) ?? locAnnual (selected location)
 ```
 
-Figures are private-pay, pre-subsidy, in today's dollars; public LTC programs (Austria Pflegegeld, France APA, Netherlands WLZ, US Medicaid) reduce real out-of-pocket cost, so the modeled figure is conservative abroad. Per-location amounts and citations are in `docs/sources.md` §17 and `docs/audits/ltc-research.md`.
+Figures are private-pay, pre-subsidy, in today's dollars; public LTC programs (Austria Pflegegeld, France APA, Netherlands WLZ, US Medicaid) reduce real out-of-pocket cost, so the modeled figure is conservative abroad. Per-location amounts and citations are in `docs/sources.md` §17 and `docs/archive/audits/ltc-research.md`.
 
 ---
 

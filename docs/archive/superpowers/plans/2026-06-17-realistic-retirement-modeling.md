@@ -1542,7 +1542,7 @@ git commit -m "feat: chart Monte Carlo percentile fan and surface p-metric tiles
 
 ## Execution Handoff
 
-Plan complete and saved to `docs/superpowers/plans/2026-06-17-realistic-retirement-modeling.md`. Two execution options:
+Plan complete and saved to `docs/archive/superpowers/plans/2026-06-17-realistic-retirement-modeling.md`. Two execution options:
 
 1. **Subagent-Driven (recommended)** — I dispatch a fresh subagent per task, review between tasks, fast iteration.
 2. **Inline Execution** — Execute tasks in this session using executing-plans, batch execution with checkpoints.

@@ -135,7 +135,7 @@ The following features use internally derived assumptions rather than externally
 - **[Washington Administrative Code 415‑02‑320 (early‑retirement factors)](https://app.leg.wa.gov/wac/default.aspx?cite=415-02-320)** **(primary)** — the legal ERF schedule.
 - **[Washington State Auditor — Note X, state‑sponsored DRS pension plans](https://sao.wa.gov/bars-annual-filing/bars-gaap-manual/reporting/notes-financial-statements/note-x-pensions-state-sponsored-drs-plans)** **(primary)** — plan accounting context.
 
-**Verified against current DRS docs (see `docs/audits/drs-verification.md`):** the 2% (Plan 2) / 1% (Plan 3 DB) multipliers, AFC = highest 60 consecutive months, 5-yr (Plan 2) / 10-yr (Plan 3) vesting, age-65 normal retirement, age-55 early eligibility (Plan 2 ≥20 yrs, Plan 3 ≥10 yrs), and the under-30-year ERF table all match. **Known limitation:** for members with **30+ years** of service, DRS publishes two ERF schedules by hire date — the gentler **2008 ERF** (hired before May 1, 2013; e.g. unreduced at 62) and the **5% ERF** (hired on/after May 1, 2013). This engine implements only the 5% schedule, so it **understates** the pension for pre-2013 hires with 30+ years. (Does not affect a member retiring with fewer than 30 years.)
+**Verified against current DRS docs (see `docs/archive/audits/drs-verification.md`):** the 2% (Plan 2) / 1% (Plan 3 DB) multipliers, AFC = highest 60 consecutive months, 5-yr (Plan 2) / 10-yr (Plan 3) vesting, age-65 normal retirement, age-55 early eligibility (Plan 2 ≥20 yrs, Plan 3 ≥10 yrs), and the under-30-year ERF table all match. **Known limitation:** for members with **30+ years** of service, DRS publishes two ERF schedules by hire date — the gentler **2008 ERF** (hired before May 1, 2013; e.g. unreduced at 62) and the **5% ERF** (hired on/after May 1, 2013). This engine implements only the 5% schedule, so it **understates** the pension for pre-2013 hires with 30+ years. (Does not affect a member retiring with fewer than 30 years.)
 
 ---
 
@@ -260,7 +260,7 @@ modeled figure is conservative for those.
 Austria <https://www.oesterreich.gv.at/en/themen/pflege/2/Seite.360542>; Netherlands
 <https://particulierewoonzorg.nl/kosten-particuliere-woonzorg/>; Portugal
 <https://withportugal.com/en/blog/lares-de-idosos>. Full per-location source list and
-method notes: `docs/audits/ltc-research.md`.
+method notes: `docs/archive/audits/ltc-research.md`.
 
 **Caveats.** Greece and the Bahamas are low-confidence estimates. Figures are private-pay
 and pre-subsidy. The model applies LTC as one episode (default 3 years from the older
@@ -291,7 +291,7 @@ A US citizen owes **US federal** income tax everywhere (always modeled). On top 
 | Netherlands | 8% | Box system; effective rate well above US |
 | Bahamas | 0% | No income tax |
 
-**Treaty & FTC mechanics.** US citizens are taxed on worldwide income regardless of residence, but the Foreign Tax Credit (Form 1116) credits foreign income tax against US liability, and treaties allocate taxing rights — together preventing double taxation. The practical result for retirement income is "pay the higher of the two," which is why most foreign additional rates above are 0. Per-location sources and method notes: `docs/audits/tax-research.md`. **Caveats:** these are single-rate effective simplifications (not marginal); cross-border tax is highly fact-specific — confirm with a qualified cross-border professional. Key sources: IRS FTC/Form 1116 (<https://www.irs.gov/individuals/international-taxpayers/foreign-tax-credit>), PwC Worldwide Tax Summaries (<https://taxsummaries.pwc.com/>), and per-country guides listed in `docs/audits/tax-research.md`.
+**Treaty & FTC mechanics.** US citizens are taxed on worldwide income regardless of residence, but the Foreign Tax Credit (Form 1116) credits foreign income tax against US liability, and treaties allocate taxing rights — together preventing double taxation. The practical result for retirement income is "pay the higher of the two," which is why most foreign additional rates above are 0. Per-location sources and method notes: `docs/archive/audits/tax-research.md`. **Caveats:** these are single-rate effective simplifications (not marginal); cross-border tax is highly fact-specific — confirm with a qualified cross-border professional. Key sources: IRS FTC/Form 1116 (<https://www.irs.gov/individuals/international-taxpayers/foreign-tax-credit>), PwC Worldwide Tax Summaries (<https://taxsummaries.pwc.com/>), and per-country guides listed in `docs/archive/audits/tax-research.md`.
 
 ## 19. Full URL Index
 
