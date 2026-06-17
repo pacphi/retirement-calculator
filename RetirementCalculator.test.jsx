@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import RetirementCalculator from "./RetirementCalculator.jsx";
+import RetirementCalculator, { mcSummaryLines } from "./RetirementCalculator.jsx";
 
 vi.mock("recharts", () => {
   const Chart = ({ children }) => <div>{children}</div>;
@@ -76,5 +76,30 @@ describe("Monte Carlo trigger", () => {
     expect(btn).toBeInTheDocument();
     // No percentile result is shown until the user runs it.
     expect(screen.queryByText(/success probability/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("Monte Carlo summary formatting", () => {
+  it("formats success, income, and worst-case age", () => {
+    const lines = mcSummaryLines({
+      successProb: 0.87,
+      sustainableIncome: { p10: 90000, p50: 110000, p90: 140000 },
+      depletionAge: { p10: 91, p50: 96 },
+    });
+    expect(lines[0]).toBe("Success probability: 87%");
+    expect(lines[2]).toContain("91");
+  });
+
+  it("reports 'beyond 95' when even the 10th percentile never depletes", () => {
+    const lines = mcSummaryLines({
+      successProb: 1,
+      sustainableIncome: { p10: 1, p50: 2, p90: 3 },
+      depletionAge: { p10: 96, p50: 96 },
+    });
+    expect(lines[2]).toContain("beyond 95");
+  });
+
+  it("returns an empty array when mc is null", () => {
+    expect(mcSummaryLines(null)).toEqual([]);
   });
 });

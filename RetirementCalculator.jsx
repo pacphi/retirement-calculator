@@ -24,6 +24,12 @@ const phaseNote = (l, f) => {
 const usd0 = (x) => (x<0?"-$":"$") + Math.abs(Math.round(x)).toLocaleString();
 const usdK = (x) => Math.abs(x) >= 1000 ? "$" + Math.round(x/1000) + "k" : "$" + Math.round(x);
 
+export const mcSummaryLines = (mc) => mc ? [
+  `Success probability: ${Math.round(mc.successProb * 100)}%`,
+  `Median sustainable income: ${mc.sustainableIncome.p50.toLocaleString("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0})}`,
+  `Worst-case (10th pct) savings run out at age: ${mc.depletionAge.p10 >= 96 ? "beyond 95" : mc.depletionAge.p10}`,
+] : [];
+
 const C = { ink:"#102B28", inkSoft:"#1C3D39", paper:"#FBFAF6", panel:"#FFFFFF", line:"#E7E2D6",
   brass:"#B5852C", brassDeep:"#946B1E", viridian:"#1E7A5E", clay:"#BE4A2B", slate:"#5E6B67", mut:"#8A938F" };
 const SRC = { salA:"#9DB4AE", salB:"#C6D2CD", rent:"#6E7F5C", pension:"#14302E", ssA:"#1E7A5E", ssB:"#69B197", wd:"#B5852C" };
@@ -577,10 +583,33 @@ export default function RetirementCalculator() {
                 {mcRunning ? "Running 1,000 paths…" : "Run Monte Carlo (1,000 paths)"}
               </button>
               {mc && (
-                <div style={{ marginTop:10, fontSize:12.5, color:C.inkSoft, lineHeight:1.6, background:"#F6F4EC", borderRadius:9, padding:"10px 12px" }}>
-                  <b>Success probability:</b> {Math.round(mc.successProb * 100)}% of {mc.paths} paths lasted to age 95.
-                  Median depletion age: {mc.depletionAge.p50 >= 96 ? "95+" : mc.depletionAge.p50}.
-                  Sustainable income (p50): {usd0(mc.sustainableIncome.p50)}/yr.
+                <div style={{ marginTop:10, padding:"10px 12px", background:C.paper, border:`1px solid ${C.line}`, borderRadius:8, fontSize:12.5, color:C.ink }}>
+                  <div style={{ fontWeight:700, marginBottom:4 }}>Monte Carlo · {mc.paths.toLocaleString()} paths</div>
+                  {mcSummaryLines(mc).map((line, i) => <div key={i}>{line}</div>)}
+                  <div style={{ color:C.slate, marginTop:4 }}>
+                    Sustainable income range: {usd0(mc.sustainableIncome.p10)} – {usd0(mc.sustainableIncome.p90)}/yr (10th–90th pct).
+                  </div>
+                </div>
+              )}
+              {mc && (
+                <div style={{ marginTop:12 }}>
+                  <div style={{ fontSize:11, letterSpacing:1.5, textTransform:"uppercase", color:C.brassDeep, fontWeight:700, marginBottom:4, paddingLeft:4 }}>Monte Carlo · percentile fan</div>
+                  <ResponsiveContainer width="100%" height={180}>
+                    <ComposedChart data={mc.balanceFan} margin={{ top:6, right:14, left:4, bottom:0 }}>
+                      <CartesianGrid stroke={C.line} strokeDasharray="2 4" vertical={false} />
+                      <XAxis dataKey="age" tick={{ fontSize:11, fill:C.slate }} tickLine={false} axisLine={{ stroke:C.line }} />
+                      <YAxis tickFormatter={usdK} tick={{ fontSize:11, fill:C.slate }} tickLine={false} axisLine={false} width={42} />
+                      <Area type="monotone" dataKey="p90" stroke="none" fill={C.viridian} fillOpacity={0.12} />
+                      <Area type="monotone" dataKey="p10" stroke="none" fill="#fff" fillOpacity={1} />
+                      <Line type="monotone" dataKey="p50" stroke={C.viridian} strokeWidth={2.4} dot={false} />
+                      <Line type="monotone" dataKey="p10" stroke={C.clay} strokeWidth={1.4} strokeDasharray="4 3" dot={false} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                  <div style={{ display:"flex", gap:14, flexWrap:"wrap", padding:"4px 6px 2px" }}>
+                    <span style={{ display:"flex", alignItems:"center", gap:5, fontSize:11.5, color:C.slate }}><span style={{ width:11, height:11, borderRadius:3, background:C.viridian, opacity:0.25 }} />p10–p90 band</span>
+                    <span style={{ display:"flex", alignItems:"center", gap:5, fontSize:11.5, color:C.slate }}><span style={{ width:16, height:3, background:C.viridian, borderRadius:2 }} />p50 median</span>
+                    <span style={{ display:"flex", alignItems:"center", gap:5, fontSize:11.5, color:C.slate }}><span style={{ width:16, height:0, borderTop:`2px dashed ${C.clay}` }} />p10 worst-case</span>
+                  </div>
                 </div>
               )}
             </div>
