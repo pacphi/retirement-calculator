@@ -4,6 +4,7 @@ import {
   benefits,
   calculateFederalTaxYear,
   calculatePlan,
+  drsEligibilityNote,
   fedTax,
   ltcSpendForYear,
   oneTimeSpendForYear,
@@ -579,5 +580,41 @@ describe("travel taper for short plans", () => {
     expect(travelSpendForYear(t, 2034, 2034)).toBe(15000); // year 1, full
     expect(travelSpendForYear(t, 2037, 2034)).toBe(15000); // year 4 (idx 3 < pivot 4)
     expect(travelSpendForYear(t, 2038, 2034)).toBe(7500);  // year 5 (idx 4 >= pivot 4)
+  });
+});
+
+describe("coverage-gap guards", () => {
+  const retired = {
+    ...baseState, ageA: 65, ageB: 65, stopA: 65, stopB: 65, claimA: 65, claimB: 65,
+    pensionOn: false, contrib: 0, tx: { ...baseState.tx, on: false }, at: { ...baseState.at, on: false },
+    inher: [], incomeHH: 0, hcPre: 2450, hcPost: 1000, ltcAnnual: 129000,
+    travel: { on: false }, events: [], survivor: { on: false, year: 9999, pensionPct: 0 }, ltc: { on: false }, horizonAge: 95,
+  };
+
+  it("caps withdrawal at the balance and flags depletion when the portfolio can't cover the need", () => {
+    const sim = simulate({ ...retired, incomeHH: 100000, savings: 20000, targetPct: 1.0, ssModeA: "statement", ssFraA: 0, ssModeB: "statement", ssFraB: 0 }, { haircut: 1, cutYear: 9999 });
+    const first = sim.rows[0];
+    expect(first.wd).toBeGreaterThan(0); // forced to draw
+    expect(first.bal).toBe(0);           // capped at the (drained) balance
+    expect(sim.depAge).not.toBeNull();   // depletion flagged
+  });
+
+  it("caps SS delayed credits at age 70 (36-month cap)", () => {
+    expect(ownBenefitAtClaimMonthly(1000, 71.5)).toBe(ownBenefitAtClaimMonthly(1000, 70));
+  });
+
+  it("returns a Plan-3 vesting note below 10 years and clears it at 10", () => {
+    expect(drsEligibilityNote(55, 9, 3)).not.toBe("");
+    expect(drsEligibilityNote(55, 10, 3)).toBe("");
+  });
+
+  it("falls back to realReturn when the returns array is shorter than the horizon", () => {
+    const sim = simulate({ ...retired, savings: 500000, realReturn: 0.05 }, { haircut: 1, cutYear: 9999, returns: [] });
+    expect(sim.rows.length).toBeGreaterThan(0); // no crash; every year falls back to realReturn
+  });
+
+  it("uses the never-retire fallback for fullyRetAge when work never stops", () => {
+    const sim = simulate({ ...retired, ageA: 60, ageB: 60, stopA: 200, stopB: 200, incomeA: 50000, incomeB: 50000 }, { haircut: 1, cutYear: 9999 });
+    expect(sim.fullyRetAge).toBe(60);
   });
 });
