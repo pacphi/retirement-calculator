@@ -1,12 +1,13 @@
 import { DRS_ERF_30_PLUS, DRS_ERF_UNDER_30 } from "../retirementData.js";
 
-export const pensionERF = (age, years, plan = 2) => {
+export const pensionERF = (ageRaw, years, plan = 2) => {
+  const age = Math.floor(ageRaw); // DRS uses integer calendar ages; floor guard + lookup consistently
   if (age >= 65) return 1;
   if (age < 55) return 0;
-  if (years >= 30) return DRS_ERF_30_PLUS[Math.round(age)] ?? 0;
+  if (years >= 30) return DRS_ERF_30_PLUS[age] ?? 0;
   const minEarlyYears = plan === 3 ? 10 : 20;
   if (years < minEarlyYears) return 0;
-  return DRS_ERF_UNDER_30[Math.round(age)] ?? 0;
+  return DRS_ERF_UNDER_30[age] ?? 0;
 };
 
 export const drsEligibilityNote = (age, years, plan = 2) => {

@@ -564,3 +564,11 @@ describe("Social Security lower-bound guards", () => {
     expect(piaFromIncome(-50000)).toBe(0);
   });
 });
+
+describe("pensionERF age rounding", () => {
+  it("floors fractional ages so 64.5 maps to the age-64 factor, not full benefit", () => {
+    expect(pensionERF(64.5, 20, 2)).toBe(0.9085);
+    expect(pensionERF(64.9, 20, 2)).toBe(0.9085);
+    expect(pensionERF(65, 20, 2)).toBe(1);
+  });
+});
