@@ -29,7 +29,7 @@ export function benefits(i) {
 
 const plannedContribution = (i, workA, workB) => ((workA ? 0.5 : 0) + (workB ? 0.5 : 0)) * i.contrib;
 
-const taxForYear = (i, aA, aB, wages, pens, rent, ss, grossWithdrawal, statusOverride) =>
+const taxForYear = (i, aA, aB, wages, pens, rent, ss, grossWithdrawal, statusOverride, year) =>
   calculateFederalTaxYear({
     status: statusOverride || i.status,
     ageA: aA,
@@ -40,23 +40,24 @@ const taxForYear = (i, aA, aB, wages, pens, rent, ss, grossWithdrawal, statusOve
     socialSecurity: ss,
     grossWithdrawal,
     tradFrac: i.tradFrac,
+    year,
   }).tax;
 
-const solveWithdrawal = (i, aA, aB, wages, pens, rent, ss, need, bal, statusOverride) => {
+const solveWithdrawal = (i, aA, aB, wages, pens, rent, ss, need, bal, statusOverride, year) => {
   const income = wages + pens + rent + ss;
-  const taxNoWithdrawal = taxForYear(i, aA, aB, wages, pens, rent, ss, 0, statusOverride);
+  const taxNoWithdrawal = taxForYear(i, aA, aB, wages, pens, rent, ss, 0, statusOverride, year);
   if (income - taxNoWithdrawal >= need) return { withdrawal: 0, tax: taxNoWithdrawal };
   let lo = 0;
   let hi = Math.max(0, bal);
   const covers = (withdrawal) =>
-    income + withdrawal - taxForYear(i, aA, aB, wages, pens, rent, ss, withdrawal, statusOverride) >= need;
-  if (!covers(hi)) return { withdrawal: hi, tax: taxForYear(i, aA, aB, wages, pens, rent, ss, hi, statusOverride) };
+    income + withdrawal - taxForYear(i, aA, aB, wages, pens, rent, ss, withdrawal, statusOverride, year) >= need;
+  if (!covers(hi)) return { withdrawal: hi, tax: taxForYear(i, aA, aB, wages, pens, rent, ss, hi, statusOverride, year) };
   for (let n = 0; n < 32; n++) {
     const mid = (lo + hi) / 2;
     if (covers(mid)) hi = mid;
     else lo = mid;
   }
-  return { withdrawal: hi, tax: taxForYear(i, aA, aB, wages, pens, rent, ss, hi, statusOverride) };
+  return { withdrawal: hi, tax: taxForYear(i, aA, aB, wages, pens, rent, ss, hi, statusOverride, year) };
 };
 
 export function spendingNeed(i, ageA, ageB, liveSav = 0, isSurvivor = false) {
@@ -131,12 +132,12 @@ export function simulate(i, ssOpt) {
     bal = bal * (1 + yearReturn) + sellLump;
 
     const plannedContrib = plannedContribution(i, workA, workB);
-    const taxBeforeWithdrawal = taxForYear(i, aA, aB, wages, pensEff, rent, ssAyEff + ssByEff, 0, yearStatus);
+    const taxBeforeWithdrawal = taxForYear(i, aA, aB, wages, pensEff, rent, ssAyEff + ssByEff, 0, yearStatus, cal);
     const afterTaxBeforeWithdrawal = wages + pensEff + rent + ssAyEff + ssByEff - taxBeforeWithdrawal;
     const contrib = Math.min(plannedContrib, Math.max(0, afterTaxBeforeWithdrawal - need));
     bal += contrib;
 
-    const { withdrawal: wd, tax } = solveWithdrawal(i, aA, aB, wages, pensEff, rent, ssAyEff + ssByEff, need, bal, yearStatus);
+    const { withdrawal: wd, tax } = solveWithdrawal(i, aA, aB, wages, pensEff, rent, ssAyEff + ssByEff, need, bal, yearStatus, cal);
     bal -= wd;
     if (bal < 1) bal = 0;
     if (!workA && !workB && fullyRetAge === null) {
@@ -202,6 +203,7 @@ export function steadyState(i, sim) {
     socialSecurity: ssHouse,
     grossWithdrawal: wd,
     tradFrac: i.tradFrac,
+    year: row.cal,
   });
   const guaranteedTaxDetails = calculateFederalTaxYear({
     status: yearStatus,
@@ -212,6 +214,7 @@ export function steadyState(i, sim) {
     socialSecurity: ssHouse,
     grossWithdrawal: 0,
     tradFrac: i.tradFrac,
+    year: row.cal,
   });
   const targetNeed = row.need; // sourced from the simulated row so events/healthcare flow through
   const net = gross - taxDetails.tax;

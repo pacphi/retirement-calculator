@@ -38,6 +38,7 @@ export const SENIOR_ADDON_SINGLE = 2050;
 export const SENIOR_ADDON_MARRIED_PER_PERSON = 1650;
 export const SENIOR_BONUS = 6000;
 export const SENIOR_BONUS_PHASEOUT = { single: 75000, married: 150000 };
+export const SENIOR_BONUS_SUNSET = 2028; // OBBBA $6k senior bonus is a 2025–2028 provision
 
 export const BEND = [1286, 7749];
 export const SS_CAP = 184500;

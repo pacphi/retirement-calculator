@@ -5,6 +5,7 @@ import {
   SENIOR_ADDON_SINGLE,
   SENIOR_BONUS,
   SENIOR_BONUS_PHASEOUT,
+  SENIOR_BONUS_SUNSET,
   STD,
 } from "../retirementData.js";
 
@@ -35,14 +36,16 @@ export const seniorEligibleCount = (status, ageA, ageB) => {
   return (ageA >= 65 ? 1 : 0) + (ageB >= 65 ? 1 : 0);
 };
 
-export const standardDeduction = ({ status, ageA, ageB, agi }) => {
+export const standardDeduction = ({ status, ageA, ageB, agi, year }) => {
   const eligible = seniorEligibleCount(status, ageA, ageB);
   const seniorAddon = status === "single"
     ? (eligible ? SENIOR_ADDON_SINGLE : 0)
     : eligible * SENIOR_ADDON_MARRIED_PER_PERSON;
-  let seniorBonus = eligible * SENIOR_BONUS;
+  // The $6,000 senior bonus is a temporary 2025–2028 provision; it lapses after that.
+  const bonusActive = year == null || year <= SENIOR_BONUS_SUNSET;
+  let seniorBonus = bonusActive ? eligible * SENIOR_BONUS : 0;
   const phaseStart = SENIOR_BONUS_PHASEOUT[status];
-  if (agi > phaseStart) seniorBonus = Math.max(0, seniorBonus - (agi - phaseStart) * 0.06);
+  if (seniorBonus > 0 && agi > phaseStart) seniorBonus = Math.max(0, seniorBonus - (agi - phaseStart) * 0.06);
   return STD[status] + seniorAddon + seniorBonus;
 };
 
@@ -56,11 +59,12 @@ export const calculateFederalTaxYear = ({
   grossWithdrawal = 0,
   tradFrac = 0.7,
   socialSecurity = 0,
+  year,
 }) => {
   const ordinary = wages + pension + rental + grossWithdrawal * tradFrac;
   const taxableSocialSecurity = taxableSS(ordinary, socialSecurity, status);
   const agi = ordinary + taxableSocialSecurity;
-  const deduction = standardDeduction({ status, ageA, ageB, agi });
+  const deduction = standardDeduction({ status, ageA, ageB, agi, year });
   const taxableIncome = Math.max(0, agi - deduction);
   const tax = fedTax(taxableIncome, status);
   return { ordinary, taxableSocialSecurity, agi, deduction, taxableIncome, tax };

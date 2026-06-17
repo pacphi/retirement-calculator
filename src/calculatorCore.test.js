@@ -618,3 +618,16 @@ describe("coverage-gap guards", () => {
     expect(sim.fullyRetAge).toBe(60);
   });
 });
+
+describe("senior bonus 2028 sunset", () => {
+  it("applies the $6k senior bonus through 2028 and drops it after", () => {
+    const args = { status: "married", ageA: 70, ageB: 70, agi: 100000 };
+    const within = standardDeduction({ ...args, year: 2028 });
+    const after = standardDeduction({ ...args, year: 2029 });
+    expect(within - after).toBe(12000); // two seniors x $6k bonus
+  });
+
+  it("keeps the bonus when no year is supplied (backward compatible)", () => {
+    expect(standardDeduction({ status: "married", ageA: 65, ageB: 65, agi: 100000 })).toBe(47500);
+  });
+});
