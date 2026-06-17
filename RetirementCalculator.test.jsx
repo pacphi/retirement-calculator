@@ -114,3 +114,11 @@ describe("Social Security statement guidance", () => {
     expect(screen.queryByText(/assumes a full 35-year/i)).not.toBeInTheDocument();
   });
 });
+
+describe("healthcare basis disclosure", () => {
+  it("shows the US pre-65 cost gap when a non-US basis (Austria default) is selected", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByText(/until Medicare at 65/i)).toBeInTheDocument();
+    expect(screen.getByText(/assumes you live abroad/i)).toBeInTheDocument();
+  });
+});

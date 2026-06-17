@@ -548,6 +548,16 @@ export default function RetirementCalculator() {
                   <span style={{ fontSize:11.5, color:C.slate, fontWeight:600 }}>Healthcare basis:</span>
                   <div style={{ minWidth:200, flex:"1 1 200px" }}><Select value={s.retireLoc} onChange={set("retireLoc")} options={LOCATIONS.map(l=>l.name)} /></div>
                 </div>
+                {locByName(s.retireLoc)?.region !== "US" && (() => {
+                  const here = locByName(s.retireLoc);
+                  const usNat = LOCATIONS.find(l => l.name === "US -- national average");
+                  const gapYr = Math.max(0, (usNat.hcPre - here.hcPre) * 12);
+                  return (
+                    <div role="note" style={{ fontSize:11.5, color:C.slate, marginTop:2, lineHeight:1.45 }}>
+                      Pre-65 healthcare here is <b style={{ color:C.ink }}>${here.hcPre.toLocaleString()}/mo</b> (couple). If you stayed in the US, full-price ACA runs ~<b style={{ color:C.ink }}>${usNat.hcPre.toLocaleString()}/mo</b> — about <b style={{ color:C.clay }}>{usd0(gapYr)}/yr more</b> until Medicare at 65. This plan assumes you live abroad.
+                    </div>
+                  );
+                })()}
               </div>
               <ResponsiveContainer width="100%" height={252}>
                 <ComposedChart data={compRows} margin={{ top:6, right:12, left:4, bottom:0 }}>
