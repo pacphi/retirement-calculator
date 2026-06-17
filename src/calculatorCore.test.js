@@ -12,6 +12,7 @@ import {
   simulate,
   spousalBenefitAtClaimMonthly,
   standardDeduction,
+  steadyState,
   stressReturnForYear,
   taxableSS,
   travelSpendForYear,
@@ -341,5 +342,19 @@ describe("Monte Carlo", () => {
     const hi = runMonteCarlo(mcState, { paths: 300, seed: 3, volatility: 0.20 });
     const spread = (x) => { const l = x.balanceFan[x.balanceFan.length - 1]; return l.p90 - l.p10; };
     expect(spread(hi)).toBeGreaterThan(spread(lo));
+  });
+});
+
+describe("steadyState survivor handling", () => {
+  const i = { ...baseState, inher: [], incomeHH: 165000 };
+  const mkRow = (survivor) => ({
+    aA: 67, aB: 67, cal: 2048, bal: 1_000_000, need: 50000,
+    survivor, ssA: 30000, ssB: 18000, pens: 20000,
+  });
+
+  it("uses single-filer tax brackets in a survivor year", () => {
+    const married = steadyState(i, { rows: [mkRow(false)] }, 1, 9999);
+    const survivor = steadyState(i, { rows: [mkRow(true)] }, 1, 9999);
+    expect(survivor.tax).toBeGreaterThan(married.tax);
   });
 });

@@ -176,8 +176,11 @@ export function steadyState(i, sim, haircut, cutYear = 9999) {
   const gross = recurring + wd;
   const ageA = row.aA;
   const ageB = row.aB;
+  // The chosen row already carries the survivor flag from the simulation; in a
+  // survivor year the household files single, so the headline tax must match.
+  const yearStatus = row.survivor ? "single" : i.status;
   const taxDetails = calculateFederalTaxYear({
-    status: i.status,
+    status: yearStatus,
     ageA,
     ageB,
     pension: b.pension,
@@ -187,7 +190,7 @@ export function steadyState(i, sim, haircut, cutYear = 9999) {
     tradFrac: i.tradFrac,
   });
   const guaranteedTaxDetails = calculateFederalTaxYear({
-    status: i.status,
+    status: yearStatus,
     ageA,
     ageB,
     pension: b.pension,
