@@ -51,6 +51,7 @@ export function buildPlanInputs(s) {
     ...s,
     incomeHH,
     inher,
+    retLocObj,
     hcPre: retLocObj.hcPre,
     hcPost: retLocObj.hcPost,
     travel: s.travel ?? { on: false, amount: 15000, years: 15, taper: true },
@@ -61,9 +62,7 @@ export function buildPlanInputs(s) {
 
 export function calculatePlan(s) {
   const inp = buildPlanInputs(s);
-  const incomeHH = inp.incomeHH;
-  const retLocObj = LOCATIONS.find((l) => l.name === inp.retireLoc) || LOCATIONS[10];
-  const inher = inp.inher;
+  const { incomeHH, inher, retLocObj } = inp;
   const { effHaircut, effCutYear } = resolveSocialSecurityScenario(s);
   const trustCut = Number(s.ssCutYear) || 2034;
   const simChosen = simulate(inp, { haircut: effHaircut, cutYear: effCutYear });
