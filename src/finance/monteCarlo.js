@@ -13,7 +13,12 @@ export function runMonteCarlo(s, mcOpt = {}) {
   const { effHaircut, effCutYear } = resolveSocialSecurityScenario(s);
 
   const rng = randomLcg(seed);                       // seeded, reproducible
-  const sample = randomNormal.source(rng)(inp.realReturn, volatility);
+  // Lognormal annual returns: log-return ~ N(mu, volatility) so the gross return
+  // exp(...) is always positive (real return can't fall below -100%) and the
+  // median path compounds at realReturn (no arithmetic-vs-geometric overstatement).
+  const mu = Math.log(1 + inp.realReturn);
+  const z = randomNormal.source(rng)(0, 1);
+  const sample = () => Math.exp(mu + volatility * z()) - 1;
   const end = Math.max(95 - inp.ageA, 95 - inp.ageB);
 
   const balancesByYear = Array.from({ length: end + 1 }, () => []);

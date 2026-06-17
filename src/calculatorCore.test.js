@@ -454,3 +454,18 @@ describe("survivor pension reduction", () => {
     expect(pensAt(none, 2030)).toBe(0);
   });
 });
+
+describe("Monte Carlo lognormal returns", () => {
+  const mcState = {
+    ...baseState,
+    travel: { on: false, amount: 15000, years: 15, taper: true }, events: [],
+    survivor: { on: false, year: 9999, pensionPct: 0 }, ltc: { on: false },
+  };
+
+  it("degenerates to the deterministic path at zero volatility", () => {
+    const r = runMonteCarlo(mcState, { paths: 50, seed: 5, volatility: 0 });
+    const last = r.balanceFan[r.balanceFan.length - 1];
+    expect(last.p10).toBe(last.p50);
+    expect(last.p50).toBe(last.p90);
+  });
+});
