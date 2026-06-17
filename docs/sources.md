@@ -26,7 +26,8 @@
 - [14. Retiring Abroad and Cross-Border Income Tax](#14-retiring-abroad-and-cross-border-income-tax)
 - [15. Inherited Real Estate — United States and Texas](#15-inherited-real-estate--united-states-and-texas)
 - [16. Inherited Real Estate — Austria](#16-inherited-real-estate--austria)
-- [17. Full URL Index](#17-full-url-index)
+- [17. Long-Term Care Costs by Location](#17-long-term-care-costs-by-location)
+- [18. Full URL Index](#18-full-url-index)
 
 ---
 
@@ -221,7 +222,49 @@ The following features use internally derived assumptions rather than externally
 
 ---
 
-## 17. Full URL Index
+## 17. Long-Term Care Costs by Location
+
+The optional long-term-care (LTC) scenario seeds its annual cost from the selected
+location. The metric is the **annual private-pay cost of a nursing-home / residential
+care private room**, in today's USD (EUR converted at ~1 EUR = 1.09 USD, mid-2025).
+These are *private-market* figures so locations are comparable; public programs
+(Austria *Pflegegeld*, France *APA*, Netherlands *WLZ*, US Medicaid spend-down,
+NHS-type social care) materially reduce out-of-pocket cost in several places, so the
+modeled figure is conservative for those.
+
+| Location | Annual private LTC (USD) | Basis |
+|---|---|---|
+| Bulgaria / Romania | $14,000 | Romania ~5,100 RON/mo (CAREPATH); Bulgaria expat reports |
+| Greece | $22,000 | Estimate — thin data (WHO Europe 2024; Eurocarers) |
+| Portugal | $20,000 | Private *lar* (WithPortugal; ElderGuru) |
+| Spain | $33,000 | Private residential €1,800–2,200/mo (LoveMoney; European Senior Care) |
+| Italy | $39,000 | Private RSA €2,500–4,500/mo (Expatica; industry) |
+| France | $32,000 | EHPAD 2024 avg €2,418/mo (CNSA via Conseil Dépendance) |
+| Austria | $46,000 | Pflegeheim €2,500–5,000/mo (Noracares; oesterreich.gv.at). *Pflegegeld offsets.* |
+| Netherlands | $54,000 | Private-sector residential (ParticuliereWoonzorg). *WLZ co-pay far lower (~$38k max).* |
+| US — low-cost (WV/OK/MS) | $105,000 | CareScout 2024/2025 state medians |
+| US — Texas / Florida | $112,000 | CareScout 2024/2025 (TX ~$85k, FL ~$139k) |
+| US — national average | $129,000 | CareScout 2025 national median ($129,575) |
+| Bahamas | $60,000 | Estimate — no published survey (MoH facilities; cost-of-living context) |
+| US — California | $182,000 | CareScout 2025 ($182,135) |
+| US — Hawaii / NYC | $197,000 | CareScout 2025 (HI ~$197k; NY ~$201k) |
+
+**Key sources.** US: CareScout (formerly Genworth) 2024/2025 Cost of Care Survey —
+<https://www.carescout.com/cost-of-care> and Genworth investor press releases
+(<https://investor.genworth.com/news-events/press-releases>). Europe: WHO Europe
+*State of long-term care in Greece* (2024); France CNSA via
+<https://www.conseildependance.fr/ehpad-un-tarif-mensuel-moyen-de-2418-e-en-2024/>;
+Austria <https://www.oesterreich.gv.at/en/themen/pflege/2/Seite.360542>; Netherlands
+<https://particulierewoonzorg.nl/kosten-particuliere-woonzorg/>; Portugal
+<https://withportugal.com/en/blog/lares-de-idosos>. Full per-location source list and
+method notes: `docs/audits/ltc-research.md`.
+
+**Caveats.** Greece and the Bahamas are low-confidence estimates. Figures are private-pay
+and pre-subsidy. The model applies LTC as one episode (default 3 years from the older
+spouse's age 80) added to spending need; ~70% of 65-year-olds need some LTC (US HHS/SSA
+actuarial guidance).
+
+## 18. Full URL Index
 
 > A flat, alphabetized list of every content source above, for archival and link‑checking. Asset/CDN/favicon URLs are excluded.
 

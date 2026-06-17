@@ -122,3 +122,10 @@ describe("healthcare basis disclosure", () => {
     expect(screen.getByText(/assumes you live abroad/i)).toBeInTheDocument();
   });
 });
+
+describe("long-term care disclosure", () => {
+  it("warns that long-term care is not modeled by default", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByText(/Long-term care is not modeled/i)).toBeInTheDocument();
+  });
+});

@@ -5,6 +5,7 @@ import {
   calculateFederalTaxYear,
   calculatePlan,
   fedTax,
+  ltcSpendForYear,
   oneTimeSpendForYear,
   pensionERF,
   resolveAfc,
@@ -412,5 +413,24 @@ describe("proratedFraEstimate (short-career SS fallback)", () => {
 
   it("returns 0 for zero covered years", () => {
     expect(proratedFraEstimate(170000, 0)).toBe(0);
+  });
+});
+
+describe("long-term care spending", () => {
+  const ltcOn = { on: true, startAge: 80, years: 3, annual: null };
+
+  it("charges the location default during the LTC window when no override", () => {
+    expect(ltcSpendForYear(ltcOn, 80, 46000)).toBe(46000);
+    expect(ltcSpendForYear(ltcOn, 82, 46000)).toBe(46000);
+  });
+
+  it("is zero outside the window and when disabled", () => {
+    expect(ltcSpendForYear(ltcOn, 79, 46000)).toBe(0);
+    expect(ltcSpendForYear(ltcOn, 83, 46000)).toBe(0);
+    expect(ltcSpendForYear({ on: false, startAge: 80, years: 3 }, 81, 46000)).toBe(0);
+  });
+
+  it("uses an explicit annual override over the location default", () => {
+    expect(ltcSpendForYear({ on: true, startAge: 80, years: 3, annual: 100000 }, 81, 46000)).toBe(100000);
   });
 });

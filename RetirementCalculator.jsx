@@ -101,6 +101,7 @@ export default function RetirementCalculator() {
     travel: { ...DEFAULT_TRAVEL },
     events: DEFAULT_LIFE_EVENTS.map((e) => ({ ...e })),
     survivor: { on:false, year:2055 },
+    ltc: { on:false, startAge:80, years:3, annual:null },
   });
   const [couple, setCouple] = useState(true);
   const [stage, setStage] = useState("post");
@@ -437,6 +438,29 @@ export default function RetirementCalculator() {
                   {s.survivor.on && (
                     <NumberInput value={s.survivor.year} onChange={(v)=>set("survivor")({ ...s.survivor, year:Number(v)||9999 })} suffix="yr" />
                   )}
+                </Field>
+                <Field label="Long-term care" hint="~70% of retirees need it; one episode can run $50k–$200k/yr depending on location.">
+                  <Segmented value={s.ltc.on} onChange={(v)=>set("ltc")({ ...s.ltc, on:v })}
+                    options={[{label:"Model it",value:true},{label:"Skip",value:false}]} />
+                  {!s.ltc.on && (
+                    <span role="note" style={{ display:"block", fontSize:11.5, color:C.clay, marginTop:6, lineHeight:1.45 }}>
+                      Not modeled. ~70% of 65-year-olds need long-term care; a multi-year episode can erase the surplus shown above.
+                    </span>
+                  )}
+                  {s.ltc.on && (() => {
+                    const locLtc = locByName(s.retireLoc)?.ltcAnnual ?? 0;
+                    return (
+                      <div style={{ marginTop:6 }}>
+                        <div className="rc-inputs">
+                          <Field label="Cost / yr" hint={`Default for ${s.retireLoc}: ${usd0(locLtc)} (private nursing care). Edit to override.`}>
+                            <NumberInput value={s.ltc.annual ?? locLtc} onChange={(v)=>set("ltc")({ ...s.ltc, annual:Number(v)||0 })} prefix="$" suffix="/yr" />
+                          </Field>
+                          <Field label="Years"><NumberInput value={s.ltc.years} onChange={(v)=>set("ltc")({ ...s.ltc, years:Number(v)||0 })} /></Field>
+                          <Field label="Starts at age"><NumberInput value={s.ltc.startAge} onChange={(v)=>set("ltc")({ ...s.ltc, startAge:Number(v)||0 })} /></Field>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </Field>
               </Section>)}
             </div>
@@ -819,6 +843,7 @@ export default function RetirementCalculator() {
               future-dollar equivalent. Inheritance outcomes use simplified net factors (Texas ~93% on sale via basis step-up; Austria ~90%
               after transfer + capital-gains tax) and assume the estate stays under the $15M federal exemption — confirm the decedent's
               acquisition history, currency basis, and treaty treatment with a cross-border tax professional. 2026 federal brackets.
+              {!s.ltc.on && " Long-term care is not modeled (about 70% of retirees need it; roughly $50k–$200k/yr depending on location) — enable it under Step Five → Advanced to stress-test."}
             </p>
           </div>
         </div>

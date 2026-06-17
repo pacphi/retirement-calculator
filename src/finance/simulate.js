@@ -2,7 +2,7 @@ import { STRESS_EARLY_DROP, TAX_YEAR } from "../retirementData.js";
 import { calculateFederalTaxYear } from "./tax.js";
 import { ownBenefitAtClaimMonthly, piaFromIncome, spousalBenefitAtClaimMonthly } from "./socialSecurity.js";
 import { drsEligibilityNote, pensionERF, resolveAfc } from "./pension.js";
-import { oneTimeSpendForYear, travelSpendForYear } from "./events.js";
+import { ltcSpendForYear, oneTimeSpendForYear, travelSpendForYear } from "./events.js";
 
 export const stressReturnForYear = (realReturn, yearIndex) => {
   if (yearIndex <= 2) return STRESS_EARLY_DROP;
@@ -115,7 +115,9 @@ export function simulate(i, ssOpt) {
       if (p.type === "sell" && cal === p.year) sellLump += p.sell;
     }
     const extraSpend =
-      travelSpendForYear(i.travel, cal, retireCal) + oneTimeSpendForYear(i.events, cal);
+      travelSpendForYear(i.travel, cal, retireCal)
+      + oneTimeSpendForYear(i.events, cal)
+      + ltcSpendForYear(i.ltc, aA, i.ltcAnnual);
     const need = spendingNeed(i, aA, aB, liveSav, isSurvivor) + extraSpend;
     const yearReturn = ssOpt.returns
       ? (ssOpt.returns[y] ?? i.realReturn)

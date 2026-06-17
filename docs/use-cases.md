@@ -36,6 +36,7 @@
   - [4.3 Survivor Transition](#43-survivor-transition)
   - [4.4 Sequence-of-Returns Stress Path](#44-sequence-of-returns-stress-path)
   - [4.5 Headline Reconciliation: Modeled Spend, Capacity, and Surplus](#45-headline-reconciliation-modeled-spend-capacity-and-surplus)
+  - [4.6 Long-Term Care](#46-long-term-care)
 - [5. Worked Example: The Default Scenario](#5-worked-example-the-default-scenario)
 - [6. Known Simplifications and Rationale](#6-known-simplifications-and-rationale)
 
@@ -708,6 +709,21 @@ The steady-state report now surfaces three distinct quantities:
 The surplus compounds inside the portfolio rather than being paid out. It represents planning headroom — for unmodeled expenses, long-term care, inflation surprises, or bequest — and should not be treated as additional spendable income in the year it appears.
 
 **Edge cases.** Surplus is floored at 0; the report does not show a negative surplus (that condition surfaces separately as the plan being short of the spending need).
+
+### 4.6 Long-Term Care
+
+Long-term care (LTC) is **off by default** and surfaced as a persistent disclaimer (≈70% of 65-year-olds need some LTC; an episode can run $50k–$200k/yr). When enabled, the model adds one LTC episode to spending need — keyed to the older spouse reaching `startAge` (default 80) for `years` (default 3) — which forces grossed-up portfolio withdrawals and shows the drawdown.
+
+The annual cost **defaults to the selected location** (the private-pay nursing-home figure on each `LOCATIONS` entry, `ltcAnnual`), overrideable per scenario:
+
+```text
+ltcSpendForYear(ltc, ageA, locAnnual):
+  if !ltc.on -> 0
+  if ageA < startAge or ageA >= startAge + years -> 0
+  return ltc.annual (explicit override) ?? locAnnual (selected location)
+```
+
+Figures are private-pay, pre-subsidy, in today's dollars; public LTC programs (Austria Pflegegeld, France APA, Netherlands WLZ, US Medicaid) reduce real out-of-pocket cost, so the modeled figure is conservative abroad. Per-location amounts and citations are in `docs/sources.md` §17 and `docs/audits/ltc-research.md`.
 
 ---
 
