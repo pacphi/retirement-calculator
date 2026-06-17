@@ -75,7 +75,8 @@ export function simulate(i, ssOpt) {
   const haircut = ssOpt.haircut == null ? 1 : ssOpt.haircut;
   const cutYear = ssOpt.cutYear == null ? 9999 : ssOpt.cutYear;
   const { ssA: ssAfull, ssB: ssBfull, pension: pensFull } = benefits(i);
-  const end = Math.max(95 - i.ageA, 95 - i.ageB);
+  const horizon = Number(i.horizonAge) || 95;
+  const end = Math.max(0, Math.max(horizon - i.ageA, horizon - i.ageB));
   let bal = Number(i.savings) || 0;
   let depAge = null;
   let fullyRetAge = null;

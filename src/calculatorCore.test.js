@@ -530,3 +530,25 @@ describe("Monte Carlo input guard", () => {
     expect(() => runMonteCarlo({ ...baseState }, { paths: 0 })).toThrow(/paths must be > 0/);
   });
 });
+
+describe("configurable plan horizon", () => {
+  const base = {
+    ...baseState, inher: [], incomeHH: 165000, hcPre: 2450, hcPost: 1000, ltcAnnual: 129000,
+    travel: { on: false }, events: [], survivor: { on: false, year: 9999, pensionPct: 0 }, ltc: { on: false },
+  };
+
+  it("projects to the configured horizon age", () => {
+    const sim = simulate({ ...base, horizonAge: 100 }, { haircut: 1, cutYear: 9999 });
+    expect(sim.rows[sim.rows.length - 1].aA).toBe(100); // ageA 45 + 55
+  });
+
+  it("never produces empty rows when both ages exceed the horizon", () => {
+    const sim = simulate({ ...base, ageA: 96, ageB: 96, horizonAge: 95 }, { haircut: 1, cutYear: 9999 });
+    expect(sim.rows.length).toBe(1);
+    expect(sim.rows[0].aA).toBe(96);
+  });
+
+  it("does not throw in calculatePlan for an over-horizon household", () => {
+    expect(() => calculatePlan({ ...baseState, ageA: 96, ageB: 96, horizonAge: 95 })).not.toThrow();
+  });
+});

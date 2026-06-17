@@ -20,7 +20,8 @@ export function runMonteCarlo(s, mcOpt = {}) {
   const mu = Math.log(1 + inp.realReturn);
   const z = randomNormal.source(rng)(0, 1);
   const sample = () => Math.exp(mu + volatility * z()) - 1;
-  const end = Math.max(95 - inp.ageA, 95 - inp.ageB);
+  const horizon = Number(inp.horizonAge) || 95;
+  const end = Math.max(0, Math.max(horizon - inp.ageA, horizon - inp.ageB));
 
   const balancesByYear = Array.from({ length: end + 1 }, () => []);
   const incomes = [];

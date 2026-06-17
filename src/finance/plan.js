@@ -55,6 +55,7 @@ export function buildPlanInputs(s) {
     hcPre: retLocObj.hcPre,
     hcPost: retLocObj.hcPost,
     ltcAnnual: retLocObj.ltcAnnual,
+    horizonAge: Number(s.horizonAge) || 95,
     ltc: s.ltc ?? { on: false, startAge: 80, years: 3, annual: null },
     travel: s.travel ?? { on: false, amount: 15000, years: 15, taper: true },
     events: s.events ?? [],

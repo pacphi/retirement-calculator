@@ -102,6 +102,7 @@ export default function RetirementCalculator() {
     events: DEFAULT_LIFE_EVENTS.map((e) => ({ ...e })),
     survivor: { on:false, year:2055, pensionPct:0 },
     ltc: { on:false, startAge:80, years:3, annual:null },
+    horizonAge: 95,
   });
   const [couple, setCouple] = useState(true);
   const [stage, setStage] = useState("post");
@@ -424,6 +425,10 @@ export default function RetirementCalculator() {
                 <Field label={`Inflation — ${(s.inflation*100).toFixed(1)}%`} hint="Translates today's costs into future dollars in the breakdowns."><input type="range" min={1} max={5} step={0.5} value={s.inflation*100} onChange={(e)=>set("inflation")(Number(e.target.value)/100)} style={{ width:"100%", accentColor:C.brass }} /></Field>
                 <Field label="Withdrawal rate"><Segmented value={s.swr} onChange={set("swr")} options={[{label:"3.9%",value:0.039},{label:"4%",value:0.04},{label:"5.7%",value:0.057}]} /></Field>
                 <Field label={`Taxable share of withdrawals — ${Math.round(s.tradFrac*100)}%`} hint="Portion from pre-tax 401(k)/IRA."><input type="range" min={0} max={100} step={10} value={s.tradFrac*100} onChange={(e)=>set("tradFrac")(Number(e.target.value)/100)} style={{ width:"100%", accentColor:C.brass }} /></Field>
+                <Field label="Plan horizon (age)" hint="How long to project. Defaults to 95; can't be set below the older spouse's current age.">
+                  <NumberInput value={s.horizonAge} min={Math.max(Number(s.ageA)||0, Number(s.ageB)||0)}
+                    onChange={(v)=>set("horizonAge")(Math.max(Number(s.ageA)||0, Number(s.ageB)||0, Number(v)||95))} />
+                </Field>
                 <Field label={`Travel budget — ${usd0(s.travel.amount)}/yr for ${s.travel.years} yrs`} hint="First years of retirement; tapers to half after year 10.">
                   <NumberInput value={s.travel.amount} onChange={(v)=>set("travel")({ ...s.travel, amount:Number(v)||0 })} prefix="$" />
                   <input type="range" min={5} max={30} step={1} value={s.travel.years}
