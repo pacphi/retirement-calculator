@@ -167,9 +167,11 @@ export function steadyState(i, sim, haircut, cutYear = 9999) {
   }
   const FV = row.bal + sellAfter;
   const wd = FV * i.swr;
-  const ssFactor = row.cal >= cutYear ? haircut : 1;
-  const ssA = b.ssA * ssFactor;
-  const ssB = b.ssB * ssFactor;
+  // The simulated row already has the SS haircut and any survivor step-up
+  // applied (the smaller check is zeroed in survivor years), so read SS straight
+  // from it rather than recomputing from benefits() — single source of truth.
+  const ssA = row.ssA;
+  const ssB = row.ssB;
   const ssHouse = ssA + ssB;
   const guaranteed = ssHouse + b.pension;
   const recurring = guaranteed + rentInc;

@@ -357,4 +357,13 @@ describe("steadyState survivor handling", () => {
     const survivor = steadyState(i, { rows: [mkRow(true)] }, 1, 9999);
     expect(survivor.tax).toBeGreaterThan(married.tax);
   });
+
+  it("keeps only the larger Social Security check (from the row) in a survivor year", () => {
+    // The simulation already zeroed the smaller check on a survivor row.
+    const row = { aA: 67, aB: 67, cal: 2048, bal: 1_000_000, need: 50000, survivor: true, ssA: 30000, ssB: 0, pens: 20000 };
+    const s = steadyState(i, { rows: [row] }, 1, 9999);
+    expect(s.ssHouse).toBe(30000);
+    expect(s.ssA).toBe(30000);
+    expect(s.ssB).toBe(0);
+  });
 });
