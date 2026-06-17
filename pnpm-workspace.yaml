@@ -10,3 +10,4 @@ onlyBuiltDependencies:
 overrides:
   js-yaml: ^4.1.2
   markdown-it: ^14.1.2
+  qs@>=6.11.1 <6.15.2: ">=6.15.2"
