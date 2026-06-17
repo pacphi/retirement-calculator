@@ -344,11 +344,15 @@ export function steadyState(i, sim, haircut, cutYear = 9999) {
     grossWithdrawal: 0,
     tradFrac: i.tradFrac,
   });
-  const targetNeed = spendingNeed(i, ageA, ageB, liveSav);
+  const targetNeed = row.need; // sourced from the simulated row so events/healthcare flow through
+  const net = gross - taxDetails.tax;
   return {
     FV, wd, ssA, ssB, pension: b.pension, erf: b.erf, pensionNote: b.pensionNote,
     ssHouse, guaranteed, recurring, rentInc, liveSav, gross,
-    net: gross - taxDetails.tax,
+    net,
+    sustainableCapacity: net,
+    modeledSpend: targetNeed,
+    surplus: Math.max(0, net - targetNeed),
     guaranteedNet: guaranteed - guaranteedTaxDetails.tax,
     tax: taxDetails.tax,
     taxDetails,

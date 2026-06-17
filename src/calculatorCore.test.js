@@ -210,6 +210,28 @@ describe("life events in simulation", () => {
   });
 });
 
+describe("headline reconciliation", () => {
+  it("reports modeled spend, capacity, and the surplus that compounds", () => {
+    const plan = calculatePlan({
+      ...baseState,
+      travel: { on: false, amount: 15000, years: 15, taper: true },
+      events: [],
+    });
+    const s = plan.steady;
+    expect(s.modeledSpend).toBe(s.targetNeed);
+    expect(s.sustainableCapacity).toBeCloseTo(s.net, 6);
+    expect(s.surplus).toBeCloseTo(Math.max(0, s.sustainableCapacity - s.modeledSpend), 6);
+    // Baseline plan has guaranteed income well above the modest need -> positive surplus.
+    expect(s.surplus).toBeGreaterThan(0);
+  });
+
+  it("includes active travel spend in the steady-state need", () => {
+    const noTravel = calculatePlan({ ...baseState, travel: { on: false, amount: 15000, years: 15, taper: true }, events: [] });
+    const withTravel = calculatePlan({ ...baseState, travel: { on: true, amount: 15000, years: 30, taper: false }, events: [] });
+    expect(withTravel.steady.modeledSpend).toBeGreaterThan(noTravel.steady.modeledSpend);
+  });
+});
+
 describe("full plan", () => {
   it("anchors steady-state income after selected benefits have actually started", () => {
     const plan = calculatePlan(baseState);
