@@ -406,7 +406,16 @@ export function calculatePlan(s) {
   const incomeHH = (Number(s.incomeA) || 0) + (Number(s.incomeB) || 0);
   const retLocObj = LOCATIONS.find((l) => l.name === s.retireLoc) || LOCATIONS[10];
   const inher = buildInheritanceInputs(s);
-  const inp = { ...s, incomeHH, inher, hcPre: retLocObj.hcPre, hcPost: retLocObj.hcPost };
+  const inp = {
+    ...s,
+    incomeHH,
+    inher,
+    hcPre: retLocObj.hcPre,
+    hcPost: retLocObj.hcPost,
+    travel: s.travel ?? { on: false, amount: 15000, years: 15, taper: true },
+    events: s.events ?? [],
+    survivor: s.survivor ?? { on: false, year: 9999 },
+  };
   const { effHaircut, effCutYear } = resolveSocialSecurityScenario(s);
   const trustCut = Number(s.ssCutYear) || 2034;
   const simChosen = simulate(inp, { haircut: effHaircut, cutYear: effCutYear });

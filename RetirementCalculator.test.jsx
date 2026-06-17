@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import RetirementCalculator from "./RetirementCalculator.jsx";
 
@@ -35,5 +35,28 @@ describe("RetirementCalculator UI", () => {
     expect(portugal).toHaveAttribute("aria-expanded", "true");
     await user.click(portugal);
     expect(portugal).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("renders the Add event button for family milestones", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByRole("button", { name:/add event/i })).toBeInTheDocument();
+  });
+});
+
+describe("dynamic life events", () => {
+  it("adds a new event row when 'Add event' is clicked", () => {
+    render(<RetirementCalculator />);
+    const before = screen.getAllByRole("button", { name: /remove event/i }).length;
+    fireEvent.click(screen.getByRole("button", { name: /add event/i }));
+    const after = screen.getAllByRole("button", { name: /remove event/i }).length;
+    expect(after).toBe(before + 1);
+  });
+
+  it("removes an event row when its remove button is clicked", () => {
+    render(<RetirementCalculator />);
+    const before = screen.getAllByRole("button", { name: /remove event/i }).length;
+    fireEvent.click(screen.getAllByRole("button", { name: /remove event/i })[0]);
+    const after = screen.getAllByRole("button", { name: /remove event/i }).length;
+    expect(after).toBe(before - 1);
   });
 });

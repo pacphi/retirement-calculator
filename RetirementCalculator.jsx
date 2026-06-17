@@ -1,9 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import {
   ComposedChart, Area, Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceDot,
 } from "recharts";
-import { LOCATIONS, PROP, SOURCES } from "./src/retirementData.js";
+import { DEFAULT_LIFE_EVENTS, DEFAULT_TRAVEL, LOCATIONS, PROP, SOURCES } from "./src/retirementData.js";
 import {
   afcIsAuto,
   resolveAfc,
@@ -79,15 +79,18 @@ function Section({ eyebrow, title, children }) {
 /* ---------------------------- Main ---------------------------- */
 export default function RetirementCalculator() {
   const [s, setS] = useState({
-    ageA:45, ageB:45, stopA:62, stopB:60, claimA:67, claimB:67, pensionAge:65,
-    incomeA:90000, incomeB:75000, savings:300000, contrib:18000, targetPct:0.30, status:"married",
+    ageA:57, ageB:48, stopA:65, stopB:56, claimA:65, claimB:65, pensionAge:65,
+    incomeA:0, incomeB:170000, savings:670000, contrib:18000, targetPct:0.40, status:"married",
     ssModeA:"estimate", ssModeB:"estimate", ssFraA:36000, ssFraB:30000,
-    pensionOn:true, system:"TRS", plan:2, pYears:20, afc:null,
+    pensionOn:true, system:"TRS", plan:3, pYears:22, afc:170000,
     realReturn:0.05, swr:0.04, tradFrac:0.7, inflation:0.025,
     ssMode:"trustees", ssHaircut:81, ssCutYear:2034,
-    retireLoc:"US -- national average",
-    tx:{ on:true, value:790000, year:2038, strategy:"rent" },
+    retireLoc:"Austria",
+    tx:{ on:false, value:790000, year:2038, strategy:"rent" },
     at:{ on:true, value:324000, year:2040, strategy:"live" },
+    travel: { ...DEFAULT_TRAVEL },
+    events: DEFAULT_LIFE_EVENTS.map((e) => ({ ...e })),
+    survivor: { on:false, year:2055 },
   });
   const [couple, setCouple] = useState(true);
   const [stage, setStage] = useState("post");
@@ -97,6 +100,12 @@ export default function RetirementCalculator() {
   const [cmpB, setCmpB] = useState("US -- Texas / Florida");
   const set = (k) => (v) => setS(p => ({ ...p, [k]: v }));
   const setProp = (key, field) => (v) => setS(p => ({ ...p, [key]: { ...p[key], [field]: v } }));
+  const eventSeq = useRef(0);
+  const addEvent = () => {
+    const id = `evt-${eventSeq.current++}`;
+    set("events")([...s.events, { id, label: "New milestone", on: true, year: 2040, amount: 10000 }]);
+  };
+  const removeEvent = (idx) => set("events")(s.events.filter((_, i) => i !== idx));
 
   const calc = useMemo(() => calculatePlan(s), [s]);
   const afcAuto = afcIsAuto(s);
@@ -333,12 +342,50 @@ export default function RetirementCalculator() {
                 })}
               </Section>
 
+              <Section eyebrow="Step five" title="Family milestones">
+                <p style={{ margin:"0 0 10px", fontSize:12.5, color:C.slate, lineHeight:1.5 }}>One-time gifts you may make — weddings, home help, a savings seed per grandchild. Add as many as you need.</p>
+                {s.events.map((ev, idx) => (
+                  <div key={ev.id} style={{ display:"grid", gridTemplateColumns:"1.4fr auto auto auto", gap:8, alignItems:"center", marginBottom:6 }}>
+                    <input type="text" value={ev.label} aria-label={`Event ${idx + 1} label`}
+                      onChange={(e)=>{ const next=s.events.map((x,i)=> i===idx ? { ...x, label:e.target.value } : x); set("events")(next); }}
+                      style={{ fontSize:12.5, padding:"6px 8px", border:`1px solid ${C.line}`, borderRadius:6, color:C.ink }} />
+                    <Segmented value={ev.on} onChange={(v)=>{ const next=s.events.map((x,i)=> i===idx ? { ...x, on:v } : x); set("events")(next); }}
+                      options={[{label:"On",value:true},{label:"Off",value:false}]} />
+                    <NumberInput value={ev.year} aria-label={`Event ${idx + 1} year`}
+                      onChange={(v)=>{ const next=s.events.map((x,i)=> i===idx ? { ...x, year:Number(v)||0 } : x); set("events")(next); }} />
+                    <NumberInput value={ev.amount} aria-label={`Event ${idx + 1} amount`} prefix="$"
+                      onChange={(v)=>{ const next=s.events.map((x,i)=> i===idx ? { ...x, amount:Number(v)||0 } : x); set("events")(next); }} />
+                    <button type="button" aria-label={`Remove event ${idx + 1}`} onClick={()=>removeEvent(idx)}
+                      style={{ border:"none", background:"none", color:C.clay, fontSize:16, cursor:"pointer", lineHeight:1 }}>×</button>
+                  </div>
+                ))}
+                <button type="button" aria-label="Add event" onClick={addEvent}
+                  style={{ marginTop:4, padding:"6px 12px", fontSize:12.5, fontWeight:600, cursor:"pointer", background:"none", color:C.viridian, border:`1px solid ${C.viridian}`, borderRadius:6 }}>
+                  + Add event
+                </button>
+              </Section>
+
               <button onClick={()=>setAdv(a=>!a)} style={{ width:"100%", background:"none", border:`1px dashed ${C.line}`, borderRadius:9, padding:"10px", color:C.slate, fontSize:12.5, fontWeight:600, cursor:"pointer", marginBottom:adv?16:8, fontFamily:"inherit" }}>{adv?"Hide assumptions ▲":"Adjust assumptions (return, inflation, withdrawal, tax mix) ▾"}</button>
               {adv && (<Section eyebrow="Optional" title="Strategy & assumptions">
                 <Field label={`Real investment return — ${(s.realReturn*100).toFixed(1)}%`} hint="After inflation. A 60/40 mix has historically returned ~4–5% real."><input type="range" min={2} max={8} step={0.5} value={s.realReturn*100} onChange={(e)=>set("realReturn")(Number(e.target.value)/100)} style={{ width:"100%", accentColor:C.brass }} /></Field>
                 <Field label={`Inflation — ${(s.inflation*100).toFixed(1)}%`} hint="Translates today's costs into future dollars in the breakdowns."><input type="range" min={1} max={5} step={0.5} value={s.inflation*100} onChange={(e)=>set("inflation")(Number(e.target.value)/100)} style={{ width:"100%", accentColor:C.brass }} /></Field>
                 <Field label="Withdrawal rate"><Segmented value={s.swr} onChange={set("swr")} options={[{label:"3.9%",value:0.039},{label:"4%",value:0.04},{label:"5.7%",value:0.057}]} /></Field>
                 <Field label={`Taxable share of withdrawals — ${Math.round(s.tradFrac*100)}%`} hint="Portion from pre-tax 401(k)/IRA."><input type="range" min={0} max={100} step={10} value={s.tradFrac*100} onChange={(e)=>set("tradFrac")(Number(e.target.value)/100)} style={{ width:"100%", accentColor:C.brass }} /></Field>
+                <Field label={`Travel budget — ${usd0(s.travel.amount)}/yr for ${s.travel.years} yrs`} hint="First years of retirement; tapers to half after year 10.">
+                  <NumberInput value={s.travel.amount} onChange={(v)=>set("travel")({ ...s.travel, amount:Number(v)||0 })} prefix="$" />
+                  <input type="range" min={5} max={30} step={1} value={s.travel.years}
+                    onChange={(e)=>set("travel")({ ...s.travel, years:Number(e.target.value) })}
+                    style={{ width:"100%", accentColor:C.brass, marginTop:6 }} />
+                  <Segmented value={s.travel.on} onChange={(v)=>set("travel")({ ...s.travel, on:v })}
+                    options={[{label:"Include",value:true},{label:"Skip",value:false}]} />
+                </Field>
+                <Field label="Survivor transition" hint="Model one spouse's death: single-filer taxes, larger SS kept.">
+                  <Segmented value={s.survivor.on} onChange={(v)=>set("survivor")({ ...s.survivor, on:v })}
+                    options={[{label:"Model it",value:true},{label:"Skip",value:false}]} />
+                  {s.survivor.on && (
+                    <NumberInput value={s.survivor.year} onChange={(v)=>set("survivor")({ ...s.survivor, year:Number(v)||9999 })} suffix="yr" />
+                  )}
+                </Field>
               </Section>)}
             </div>
           </div>
