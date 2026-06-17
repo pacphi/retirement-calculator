@@ -26,8 +26,13 @@ export const SOURCES = {
 };
 
 /* 2026 reference data. Tax constants are from the IRS 2026 inflation release.
-   SSA bend points and wage base are from SSA. DRS factors are current Plan 2
-   examples published by Washington DRS for members with less than 30 years. */
+   SSA bend points and wage base are from SSA. The DRS early-retirement factors below
+   apply to both Plan 2 and Plan 3 (same formula). DRS_ERF_UNDER_30 is the actuarial
+   reduction for members with fewer than 30 years of service.
+   NOTE: DRS_ERF_30_PLUS uses the post-May-2013 "5% ERF" schedule for 30+ year members.
+   Members hired BEFORE May 1, 2013 with 30+ years use the gentler "2008 ERF" (e.g. age 62
+   is unreduced) — not modeled here, so this engine understates the pension for that
+   specific group. See docs/sources.md section 9 and docs/audits/drs-verification.md. */
 export const FED = {
   single: [[0, .10], [12400, .12], [50400, .22], [105700, .24], [201775, .32], [256225, .35], [640600, .37]],
   married: [[0, .10], [24800, .12], [100800, .22], [211400, .24], [403550, .32], [512450, .35], [768700, .37]],

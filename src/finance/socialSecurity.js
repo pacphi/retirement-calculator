@@ -23,6 +23,8 @@ export const ownBenefitAtClaimMonthly = (pia, claimAgeRaw) => {
     return pia * (1 - reduction);
   }
   if (claimAge > 67) {
+    // Delayed retirement credits accrue at 8%/yr (2/3% per month) but stop at age 70,
+    // so the credit is capped at 36 months past FRA.
     const months = Math.min((claimAge - 67) * 12, 36);
     return pia * (1 + months * (2 / 3) / 100);
   }

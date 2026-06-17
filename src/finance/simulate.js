@@ -52,7 +52,8 @@ const solveWithdrawal = (i, aA, aB, wages, pens, rent, ss, need, bal, statusOver
   let hi = Math.max(0, bal);
   const covers = (withdrawal) =>
     income + withdrawal - taxForYear(i, aA, aB, wages, pens, rent, ss, withdrawal, statusOverride, year) >= need;
-  if (!covers(hi)) return { withdrawal: hi, tax: taxForYear(i, aA, aB, wages, pens, rent, ss, hi, statusOverride, year) };
+  const taxAtHi = taxForYear(i, aA, aB, wages, pens, rent, ss, hi, statusOverride, year);
+  if (income + hi - taxAtHi < need) return { withdrawal: hi, tax: taxAtHi }; // insolvent: cap at balance (reuse the tax already computed)
   for (let n = 0; n < 32; n++) {
     const mid = (lo + hi) / 2;
     if (covers(mid)) hi = mid;
@@ -224,7 +225,7 @@ export function steadyState(i, sim) {
   const targetNeed = row.need; // sourced from the simulated row so events/healthcare flow through
   const net = gross - taxDetails.tax;
   return {
-    FV, wd, ssA, ssB, pension, erf: b.erf, pensionNote: b.pensionNote,
+    FV, wd, ssA, ssB, pension, erf: i.pensionOn ? b.erf : null, pensionNote: b.pensionNote,
     ssHouse, guaranteed, recurring, rentInc, liveSav, gross,
     net,
     sustainableCapacity: net,

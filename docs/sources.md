@@ -135,6 +135,8 @@ The following features use internally derived assumptions rather than externally
 - **[Washington Administrative Code 415‑02‑320 (early‑retirement factors)](https://app.leg.wa.gov/wac/default.aspx?cite=415-02-320)** **(primary)** — the legal ERF schedule.
 - **[Washington State Auditor — Note X, state‑sponsored DRS pension plans](https://sao.wa.gov/bars-annual-filing/bars-gaap-manual/reporting/notes-financial-statements/note-x-pensions-state-sponsored-drs-plans)** **(primary)** — plan accounting context.
 
+**Verified against current DRS docs (see `docs/audits/drs-verification.md`):** the 2% (Plan 2) / 1% (Plan 3 DB) multipliers, AFC = highest 60 consecutive months, 5-yr (Plan 2) / 10-yr (Plan 3) vesting, age-65 normal retirement, age-55 early eligibility (Plan 2 ≥20 yrs, Plan 3 ≥10 yrs), and the under-30-year ERF table all match. **Known limitation:** for members with **30+ years** of service, DRS publishes two ERF schedules by hire date — the gentler **2008 ERF** (hired before May 1, 2013; e.g. unreduced at 62) and the **5% ERF** (hired on/after May 1, 2013). This engine implements only the 5% schedule, so it **understates** the pension for pre-2013 hires with 30+ years. (Does not affect a member retiring with fewer than 30 years.)
+
 ---
 
 ## 10. Healthcare — Medicare 2026 and Pre-65 ACA

@@ -676,3 +676,15 @@ describe("future property sale in steady state", () => {
     expect(s.FV).toBeCloseTo(1_000_000 + 100000 / Math.pow(1.05, 2), 2);
   });
 });
+
+describe("steadyState erf sentinel", () => {
+  it("returns erf null (not 1) when the pension is disabled", () => {
+    const plan = calculatePlan({ ...baseState, pensionOn: false });
+    expect(plan.steady.erf).toBeNull();
+  });
+
+  it("returns a numeric erf when the pension is enabled", () => {
+    const plan = calculatePlan({ ...baseState, pensionOn: true });
+    expect(typeof plan.steady.erf).toBe("number");
+  });
+});
