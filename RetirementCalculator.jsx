@@ -485,7 +485,7 @@ export default function RetirementCalculator() {
                 {usd0(steady.net/12)}/mo starting around your age {steady.startAgeA} · spending need then {usd0(steady.targetNeed)}/yr{steady.liveSav>0?` · includes ${usd0(steady.liveSav)}/yr lower housing cost`:""}
               </div>
               <div style={{ fontSize:12, color:C.slate, marginTop:4 }}>
-                You're modeling spending of <b>{usd0(steady.modeledSpend)}/yr</b>; you could spend up to <b>{usd0(steady.sustainableCapacity)}/yr</b> at your withdrawal rate.{steady.surplus>0 ? ` Because you spend less than your withdrawal capacity, the unspent balance keeps compounding (shown below).` : ""}
+                You're modeling spending of <b>{usd0(steady.modeledSpend)}/yr</b>. At your withdrawal rate the plan can sustain up to <b>{usd0(steady.sustainableCapacity)}/yr</b> — assuming your base return holds, so this ceiling moves with the markets and isn't guaranteed.{steady.surplus>0 ? ` The ${usd0(steady.surplus)}/yr you don't spend stays invested as a buffer against weak returns, taxes, or long-term care — not a separate pot to draw on.` : ""}
               </div>
               <div style={{ marginTop:14, display:"inline-flex", alignItems:"center", gap:8, background:onTrack?"rgba(30,122,94,.22)":"rgba(190,74,43,.22)", border:`1px solid ${onTrack?C.viridian:C.clay}`, borderRadius:999, padding:"6px 13px", fontSize:13, fontWeight:600 }}>
                 <span style={{ width:8, height:8, borderRadius:99, background:onTrack?"#5BD6A8":"#F09B82" }} />
