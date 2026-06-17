@@ -667,3 +667,12 @@ describe("live-in inheritance timing", () => {
     expect(moveYear - after).toBe(12000); // saving applies in 2031, not the 2030 move year
   });
 });
+
+describe("future property sale in steady state", () => {
+  it("discounts a post-steady-year sale back to the steady year in FV", () => {
+    const i = { ...baseState, inher: [{ type: "sell", year: 2050, sell: 100000 }], incomeHH: 165000, realReturn: 0.05 };
+    const row = { aA: 67, aB: 67, cal: 2048, bal: 1_000_000, need: 50000, survivor: false, ssA: 30000, ssB: 18000, pens: 20000 };
+    const s = steadyState(i, { rows: [row] });
+    expect(s.FV).toBeCloseTo(1_000_000 + 100000 / Math.pow(1.05, 2), 2);
+  });
+});

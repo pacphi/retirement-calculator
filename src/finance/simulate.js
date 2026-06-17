@@ -173,7 +173,9 @@ export function steadyState(i, sim) {
   let rentInc = 0;
   let liveSav = 0;
   for (const p of i.inher) {
-    if (p.type === "sell" && p.year > row.cal) sellAfter += p.sell;
+    // Discount a future sale's proceeds back to the steady-state year so the SWR
+    // base isn't inflated by money not yet received.
+    if (p.type === "sell" && p.year > row.cal) sellAfter += p.sell / Math.pow(1 + (Number(i.realReturn) || 0), p.year - row.cal);
     if (p.type === "rent" && p.year <= row.cal) rentInc += p.rent;
     if (p.type === "live" && p.year < row.cal) liveSav += p.live; // year+1: skip the relocation/transition year
   }

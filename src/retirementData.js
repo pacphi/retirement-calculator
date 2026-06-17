@@ -79,7 +79,7 @@ export const PROP = {
       live:"Owning the Texas home may not free up much cash because property tax and upkeep can be close to the rent you avoid. Selling or renting usually puts the value to clearer use." } },
   at: { label:"Klagenfurt home", place:"Austria", sellNet:0.90, rentYield:0.020, ownRate:0.012, rentMo:1650,
     notes:{
-      sell:"Austria has no inheritance tax, but inheriting and later selling real estate can still create transfer and real-estate gains taxes. This simplified estimate keeps 10% aside; a cross-border tax professional should verify the actual basis and treaty result.",
+      sell:"Austria has no inheritance tax, but inheriting and later selling real estate can still create transfer and real-estate gains taxes (ImmoESt ~30% on nominal gain, plus transfer + registration fees). This simplified estimate keeps only 10% aside, which may materially understate the cost for a property with large gains since the decedent's acquisition — the true net could be 20-35% lower. A cross-border tax professional should verify the actual basis and treaty result.",
       rent:"Austrian rental income can be taxed in Austria and reported in the US, usually with foreign tax credit mechanics. The model uses a conservative 2% net yield.",
       live:"This is often the strongest cash-flow choice. Austrian carrying costs are low, so living there can replace a large rent bill with a much smaller owner cost." } },
 };
