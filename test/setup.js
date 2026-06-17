@@ -9,3 +9,12 @@ globalThis.ResizeObserver = class ResizeObserver {
   unobserve() {}
   disconnect() {}
 };
+
+// Worker is not available in jsdom. Provide a no-op stub so the component
+// mounts without throwing; the worker does not execute in tests by design.
+globalThis.Worker = class Worker {
+  constructor() {}
+  postMessage() {}
+  terminate() {}
+  set onmessage(_fn) {}
+};

@@ -1,9 +1,9 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
   ComposedChart, Area, Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceDot,
 } from "recharts";
-import { DEFAULT_LIFE_EVENTS, DEFAULT_TRAVEL, LOCATIONS, PROP, SOURCES } from "./src/retirementData.js";
+import { DEFAULT_LIFE_EVENTS, DEFAULT_TRAVEL, LOCATIONS, MC_DEFAULTS, PROP, SOURCES } from "./src/retirementData.js";
 import {
   afcIsAuto,
   resolveAfc,
@@ -100,6 +100,24 @@ export default function RetirementCalculator() {
   const [cmpB, setCmpB] = useState("US -- Texas / Florida");
   const set = (k) => (v) => setS(p => ({ ...p, [k]: v }));
   const setProp = (key, field) => (v) => setS(p => ({ ...p, [key]: { ...p[key], [field]: v } }));
+  const [mc, setMc] = useState(null);
+  const [mcRunning, setMcRunning] = useState(false);
+  const workerRef = useRef(null);
+
+  useEffect(() => {
+    workerRef.current = new Worker(new URL("./src/finance/mcWorker.js", import.meta.url), { type: "module" });
+    workerRef.current.onmessage = (e) => {
+      if (e.data?.type === "mc-result") { setMc(e.data.result); setMcRunning(false); }
+    };
+    return () => workerRef.current && workerRef.current.terminate();
+  }, []);
+
+  const runMc = () => {
+    setMcRunning(true);
+    setMc(null);
+    workerRef.current.postMessage({ state: s, mcOpt: MC_DEFAULTS });
+  };
+
   const eventSeq = useRef(0);
   const addEvent = () => {
     const id = `evt-${eventSeq.current++}`;
@@ -553,6 +571,18 @@ export default function RetirementCalculator() {
                 <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:C.slate }}><span style={{ width:16, height:3, background:C.clay, borderRadius:2, borderTop:`2px dashed ${C.clay}` }} />Without SS</span>
                 <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:C.slate }}><span style={{ width:16, height:3, background:C.brassDeep, borderRadius:2 }} />Sequence-risk stress</span>
               </div>
+              <button onClick={runMc} disabled={mcRunning}
+                style={{ marginTop:8, padding:"7px 14px", fontSize:12.5, fontWeight:600, cursor: mcRunning?"default":"pointer",
+                  background:C.viridian, color:"#fff", border:"none", borderRadius:6, opacity: mcRunning?0.6:1 }}>
+                {mcRunning ? "Running 1,000 paths…" : "Run Monte Carlo (1,000 paths)"}
+              </button>
+              {mc && (
+                <div style={{ marginTop:10, fontSize:12.5, color:C.inkSoft, lineHeight:1.6, background:"#F6F4EC", borderRadius:9, padding:"10px 12px" }}>
+                  <b>Success probability:</b> {Math.round(mc.successProb * 100)}% of {mc.paths} paths lasted to age 95.
+                  Median depletion age: {mc.depletionAge.p50 >= 96 ? "95+" : mc.depletionAge.p50}.
+                  Sustainable income (p50): {usd0(mc.sustainableIncome.p50)}/yr.
+                </div>
+              )}
             </div>
 
             {/* Places */}

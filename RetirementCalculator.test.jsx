@@ -68,3 +68,13 @@ describe("dynamic life events", () => {
     expect(after).toBe(before - 1);
   });
 });
+
+describe("Monte Carlo trigger", () => {
+  it("offers an opt-in button and does not run automatically", () => {
+    render(<RetirementCalculator />);
+    const btn = screen.getByRole("button", { name: /run monte carlo/i });
+    expect(btn).toBeInTheDocument();
+    // No percentile result is shown until the user runs it.
+    expect(screen.queryByText(/success probability/i)).not.toBeInTheDocument();
+  });
+});
