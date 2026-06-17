@@ -129,6 +129,11 @@ describe("long-term care disclosure", () => {
     render(<RetirementCalculator />);
     expect(screen.getByText(/Long-term care is not modeled/i)).toBeInTheDocument();
   });
+
+  it("shows the app semantic version in the footer", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByText(/Nest & Next · v\d+\.\d+\.\d+/)).toBeInTheDocument();
+  });
 });
 
 describe("deterministic headline caveat", () => {

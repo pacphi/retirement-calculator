@@ -918,6 +918,9 @@ export default function RetirementCalculator() {
               acquisition history, currency basis, and treaty treatment with a cross-border tax professional. 2026 federal brackets. Inherited-home live-in savings begin the year after inheritance; one-time relocation costs are not modeled.
               {!s.ltc.on && " Long-term care is not modeled (about 70% of retirees need it; roughly $50k–$200k/yr depending on location) — enable it under Step Five → Advanced to stress-test."}
             </p>
+            <p style={{ fontSize:10, color:C.mut, marginTop:8, letterSpacing:0.3 }}>
+              Nest &amp; Next · v{import.meta.env.VITE_APP_VERSION}
+            </p>
           </div>
         </div>
       </div>

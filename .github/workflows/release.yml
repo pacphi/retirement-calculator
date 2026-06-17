@@ -1,0 +1,121 @@
+name: Release
+
+# Fires when a version tag is pushed. Cut a release with:
+#   pnpm version X.Y.Z --no-git-tag-version
+#   git commit -am "chore(release): vX.Y.Z" && git tag vX.Y.Z
+#   git push && git push --tags
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  # 1. Validate the tag is well-formed AND matches package.json version.
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      is_prerelease: ${{ steps.check.outputs.is_prerelease }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate tag against package.json
+        id: check
+        env:
+          # Pass the (write-access-gated) tag through env, not direct interpolation.
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$'; then
+            echo "::error::Tag '$TAG' is not a valid vMAJOR.MINOR.PATCH[-prerelease] version."
+            exit 1
+          fi
+          VERSION="${TAG#v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Tag version ($VERSION) != package.json version ($PKG_VERSION). Bump package.json before tagging."
+            exit 1
+          fi
+          IS_PRERELEASE=false
+          case "$VERSION" in *-*) IS_PRERELEASE=true ;; esac
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "is_prerelease=$IS_PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "Validated $TAG (prerelease=$IS_PRERELEASE)."
+
+  # 2. Run the full quality gate and produce the Pages artifact.
+  build:
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 26
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      # The checked-out tag already carries the bumped package.json, so the
+      # built footer shows the released version automatically.
+      - name: Build
+        run: pnpm build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  # 3. Create the GitHub Release with auto-generated notes.
+  release:
+    needs: [validate, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          generate_release_notes: true
+          prerelease: ${{ needs.validate.outputs.is_prerelease == 'true' }}
+
+  # 4. Deploy the released build to GitHub Pages.
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    # Share the Pages concurrency group with the manual deploy workflow so the
+    # two never race; let an in-progress deployment finish.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
