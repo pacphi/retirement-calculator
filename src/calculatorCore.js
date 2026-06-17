@@ -198,9 +198,9 @@ export function benefits(i) {
 
 const plannedContribution = (i, workA, workB) => ((workA ? 0.5 : 0) + (workB ? 0.5 : 0)) * i.contrib;
 
-const taxForYear = (i, aA, aB, wages, pens, rent, ss, grossWithdrawal) =>
+const taxForYear = (i, aA, aB, wages, pens, rent, ss, grossWithdrawal, statusOverride) =>
   calculateFederalTaxYear({
-    status: i.status,
+    status: statusOverride || i.status,
     ageA: aA,
     ageB: aB,
     wages,
@@ -211,21 +211,21 @@ const taxForYear = (i, aA, aB, wages, pens, rent, ss, grossWithdrawal) =>
     tradFrac: i.tradFrac,
   }).tax;
 
-const solveWithdrawal = (i, aA, aB, wages, pens, rent, ss, need, bal) => {
+const solveWithdrawal = (i, aA, aB, wages, pens, rent, ss, need, bal, statusOverride) => {
   const income = wages + pens + rent + ss;
-  const taxNoWithdrawal = taxForYear(i, aA, aB, wages, pens, rent, ss, 0);
+  const taxNoWithdrawal = taxForYear(i, aA, aB, wages, pens, rent, ss, 0, statusOverride);
   if (income - taxNoWithdrawal >= need) return { withdrawal: 0, tax: taxNoWithdrawal };
   let lo = 0;
   let hi = Math.max(0, bal);
   const covers = (withdrawal) =>
-    income + withdrawal - taxForYear(i, aA, aB, wages, pens, rent, ss, withdrawal) >= need;
-  if (!covers(hi)) return { withdrawal: hi, tax: taxForYear(i, aA, aB, wages, pens, rent, ss, hi) };
+    income + withdrawal - taxForYear(i, aA, aB, wages, pens, rent, ss, withdrawal, statusOverride) >= need;
+  if (!covers(hi)) return { withdrawal: hi, tax: taxForYear(i, aA, aB, wages, pens, rent, ss, hi, statusOverride) };
   for (let n = 0; n < 32; n++) {
     const mid = (lo + hi) / 2;
     if (covers(mid)) hi = mid;
     else lo = mid;
   }
-  return { withdrawal: hi, tax: taxForYear(i, aA, aB, wages, pens, rent, ss, hi) };
+  return { withdrawal: hi, tax: taxForYear(i, aA, aB, wages, pens, rent, ss, hi, statusOverride) };
 };
 
 export function spendingNeed(i, ageA, ageB, liveSav = 0) {
@@ -260,10 +260,19 @@ export function simulate(i, ssOpt) {
     const ssFac = cal >= cutYear ? haircut : 1;
     const ssAy = aA >= i.claimA ? ssAfull * ssFac : 0;
     const ssBy = aB >= i.claimB ? ssBfull * ssFac : 0;
+    const isSurvivor = !!(i.survivor && i.survivor.on && cal >= Number(i.survivor.year));
+    let ssAyEff = ssAy;
+    let ssByEff = ssBy;
+    if (isSurvivor) {
+      const larger = Math.max(ssAy, ssBy);
+      ssAyEff = larger;
+      ssByEff = 0;
+    }
+    const yearStatus = isSurvivor ? "single" : i.status;
     let rent = 0;
     let liveSav = 0;
     let sellLump = 0;
-    for (const p of i.inher) {
+    for (const p of (i.inher || [])) {
       if (p.type === "rent" && cal >= p.year) rent += p.rent;
       if (p.type === "live" && cal >= p.year) liveSav += p.live;
       if (p.type === "sell" && cal === p.year) sellLump += p.sell;
@@ -277,22 +286,22 @@ export function simulate(i, ssOpt) {
     bal = bal * (1 + yearReturn) + sellLump;
 
     const plannedContrib = plannedContribution(i, workA, workB);
-    const taxBeforeWithdrawal = taxForYear(i, aA, aB, wages, pens, rent, ssAy + ssBy, 0);
-    const afterTaxBeforeWithdrawal = wages + pens + rent + ssAy + ssBy - taxBeforeWithdrawal;
+    const taxBeforeWithdrawal = taxForYear(i, aA, aB, wages, pens, rent, ssAyEff + ssByEff, 0, yearStatus);
+    const afterTaxBeforeWithdrawal = wages + pens + rent + ssAyEff + ssByEff - taxBeforeWithdrawal;
     const contrib = Math.min(plannedContrib, Math.max(0, afterTaxBeforeWithdrawal - need));
     bal += contrib;
 
-    const { withdrawal: wd, tax } = solveWithdrawal(i, aA, aB, wages, pens, rent, ssAy + ssBy, need, bal);
+    const { withdrawal: wd, tax } = solveWithdrawal(i, aA, aB, wages, pens, rent, ssAyEff + ssByEff, need, bal, yearStatus);
     bal -= wd;
     if (bal < 1) bal = 0;
     if (!workA && !workB && fullyRetAge === null) {
       fullyRetAge = aA;
       balAtFullRet = bal;
     }
-    const afterTaxCash = wages + pens + rent + ssAy + ssBy + wd - tax;
+    const afterTaxCash = wages + pens + rent + ssAyEff + ssByEff + wd - tax;
     if (bal <= 0 && depAge === null && afterTaxCash < need) depAge = aA;
     rows.push({
-      aA, aB, cal, salA, salB, rent, pens, ssA: ssAy, ssB: ssBy,
+      aA, aB, cal, salA, salB, rent, pens, ssA: ssAyEff, ssB: ssByEff, survivor: isSurvivor,
       wd: Math.round(wd), bal: Math.round(bal), need: Math.round(need),
       extraSpend: Math.round(extraSpend),
       tax: Math.round(tax), contrib: Math.round(contrib), sellLump: Math.round(sellLump),

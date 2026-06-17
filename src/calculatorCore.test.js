@@ -262,6 +262,34 @@ describe("full plan", () => {
   });
 });
 
+describe("survivor transition", () => {
+  const base = {
+    ...baseState,
+    ageA: 65, ageB: 65, stopA: 65, stopB: 65, claimA: 65, claimB: 65,
+    pensionOn: false, savings: 500000, contrib: 0,
+    ssModeA: "statement", ssModeB: "statement", ssFraA: 36000, ssFraB: 24000,
+    tx: { ...baseState.tx, on: false }, at: { ...baseState.at, on: false },
+    travel: { on: false, amount: 15000, years: 15, taper: true }, events: [],
+  };
+
+  it("keeps only the larger Social Security check after the survivor year", () => {
+    const sim = simulate({ ...base, survivor: { on: true, year: 2030 } }, { haircut: 1, cutYear: 9999 });
+    const before = sim.rows.find((r) => r.cal === 2029);
+    const after = sim.rows.find((r) => r.cal === 2030);
+    expect(after.survivor).toBe(true);
+    // before: both checks; after: only the larger (ssFraA 36000 own benefit at FRA-ish)
+    expect(after.ssA + after.ssB).toBeLessThan(before.ssA + before.ssB);
+    expect(after.ssA + after.ssB).toBeCloseTo(Math.max(before.ssA, before.ssB), 0);
+  });
+
+  it("leaves Social Security untouched when survivor modeling is off", () => {
+    const sim = simulate({ ...base, survivor: { on: false, year: 2030 } }, { haircut: 1, cutYear: 9999 });
+    const before = sim.rows.find((r) => r.cal === 2029);
+    const after = sim.rows.find((r) => r.cal === 2030);
+    expect(after.ssA + after.ssB).toBeCloseTo(before.ssA + before.ssB, 0);
+  });
+});
+
 describe("sequence-of-returns stress", () => {
   it("models an early crash then recovery", () => {
     expect(stressReturnForYear(0.05, 0)).toBe(-0.10);
