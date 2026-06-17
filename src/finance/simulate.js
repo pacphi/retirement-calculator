@@ -152,7 +152,7 @@ export function steadyStartAgeA(i) {
   return Math.max(i.stopA, i.stopB + (i.ageA - i.ageB), i.claimA, bClaimAsAgeA, pensionAsAgeA);
 }
 
-export function steadyState(i, sim, haircut, cutYear = 9999) {
+export function steadyState(i, sim) {
   const b = benefits(i);
   const startAgeA = steadyStartAgeA(i);
   const startCal = TAX_YEAR + (startAgeA - i.ageA);

@@ -82,9 +82,9 @@ export function calculatePlan(s) {
     simTrust,
     simNone,
     simStress,
-    steady: steadyState(inp, simChosen, effHaircut, effCutYear),
-    sFull: steadyState(inp, simFull, 1, 9999),
-    sTrust: steadyState(inp, simTrust, 0.81, trustCut),
-    sNone: steadyState(inp, simNone, 0, TAX_YEAR),
+    steady: steadyState(inp, simChosen),
+    sFull: steadyState(inp, simFull),
+    sTrust: steadyState(inp, simTrust),
+    sNone: steadyState(inp, simNone),
   };
 }

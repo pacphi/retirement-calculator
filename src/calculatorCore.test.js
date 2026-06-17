@@ -353,15 +353,15 @@ describe("steadyState survivor handling", () => {
   });
 
   it("uses single-filer tax brackets in a survivor year", () => {
-    const married = steadyState(i, { rows: [mkRow(false)] }, 1, 9999);
-    const survivor = steadyState(i, { rows: [mkRow(true)] }, 1, 9999);
+    const married = steadyState(i, { rows: [mkRow(false)] });
+    const survivor = steadyState(i, { rows: [mkRow(true)] });
     expect(survivor.tax).toBeGreaterThan(married.tax);
   });
 
   it("keeps only the larger Social Security check (from the row) in a survivor year", () => {
     // The simulation already zeroed the smaller check on a survivor row.
     const row = { aA: 67, aB: 67, cal: 2048, bal: 1_000_000, need: 50000, survivor: true, ssA: 30000, ssB: 0, pens: 20000 };
-    const s = steadyState(i, { rows: [row] }, 1, 9999);
+    const s = steadyState(i, { rows: [row] });
     expect(s.ssHouse).toBe(30000);
     expect(s.ssA).toBe(30000);
     expect(s.ssB).toBe(0);

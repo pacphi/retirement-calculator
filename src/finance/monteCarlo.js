@@ -28,7 +28,7 @@ export function runMonteCarlo(s, mcOpt = {}) {
     sim.rows.forEach((r, y) => balancesByYear[y].push(r.bal));
     if (sim.depAge === null) { lasted += 1; depAges.push(96); }
     else depAges.push(sim.depAge);
-    incomes.push(steadyState(inp, sim, effHaircut, effCutYear).net);
+    incomes.push(steadyState(inp, sim).net);
   }
 
   const balanceFan = balancesByYear.map((vals, y) => {
