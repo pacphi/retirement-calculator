@@ -63,6 +63,7 @@ export function buildPlanInputs(s) {
     travel: s.travel ?? { on: false, amount: 15000, years: 15, taper: true },
     events: s.events ?? [],
     survivor: s.survivor ?? { on: false, year: 9999, pensionPct: 0 },
+    life: s.life ?? { on: false, deathAgeA: 95, deathAgeB: 95, pensionPct: 0 },
   };
 }
 

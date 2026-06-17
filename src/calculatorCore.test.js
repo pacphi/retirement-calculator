@@ -136,27 +136,30 @@ describe("WA DRS pension", () => {
 });
 
 describe("travel spending", () => {
-  it("pays the full budget in the first 10 retirement years", () => {
-    const t = { on: true, amount: 15000, years: 15, taper: true };
-    expect(travelSpendForYear(t, 2034, 2034)).toBe(15000); // year 1
-    expect(travelSpendForYear(t, 2043, 2034)).toBe(15000); // year 10
+  const t = { on: true, amount: 15000, startYear: 2034, slowYear: 2044, endYear: 2048, taper: true, slowPct: 50 };
+
+  it("pays the full budget in the go-go years (start..slow)", () => {
+    expect(travelSpendForYear(t, 2034, 0)).toBe(15000); // start year
+    expect(travelSpendForYear(t, 2043, 0)).toBe(15000); // last go-go year
   });
 
-  it("tapers to half for the slow-go years 11..N", () => {
-    const t = { on: true, amount: 15000, years: 15, taper: true };
-    expect(travelSpendForYear(t, 2044, 2034)).toBe(7500); // year 11
-    expect(travelSpendForYear(t, 2048, 2034)).toBe(7500); // year 15
+  it("steps down to the slow-go share from the slow year through the end year", () => {
+    expect(travelSpendForYear(t, 2044, 0)).toBe(7500); // first slow-go year
+    expect(travelSpendForYear(t, 2048, 0)).toBe(7500); // end year (inclusive)
   });
 
-  it("stops after the travel window and before retirement", () => {
-    const t = { on: true, amount: 15000, years: 15, taper: true };
-    expect(travelSpendForYear(t, 2049, 2034)).toBe(0); // year 16
-    expect(travelSpendForYear(t, 2033, 2034)).toBe(0); // pre-retirement
+  it("stops outside the window (before start, after end)", () => {
+    expect(travelSpendForYear(t, 2033, 0)).toBe(0); // before start
+    expect(travelSpendForYear(t, 2049, 0)).toBe(0); // after end
   });
 
-  it("returns 0 when travel is disabled and honors a flat (non-taper) budget", () => {
-    expect(travelSpendForYear({ on: false, amount: 15000, years: 15, taper: true }, 2034, 2034)).toBe(0);
-    expect(travelSpendForYear({ on: true, amount: 20000, years: 15, taper: false }, 2046, 2034)).toBe(20000);
+  it("honors a custom slow-go percentage", () => {
+    expect(travelSpendForYear({ ...t, slowPct: 30 }, 2045, 0)).toBe(4500);
+  });
+
+  it("returns 0 when travel is disabled and pays the flat budget when taper is off", () => {
+    expect(travelSpendForYear({ ...t, on: false }, 2034, 0)).toBe(0);
+    expect(travelSpendForYear({ ...t, taper: false }, 2046, 0)).toBe(15000);
   });
 });
 
@@ -212,7 +215,7 @@ describe("life events in simulation", () => {
   });
 
   it("adds recurring travel spend during the travel window", () => {
-    const withTravel = { ...retired, events: [], travel: { on: true, amount: 15000, years: 15, taper: true } };
+    const withTravel = { ...retired, events: [], travel: { on: true, amount: 15000, startYear: 2026, slowYear: 2036, endYear: 2040, taper: true, slowPct: 50 } };
     const sim = simulate(withTravel, { haircut: 1, cutYear: 9999 });
     const firstRetYear = sim.rows.find((r) => r.cal === 2026); // ageA 65 == stopA 65 -> retired now
     expect(firstRetYear.extraSpend).toBe(15000);
@@ -235,8 +238,8 @@ describe("headline reconciliation", () => {
   });
 
   it("includes active travel spend in the steady-state need", () => {
-    const noTravel = calculatePlan({ ...baseState, travel: { on: false, amount: 15000, years: 15, taper: true }, events: [] });
-    const withTravel = calculatePlan({ ...baseState, travel: { on: true, amount: 15000, years: 30, taper: false }, events: [] });
+    const noTravel = calculatePlan({ ...baseState, travel: { on: false, amount: 15000, startYear: 2026, endYear: 2090, taper: false }, events: [] });
+    const withTravel = calculatePlan({ ...baseState, travel: { on: true, amount: 15000, startYear: 2026, endYear: 2090, taper: false }, events: [] });
     expect(withTravel.steady.modeledSpend).toBeGreaterThan(noTravel.steady.modeledSpend);
   });
 });
@@ -295,6 +298,52 @@ describe("survivor transition", () => {
     const before = sim.rows.find((r) => r.cal === 2029);
     const after = sim.rows.find((r) => r.cal === 2030);
     expect(after.ssA + after.ssB).toBeCloseTo(before.ssA + before.ssB, 0);
+  });
+});
+
+describe("life expectancy", () => {
+  const base = {
+    ...baseState,
+    ageA: 65, ageB: 60, stopA: 65, stopB: 60, claimA: 65, claimB: 65, pensionAge: 60,
+    pensionOn: true, savings: 1_500_000, contrib: 0,
+    ssModeA: "statement", ssModeB: "statement", ssFraA: 36000, ssFraB: 24000,
+    tx: { ...baseState.tx, on: false }, at: { ...baseState.at, on: false },
+    travel: { on: false }, events: [], survivor: { on: false, year: 9999, pensionPct: 0 },
+    horizonAge: 95,
+  };
+  // A dies 2026+(80-65)=2041; B dies 2026+(90-60)=2056 -> B (younger) survives.
+  const bSurvives = { ...base, life: { on: true, deathAgeA: 80, deathAgeB: 90, pensionPct: 0 } };
+  // A dies 2026+(95-65)=2056; B dies 2026+(75-60)=2041 -> A survives, pension-holder B dies first.
+  const aSurvives = { ...base, life: { on: true, deathAgeA: 95, deathAgeB: 75, pensionPct: 50 } };
+
+  it("triggers the survivor transition at the first death and keeps the larger SS", () => {
+    const sim = simulate(bSurvives, { haircut: 1, cutYear: 9999 });
+    const before = sim.rows.find((r) => r.cal === 2040);
+    const after = sim.rows.find((r) => r.cal === 2041);
+    expect(before.survivor).toBe(false);
+    expect(after.survivor).toBe(true);
+    expect(after.ssA + after.ssB).toBeCloseTo(Math.max(before.ssA, before.ssB), 0);
+  });
+
+  it("stops the projection at the last death (here capped below the horizon)", () => {
+    const sim = simulate(bSurvives, { haircut: 1, cutYear: 9999 });
+    expect(sim.rows[sim.rows.length - 1].cal).toBe(2056); // B's death year, not horizon age 95
+  });
+
+  it("keeps the pension whole when the pension-holder (spouse B) is the survivor", () => {
+    const sim = simulate(bSurvives, { haircut: 1, cutYear: 9999 });
+    const before = sim.rows.find((r) => r.cal === 2040);
+    const after = sim.rows.find((r) => r.cal === 2045); // after A's death, B still alive
+    expect(after.pens).toBeCloseTo(before.pens, 0);
+    expect(after.pens).toBeGreaterThan(0);
+  });
+
+  it("reduces the pension to the elected percentage when the pension-holder dies first", () => {
+    const sim = simulate(aSurvives, { haircut: 1, cutYear: 9999 });
+    const before = sim.rows.find((r) => r.cal === 2040);
+    const after = sim.rows.find((r) => r.cal === 2045); // after B's death, A survives
+    expect(after.survivor).toBe(true);
+    expect(after.pens).toBeCloseTo(before.pens * 0.5, 0);
   });
 });
 
@@ -574,12 +623,12 @@ describe("pensionERF age rounding", () => {
   });
 });
 
-describe("travel taper for short plans", () => {
-  it("tapers from the midpoint when the window is 10 years or fewer", () => {
-    const t = { on: true, amount: 15000, years: 8, taper: true };
-    expect(travelSpendForYear(t, 2034, 2034)).toBe(15000); // year 1, full
-    expect(travelSpendForYear(t, 2037, 2034)).toBe(15000); // year 4 (idx 3 < pivot 4)
-    expect(travelSpendForYear(t, 2038, 2034)).toBe(7500);  // year 5 (idx 4 >= pivot 4)
+describe("travel taper boundaries", () => {
+  it("switches to slow-go exactly at the slow year and ignores the slow year when taper is off", () => {
+    const t = { on: true, amount: 15000, startYear: 2034, slowYear: 2038, endYear: 2042, taper: true, slowPct: 50 };
+    expect(travelSpendForYear(t, 2037, 0)).toBe(15000);          // last go-go year
+    expect(travelSpendForYear(t, 2038, 0)).toBe(7500);           // first slow-go year
+    expect(travelSpendForYear({ ...t, taper: false }, 2038, 0)).toBe(15000); // flat ignores slow year
   });
 });
 

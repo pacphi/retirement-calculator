@@ -1,13 +1,20 @@
-export const travelSpendForYear = (travel, cal, retireCal) => {
+// Travel is budgeted by calendar year across a start..end window (both inclusive).
+// With taper on it follows the classic go-go / slow-go curve: the full amount from
+// startYear up to slowYear, then a reduced share (slowPct, default 50%) from
+// slowYear through endYear. With taper off it's the full amount across the window.
+export const travelSpendForYear = (travel, cal) => {
   if (!travel || !travel.on) return 0;
   const amount = Number(travel.amount) || 0;
-  const years = Number(travel.years) || 0;
-  const idx = cal - retireCal; // 0-based year of retirement
-  if (idx < 0 || idx >= years) return 0;
-  // Go-go/slow-go: full budget through year 10 for long plans; for plans of 10
-  // years or fewer, taper from the midpoint so the toggle isn't a no-op.
-  const pivot = years > 10 ? 10 : Math.ceil(years / 2);
-  if (travel.taper && idx >= pivot) return 0.5 * amount;
+  const start = Number(travel.startYear) || 0;
+  const end = Number(travel.endYear) || 0;
+  if (!start || !end || cal < start || cal > end) return 0;
+  if (travel.taper) {
+    const slow = Number(travel.slowYear) || (end + 1); // no slow phase if unset
+    if (cal >= slow) {
+      const pct = travel.slowPct != null && travel.slowPct !== "" ? Number(travel.slowPct) : 50;
+      return amount * (pct / 100);
+    }
+  }
   return amount;
 };
 

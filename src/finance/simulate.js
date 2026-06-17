@@ -62,13 +62,15 @@ const solveWithdrawal = (i, aA, aB, wages, pens, rent, ss, need, bal, statusOver
   return { withdrawal: hi, tax: taxForYear(i, aA, aB, wages, pens, rent, ss, hi, statusOverride, year) };
 };
 
-export function spendingNeed(i, ageA, ageB, liveSav = 0, isSurvivor = false) {
+export function spendingNeed(i, ageA, ageB, liveSav = 0, isSurvivor = false, survivorAge = null) {
   const base = i.incomeHH * i.targetPct;
   const perPersonHC = Math.max(0, (i.hcPre - i.hcPost)) / 2;
-  // After a survivor transition only one person remains; assume the younger
-  // spouse survives, so only their pre-65 healthcare gap is counted.
+  // After a survivor transition only one person remains; count just that person's
+  // pre-65 healthcare gap. When the survivor's identity is known (life-expectancy
+  // model) use their actual age, else fall back to assuming the younger survives.
+  const survAge = survivorAge != null ? survivorAge : Math.min(ageA, ageB);
   const under65 = isSurvivor
-    ? (Math.min(ageA, ageB) < 65 ? 1 : 0)
+    ? (survAge < 65 ? 1 : 0)
     : (ageA < 65 ? 1 : 0) + (ageB < 65 ? 1 : 0);
   const hcBump = perPersonHC * under65 * 12;
   return Math.max(0.35 * base, base + hcBump - liveSav);
@@ -86,9 +88,19 @@ export function simulate(i, ssOpt) {
   let balAtFullRet = null;
   const rows = [];
 
-  const retireCal = TAX_YEAR + Math.max(i.stopA - i.ageA, i.stopB - i.ageB);
+  // Life-expectancy model: derive each spouse's death year, who survives, and the
+  // first/last death. The plan stops at the last death (capped by the horizon).
+  const lifeOn = !!(i.life && i.life.on);
+  const dYearA = lifeOn ? TAX_YEAR + (Number(i.life.deathAgeA) - i.ageA) : Infinity;
+  const dYearB = lifeOn ? TAX_YEAR + (Number(i.life.deathAgeB) - i.ageB) : Infinity;
+  const firstDeathCal = Math.min(dYearA, dYearB);
+  const survivorIsA = dYearA >= dYearB; // A outlives (or ties) B
+  const lifePensionPct = lifeOn ? Number(i.life.pensionPct ?? 0) : 0;
+  const endEff = lifeOn
+    ? Math.min(end, Math.max(0, Math.max(dYearA, dYearB) - TAX_YEAR))
+    : end;
 
-  for (let y = 0; y <= end; y++) {
+  for (let y = 0; y <= endEff; y++) {
     const aA = i.ageA + y;
     const aB = i.ageB + y;
     const cal = TAX_YEAR + y;
@@ -101,7 +113,9 @@ export function simulate(i, ssOpt) {
     const ssFac = cal >= cutYear ? haircut : 1;
     const ssAy = aA >= i.claimA ? ssAfull * ssFac : 0;
     const ssBy = aB >= i.claimB ? ssBfull * ssFac : 0;
-    const isSurvivor = !!(i.survivor && i.survivor.on && cal >= Number(i.survivor.year));
+    const isSurvivor = lifeOn
+      ? cal >= firstDeathCal
+      : !!(i.survivor && i.survivor.on && cal >= Number(i.survivor.year));
     let ssAyEff = ssAy;
     let ssByEff = ssBy;
     if (isSurvivor) {
@@ -110,9 +124,13 @@ export function simulate(i, ssOpt) {
       ssByEff = 0;
     }
     const yearStatus = isSurvivor ? "single" : i.status;
-    // DRS survivor annuity: in survivor years the pension continues only at the
-    // elected percentage (default life-only = 0%).
-    const pensEff = isSurvivor ? pens * ((Number(i.survivor.pensionPct ?? 0)) / 100) : pens;
+    // DRS survivor annuity: the pension steps down to the elected percentage only
+    // once the pension-holder (spouse B) has died. If B is the survivor it stays
+    // whole. Legacy survivor model lacks an identity, so it reduces from the death
+    // year as before.
+    const pensHolderDead = lifeOn ? cal >= dYearB : isSurvivor;
+    const survPensionPct = lifeOn ? lifePensionPct : Number(i.survivor?.pensionPct ?? 0);
+    const pensEff = pensHolderDead ? pens * (survPensionPct / 100) : pens;
     let rent = 0;
     let liveSav = 0;
     let sellLump = 0;
@@ -122,10 +140,11 @@ export function simulate(i, ssOpt) {
       if (p.type === "sell" && cal === p.year) sellLump += p.sell;
     }
     const extraSpend =
-      travelSpendForYear(i.travel, cal, retireCal)
+      travelSpendForYear(i.travel, cal)
       + oneTimeSpendForYear(i.events, cal)
       + ltcSpendForYear(i.ltc, aA, i.ltcAnnual);
-    const need = spendingNeed(i, aA, aB, liveSav, isSurvivor) + extraSpend;
+    const survAge = lifeOn && isSurvivor ? (survivorIsA ? aA : aB) : null;
+    const need = spendingNeed(i, aA, aB, liveSav, isSurvivor, survAge) + extraSpend;
     const yearReturn = ssOpt.returns
       ? (ssOpt.returns[y] ?? i.realReturn)
       : ssOpt.stress

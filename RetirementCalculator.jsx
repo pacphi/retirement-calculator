@@ -1,9 +1,9 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import {
   ComposedChart, Area, Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ReferenceDot,
+  ResponsiveContainer, ReferenceDot, ReferenceLine,
 } from "recharts";
-import { DEFAULT_LIFE_EVENTS, DEFAULT_TRAVEL, LOCATIONS, MC_DEFAULTS, PROP, SOURCES } from "./src/retirementData.js";
+import { DEFAULT_LIFE, DEFAULT_LIFE_EVENTS, DEFAULT_TRAVEL, LOCATIONS, MC_DEFAULTS, PROP, SOURCES } from "./src/retirementData.js";
 import {
   afcIsAuto,
   resolveAfc,
@@ -100,6 +100,7 @@ export default function RetirementCalculator() {
     at:{ on:true, value:324000, year:2040, strategy:"live" },
     travel: { ...DEFAULT_TRAVEL },
     events: DEFAULT_LIFE_EVENTS.map((e) => ({ ...e })),
+    life: { ...DEFAULT_LIFE },
     survivor: { on:false, year:2055, pensionPct:0 },
     ltc: { on:false, startAge:80, years:3, annual:null },
     horizonAge: 95,
@@ -172,6 +173,13 @@ export default function RetirementCalculator() {
   }));
   const sellDots = simSS.rows.filter(r => r.sellLump > 0).map(r => ({ age:r.aA, bal:r.bal }));
   const hasRental = inher.some(p => p.type === "rent");
+
+  // Depletion: the age the portfolio runs out (if it does) and the guaranteed
+  // income floor — SS + pension + rental — the household lives on afterward.
+  const depAge = simSS.depAge;
+  const depRow = depAge != null ? simSS.rows.find(r => r.aA === depAge) : null;
+  const floorAtDep = depRow ? Math.round(depRow.ssA + depRow.ssB + depRow.pens + depRow.rent) : 0;
+  const needAtDep = depRow ? Math.round(depRow.need) : 0;
 
   const incomeStack = [
     { name:"Savings draw", value: Math.round(steady.wd), color:C.brass },
@@ -400,18 +408,31 @@ export default function RetirementCalculator() {
               <Section eyebrow="Step five" title="Family milestones">
                 <p style={{ margin:"0 0 10px", fontSize:12.5, color:C.slate, lineHeight:1.5 }}>One-time gifts you may make — weddings, home help, a savings seed per grandchild. Add as many as you need.</p>
                 {s.events.map((ev, idx) => (
-                  <div key={ev.id} style={{ display:"grid", gridTemplateColumns:"1.4fr auto auto auto", gap:8, alignItems:"center", marginBottom:6 }}>
-                    <input type="text" value={ev.label} aria-label={`Event ${idx + 1} label`}
-                      onChange={(e)=>{ const next=s.events.map((x,i)=> i===idx ? { ...x, label:e.target.value } : x); set("events")(next); }}
-                      style={{ fontSize:12.5, padding:"6px 8px", border:`1px solid ${C.line}`, borderRadius:6, color:C.ink }} />
-                    <Segmented value={ev.on} onChange={(v)=>{ const next=s.events.map((x,i)=> i===idx ? { ...x, on:v } : x); set("events")(next); }}
-                      options={[{label:"On",value:true},{label:"Off",value:false}]} />
-                    <NumberInput value={ev.year} aria-label={`Event ${idx + 1} year`}
-                      onChange={(v)=>{ const next=s.events.map((x,i)=> i===idx ? { ...x, year:Number(v)||0 } : x); set("events")(next); }} />
-                    <NumberInput value={ev.amount} aria-label={`Event ${idx + 1} amount`} prefix="$"
-                      onChange={(v)=>{ const next=s.events.map((x,i)=> i===idx ? { ...x, amount:Number(v)||0 } : x); set("events")(next); }} />
-                    <button type="button" aria-label={`Remove event ${idx + 1}`} onClick={()=>removeEvent(idx)}
-                      style={{ border:"none", background:"none", color:C.clay, fontSize:16, cursor:"pointer", lineHeight:1 }}>×</button>
+                  <div key={ev.id} style={{ border:`1px solid ${C.line}`, borderRadius:9, padding:"10px 12px 12px", marginBottom:10, background:C.panel }}>
+                    <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:10 }}>
+                      <input type="text" value={ev.label} aria-label={`Event ${idx + 1} label`}
+                        onChange={(e)=>{ const next=s.events.map((x,i)=> i===idx ? { ...x, label:e.target.value } : x); set("events")(next); }}
+                        style={{ flex:1, minWidth:0, fontSize:13, fontWeight:600, padding:"8px 10px", border:`1px solid ${C.line}`, borderRadius:6, color:C.ink, boxSizing:"border-box" }} />
+                      <button type="button" aria-label={`Remove event ${idx + 1}`} onClick={()=>removeEvent(idx)}
+                        style={{ flex:"0 0 auto", border:"none", background:"none", color:C.clay, fontSize:22, cursor:"pointer", lineHeight:1, padding:"0 2px" }}>×</button>
+                    </div>
+                    <div style={{ display:"grid", gridTemplateColumns:"auto 1fr 1fr", gap:10, alignItems:"end" }}>
+                      <div>
+                        <div style={{ fontSize:10.5, letterSpacing:.5, textTransform:"uppercase", color:C.slate, fontWeight:700, marginBottom:4 }}>Active</div>
+                        <Segmented value={ev.on} onChange={(v)=>{ const next=s.events.map((x,i)=> i===idx ? { ...x, on:v } : x); set("events")(next); }}
+                          options={[{label:"On",value:true},{label:"Off",value:false}]} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize:10.5, letterSpacing:.5, textTransform:"uppercase", color:C.slate, fontWeight:700, marginBottom:4 }}>Year</div>
+                        <NumberInput value={ev.year} aria-label={`Event ${idx + 1} year`}
+                          onChange={(v)=>{ const next=s.events.map((x,i)=> i===idx ? { ...x, year:Number(v)||0 } : x); set("events")(next); }} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize:10.5, letterSpacing:.5, textTransform:"uppercase", color:C.slate, fontWeight:700, marginBottom:4 }}>Amount</div>
+                        <NumberInput value={ev.amount} aria-label={`Event ${idx + 1} amount`} prefix="$"
+                          onChange={(v)=>{ const next=s.events.map((x,i)=> i===idx ? { ...x, amount:Number(v)||0 } : x); set("events")(next); }} />
+                      </div>
+                    </div>
                   </div>
                 ))}
                 <button type="button" aria-label="Add event" onClick={addEvent}
@@ -420,7 +441,59 @@ export default function RetirementCalculator() {
                 </button>
               </Section>
 
-              <button onClick={()=>setAdv(a=>!a)} style={{ width:"100%", background:"none", border:`1px dashed ${C.line}`, borderRadius:9, padding:"10px", color:C.slate, fontSize:12.5, fontWeight:600, cursor:"pointer", marginBottom:adv?16:8, fontFamily:"inherit" }}>{adv?"Hide assumptions ▲":"Adjust assumptions (return, inflation, withdrawal, tax mix) ▾"}</button>
+              <Section eyebrow="Step six" title="Travel & longevity">
+                <Field label={`Travel budget — ${usd0(s.travel.amount)}/yr, ${s.travel.startYear}–${s.travel.endYear}`} hint="Calendar-year window. With taper on, the budget steps down to the slow-go share from the slow-go year onward (the classic go-go / slow-go curve).">
+                  <div className="rc-inputs">
+                    <Field label="Amount / yr"><NumberInput value={s.travel.amount} onChange={(v)=>set("travel")({ ...s.travel, amount:Number(v)||0 })} prefix="$" /></Field>
+                    <Field label="Start year"><NumberInput value={s.travel.startYear} onChange={(v)=>set("travel")({ ...s.travel, startYear:Number(v)||0 })} /></Field>
+                    <Field label="End year"><NumberInput value={s.travel.endYear} onChange={(v)=>set("travel")({ ...s.travel, endYear:Number(v)||0 })} /></Field>
+                  </div>
+                  <div style={{ marginTop:6 }}>
+                    <Segmented value={s.travel.taper} onChange={(v)=>set("travel")({ ...s.travel, taper:v })}
+                      options={[{label:"Taper (go / slow-go)",value:true},{label:"Flat",value:false}]} />
+                  </div>
+                  {s.travel.taper && (
+                    <div className="rc-inputs" style={{ marginTop:6 }}>
+                      <Field label="Slow-go from year"><NumberInput value={s.travel.slowYear} onChange={(v)=>set("travel")({ ...s.travel, slowYear:Number(v)||0 })} /></Field>
+                      <Field label="Slow-go spend" hint="Share of the full budget once slow-go begins."><NumberInput value={s.travel.slowPct} onChange={(v)=>set("travel")({ ...s.travel, slowPct:Number(v)||0 })} suffix="%" /></Field>
+                    </div>
+                  )}
+                  <div style={{ marginTop:6 }}>
+                    <Segmented value={s.travel.on} onChange={(v)=>set("travel")({ ...s.travel, on:v })}
+                      options={[{label:"Include",value:true},{label:"Skip",value:false}]} />
+                  </div>
+                </Field>
+                <Field label="Life expectancy" hint="Each spouse's expected age at death. The earlier death triggers the survivor transition — single-filer taxes, the larger SS kept, pension continuation — and the plan stops at the later death (capped by the plan horizon).">
+                  <Segmented value={s.life.on} onChange={(v)=>set("life")({ ...s.life, on:v })}
+                    options={[{label:"Model it",value:true},{label:"Skip",value:false}]} />
+                  {s.life.on && (
+                    <div style={{ marginTop:6 }}>
+                      <div className="rc-inputs">
+                        <Field label={`You — age at death`} hint={`You are ${s.ageA} now.`}><NumberInput value={s.life.deathAgeA} onChange={(v)=>set("life")({ ...s.life, deathAgeA:Number(v)||0 })} /></Field>
+                        <Field label={`Spouse — age at death`} hint={`Spouse is ${s.ageB} now.`}><NumberInput value={s.life.deathAgeB} onChange={(v)=>set("life")({ ...s.life, deathAgeB:Number(v)||0 })} /></Field>
+                      </div>
+                      {(() => {
+                        const dYearA = 2026 + (Number(s.life.deathAgeA) - Number(s.ageA));
+                        const dYearB = 2026 + (Number(s.life.deathAgeB) - Number(s.ageB));
+                        const survYou = dYearA >= dYearB;
+                        const firstYr = Math.min(dYearA, dYearB);
+                        return (
+                          <span role="note" style={{ display:"block", fontSize:11.5, color:C.slate, marginTop:6, lineHeight:1.45 }}>
+                            <b style={{ color:C.ink }}>{survYou ? "You" : "Your spouse"}</b> survive{survYou ? "" : "s"}; the transition begins in <b style={{ color:C.ink }}>{firstYr}</b>.
+                          </span>
+                        );
+                      })()}
+                      <div style={{ marginTop:6 }}>
+                        <span style={{ display:"block", fontSize:11.5, color:C.slate, marginBottom:4 }}>Pension continues to survivor at (if the pension-holder dies first)</span>
+                        <Segmented value={s.life.pensionPct} onChange={(v)=>set("life")({ ...s.life, pensionPct:v })}
+                          options={[{label:"0% (life-only)",value:0},{label:"50%",value:50},{label:"100%",value:100}]} />
+                      </div>
+                    </div>
+                  )}
+                </Field>
+              </Section>
+
+              <button onClick={()=>setAdv(a=>!a)} style={{ width:"100%", background:"none", border:`1px dashed ${C.line}`, borderRadius:9, padding:"10px", color:C.slate, fontSize:12.5, fontWeight:600, cursor:"pointer", marginBottom:adv?16:8, fontFamily:"inherit" }}>{adv?"Hide assumptions ▲":"Long-term care & assumptions (return, inflation, withdrawal, tax) ▾"}</button>
               {adv && (<Section eyebrow="Optional" title="Strategy & assumptions">
                 <Field label={`Real investment return — ${(s.realReturn*100).toFixed(1)}%`} hint="After inflation. A 60/40 mix has historically returned ~4–5% real."><input type="range" min={2} max={8} step={0.5} value={s.realReturn*100} onChange={(e)=>set("realReturn")(Number(e.target.value)/100)} style={{ width:"100%", accentColor:C.brass }} /></Field>
                 <Field label={`Inflation — ${(s.inflation*100).toFixed(1)}%`} hint="Translates today's costs into future dollars in the breakdowns."><input type="range" min={1} max={5} step={0.5} value={s.inflation*100} onChange={(e)=>set("inflation")(Number(e.target.value)/100)} style={{ width:"100%", accentColor:C.brass }} /></Field>
@@ -433,28 +506,6 @@ export default function RetirementCalculator() {
                 <Field label="Extra income tax (state / foreign)" hint={`On top of US federal. ${locByName(s.retireLoc)?.region==="US"?"State rate on retirement income.":"Net of treaty + Foreign Tax Credit (you pay the higher, not both)."} Default for ${s.retireLoc}: ${Math.round((locByName(s.retireLoc)?.addlTaxRate||0)*100)}%. Leave blank to use it.`}>
                   <NumberInput value={s.stateRate==null ? "" : Math.round(s.stateRate*1000)/10} suffix="%"
                     onChange={(v)=>set("stateRate")(v===""||v==null ? null : (Number(v)||0)/100)} />
-                </Field>
-                <Field label={`Travel budget — ${usd0(s.travel.amount)}/yr for ${s.travel.years} yrs`} hint="First years of retirement; tapers to half after year 10.">
-                  <NumberInput value={s.travel.amount} onChange={(v)=>set("travel")({ ...s.travel, amount:Number(v)||0 })} prefix="$" />
-                  <input type="range" min={5} max={30} step={1} value={s.travel.years}
-                    onChange={(e)=>set("travel")({ ...s.travel, years:Number(e.target.value) })}
-                    style={{ width:"100%", accentColor:C.brass, marginTop:6 }} />
-                  <Segmented value={s.travel.on} onChange={(v)=>set("travel")({ ...s.travel, on:v })}
-                    options={[{label:"Include",value:true},{label:"Skip",value:false}]} />
-                </Field>
-                <Field label="Survivor transition" hint="Model one spouse's death: single-filer taxes, larger SS kept.">
-                  <Segmented value={s.survivor.on} onChange={(v)=>set("survivor")({ ...s.survivor, on:v })}
-                    options={[{label:"Model it",value:true},{label:"Skip",value:false}]} />
-                  {s.survivor.on && (
-                    <div style={{ marginTop:6 }}>
-                      <NumberInput value={s.survivor.year} onChange={(v)=>set("survivor")({ ...s.survivor, year:Number(v)||9999 })} suffix="yr" />
-                      <div style={{ marginTop:6 }}>
-                        <span style={{ display:"block", fontSize:11.5, color:C.slate, marginBottom:4 }}>Pension continues to survivor at</span>
-                        <Segmented value={s.survivor.pensionPct} onChange={(v)=>set("survivor")({ ...s.survivor, pensionPct:v })}
-                          options={[{label:"0% (life-only)",value:0},{label:"50%",value:50},{label:"100%",value:100}]} />
-                      </div>
-                    </div>
-                  )}
                 </Field>
                 <Field label="Long-term care" hint="~70% of retirees need it; one episode can run $50k–$200k/yr depending on location.">
                   <Segmented value={s.ltc.on} onChange={(v)=>set("ltc")({ ...s.ltc, on:v })}
@@ -587,7 +638,7 @@ export default function RetirementCalculator() {
               <div style={{ padding:"0 4px 6px" }}>
                 <div style={{ fontSize:11, letterSpacing:1.5, textTransform:"uppercase", color:C.brassDeep, fontWeight:700 }}>The staircase</div>
                 <h3 style={{ margin:"2px 0 2px", fontFamily:"'Newsreader',serif", fontWeight:500, fontSize:19 }}>Income by source, year by year</h3>
-                <p style={{ margin:"2px 0 8px", fontSize:12.5, color:C.slate, lineHeight:1.5 }}>The dashed line is your spending need — it rises in the pre-65 years to cover full-price healthcare, then drops when Medicare/local cover kicks in. The portfolio (gold) fills whatever the other sources don't.</p>
+                <p style={{ margin:"2px 0 8px", fontSize:12.5, color:C.slate, lineHeight:1.5 }}>The dashed line is your spending need — it rises in the pre-65 years to cover full-price healthcare, then drops when Medicare/local cover kicks in. The portfolio (gold) fills whatever the other sources don't.{depAge!=null ? <> At the dotted line (<b style={{ color:C.clay }}>age {depAge}</b>) the gold runs out — savings are spent and you live on the guaranteed floor (SS{s.pensionOn?" + pension":""}{hasRental?" + rental":""}) of about <b style={{ color:C.clay }}>{usd0(floorAtDep)}/yr</b>{floorAtDep < needAtDep ? <>, roughly <b style={{ color:C.clay }}>{usd0(needAtDep - floorAtDep)}/yr short</b> of the need</> : <>, which still covers the need</>}.</> : <> The savings are never fully drawn down in this plan.</>}</p>
                 <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:4 }}>
                   <span style={{ fontSize:11.5, color:C.slate, fontWeight:600 }}>Healthcare basis:</span>
                   <div style={{ minWidth:200, flex:"1 1 200px" }}><Select value={s.retireLoc} onChange={set("retireLoc")} options={LOCATIONS.map(l=>l.name)} /></div>
@@ -620,6 +671,8 @@ export default function RetirementCalculator() {
                   {compRows.filter(r=>r.extraSpend>0).map((r,i)=>(
                     <ReferenceDot key={`ev${i}`} x={r.age} y={r.need} r={3.5} fill={C.brass} stroke="#fff" strokeWidth={1.2} ifOverflow="extendDomain" />
                   ))}
+                  {depAge!=null && <ReferenceLine x={depAge} stroke={C.clay} strokeWidth={1.4} strokeDasharray="2 2"
+                    label={{ value:`savings gone · age ${depAge}`, position:"insideTopRight", fontSize:10.5, fill:C.clay }} />}
                 </ComposedChart>
               </ResponsiveContainer>
               <div style={{ display:"flex", gap:"6px 14px", flexWrap:"wrap", padding:"8px 6px 2px" }}>

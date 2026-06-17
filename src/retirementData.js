@@ -1,6 +1,12 @@
 export const TAX_YEAR = 2026;
 
-export const DEFAULT_TRAVEL = { on: true, amount: 15000, years: 15, taper: true };
+// Travel by calendar year: full ("go-go") amount from startYear, a reduced
+// ("slow-go") share from slowYear, ending after endYear.
+export const DEFAULT_TRAVEL = { on: true, amount: 15000, startYear: TAX_YEAR + 8, slowYear: TAX_YEAR + 18, endYear: TAX_YEAR + 22, taper: true, slowPct: 50 };
+
+// Life expectancy: expected age at death per spouse, and the DRS survivor-annuity
+// percentage the pension continues at once the pension-holder (spouse B) dies.
+export const DEFAULT_LIFE = { on: true, deathAgeA: 95, deathAgeB: 92, pensionPct: 0 };
 
 export const DEFAULT_LIFE_EVENTS = [
   { id: "wed1",  label: "Child 1 wedding",     on: false, year: 2032, amount: 15000 },
