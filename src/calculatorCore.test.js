@@ -5,6 +5,7 @@ import {
   calculateFederalTaxYear,
   calculatePlan,
   fedTax,
+  oneTimeSpendForYear,
   pensionERF,
   resolveAfc,
   spousalBenefitAtClaimMonthly,
@@ -146,6 +147,28 @@ describe("travel spending", () => {
   it("returns 0 when travel is disabled and honors a flat (non-taper) budget", () => {
     expect(travelSpendForYear({ on: false, amount: 15000, years: 15, taper: true }, 2034, 2034)).toBe(0);
     expect(travelSpendForYear({ on: true, amount: 20000, years: 15, taper: false }, 2046, 2034)).toBe(20000);
+  });
+});
+
+describe("one-time life events", () => {
+  const events = [
+    { id: "wed1", label: "Wedding 1", on: true, year: 2032, amount: 15000 },
+    { id: "wed2", label: "Wedding 2", on: false, year: 2035, amount: 15000 },
+    { id: "home1", label: "Home help", on: true, year: 2032, amount: 25000 },
+  ];
+
+  it("sums enabled events landing in the given calendar year", () => {
+    expect(oneTimeSpendForYear(events, 2032)).toBe(40000);
+  });
+
+  it("ignores disabled events and other years", () => {
+    expect(oneTimeSpendForYear(events, 2035)).toBe(0);
+    expect(oneTimeSpendForYear(events, 2040)).toBe(0);
+  });
+
+  it("handles an empty or missing list", () => {
+    expect(oneTimeSpendForYear([], 2032)).toBe(0);
+    expect(oneTimeSpendForYear(undefined, 2032)).toBe(0);
   });
 });
 

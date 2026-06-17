@@ -2,6 +2,14 @@ export const TAX_YEAR = 2026;
 
 export const DEFAULT_TRAVEL = { on: true, amount: 15000, years: 15, taper: true };
 
+export const DEFAULT_LIFE_EVENTS = [
+  { id: "wed1",  label: "Child 1 wedding",     on: false, year: 2032, amount: 15000 },
+  { id: "wed2",  label: "Child 2 wedding",     on: false, year: 2035, amount: 15000 },
+  { id: "home1", label: "Home help -- child 1", on: false, year: 2034, amount: 25000 },
+  { id: "home2", label: "Home help -- child 2", on: false, year: 2037, amount: 25000 },
+  { id: "gk",    label: "Grandchild 529 seed",  on: false, year: 2040, amount: 5000  },
+];
+
 export const SOURCES = {
   irs2026: "https://www.irs.gov/newsroom/irs-releases-tax-inflation-adjustments-for-tax-year-2026-including-amendments-from-the-one-big-beautiful-bill",
   ssaPia: "https://www.ssa.gov/oact/progdata/retirebenefit2.html",

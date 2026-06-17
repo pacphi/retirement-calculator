@@ -42,6 +42,12 @@ export const travelSpendForYear = (travel, cal, retireCal) => {
   return amount;
 };
 
+export const oneTimeSpendForYear = (events, cal) =>
+  (events || []).reduce(
+    (sum, e) => (e && e.on && Number(e.year) === cal ? sum + (Number(e.amount) || 0) : sum),
+    0,
+  );
+
 export const propEcon = (key, value) => {
   const m = PROP[key];
   return { sell: value * m.sellNet, rent: value * m.rentYield, live: m.rentMo * 12 - value * m.ownRate };
