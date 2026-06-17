@@ -1,6 +1,8 @@
-# Logic & Use-Case Specification — "The Ledger & the Atlas" Retirement Calculator
+# Logic & Use-Case Specification — "Nest & Next"
 
 > The computational logic behind every capability area of the calculator, written as a set of use cases. Each use case states its purpose, inputs, processing logic (with formulas), outputs, and edge cases. This document is the companion to the PRD; requirement IDs (FR‑*) cross‑reference it.
+>
+> **Tagline:** This is about your money, your home, and what comes next.
 
 **Version:** 1.0 · **Reference year:** 2026 · **Companion docs:** PRD; Sources & References
 
@@ -25,11 +27,18 @@
   - [3.12 UC-12 Steady-State Income Synthesis](#312-uc-12-steady-state-income-synthesis)
   - [3.13 UC-13 Cost-of-Living Total and Lifestyle Tiers](#313-uc-13-cost-of-living-total-and-lifestyle-tiers)
   - [3.14 UC-14 Inflation and Future-Dollar Conversion](#314-uc-14-inflation-and-future-dollar-conversion)
-  - [3.15 UC-15 Atlas Affordability and Sorting](#315-uc-15-atlas-affordability-and-sorting)
+  - [3.15 UC-15 Places Affordability and Sorting](#315-uc-15-places-affordability-and-sorting)
   - [3.16 UC-16 Two-Location Comparison](#316-uc-16-two-location-comparison)
   - [3.17 UC-17 Chart Data Derivation](#317-uc-17-chart-data-derivation)
-- [4. Worked Example: The Default Scenario](#4-worked-example-the-default-scenario)
-- [5. Known Simplifications and Rationale](#5-known-simplifications-and-rationale)
+- [4. Life Events & Downside Modeling](#4-life-events--downside-modeling)
+  - [4.1 Discretionary Travel Spending](#41-discretionary-travel-spending)
+  - [4.2 One-Time Life Events](#42-one-time-life-events)
+  - [4.3 Survivor Transition](#43-survivor-transition)
+  - [4.4 Sequence-of-Returns Stress Path](#44-sequence-of-returns-stress-path)
+  - [4.5 Headline Reconciliation: Modeled Spend, Capacity, and Surplus](#45-headline-reconciliation-modeled-spend-capacity-and-surplus)
+  - [4.6 Long-Term Care](#46-long-term-care)
+- [5. Worked Example: The Default Scenario](#5-worked-example-the-default-scenario)
+- [6. Known Simplifications and Rationale](#6-known-simplifications-and-rationale)
 
 ---
 
@@ -98,6 +107,7 @@ TIERS    income/cost ratio → { <0.8 Tight, <1.15 Modest, <1.7 Comfortable,
 **Inputs.** `incomeA`, `incomeB`, `targetPct`.
 
 **Logic.**
+
 ```js
 incomeHH = (incomeA || 0) + (incomeB || 0)
 spendingGoal = incomeHH * targetPct
@@ -118,6 +128,7 @@ spendingGoal = incomeHH * targetPct
 **Inputs.** `incomeA`, `incomeB`, `claimA`, `claimB`.
 
 **Logic — Primary Insurance Amount (PIA).** Average indexed monthly earnings are approximated by capping income at the wage base and dividing by 12; the bend‑point formula then applies.
+
 ```js
 function pia(inc) {
   a = min(inc, SS_CAP) / 12
@@ -128,6 +139,7 @@ function pia(inc) {
 ```
 
 **Logic — claim-age adjustment.** Full Retirement Age (FRA) is 67. Claiming early reduces the benefit by 5/9 of 1% per month for the first 36 months and 5/12 of 1% per month beyond; claiming late adds 2/3 of 1% per month (8%/yr) up to age 70.
+
 ```js
 function ssAtClaim(p, c) {                 // p = PIA, c = claim age
   if (c < 67) {
@@ -143,6 +155,7 @@ function ssAtClaim(p, c) {                 // p = PIA, c = claim age
   return p
 }
 ```
+
 Each spouse's own benefit is annualized: `ssOwn = ssAtClaim(pia(income), claim) * 12`.
 
 **Outputs.** Each spouse's own annual Social Security benefit (before spousal top‑up).
@@ -160,12 +173,14 @@ Each spouse's own benefit is annualized: `ssOwn = ssAtClaim(pia(income), claim) 
 **Inputs.** Both PIAs, both claim ages, both own benefits from UC‑2.
 
 **Logic.**
+
 ```js
 ssA = ssAtClaim(piaA, claimA) * 12
 ssB = ssAtClaim(piaB, claimB) * 12
 ssA = max(ssA, piaB > piaA ? ssAtClaim(0.5 * piaB, claimA) * 12 : 0)
 ssB = max(ssB, piaA > piaB ? ssAtClaim(0.5 * piaA, claimB) * 12 : 0)
 ```
+
 The spousal amount is itself reduced if claimed before FRA (via `ssAtClaim` on the half‑PIA).
 
 **Outputs.** `ssA`, `ssB` — each spouse's final annual benefit; `ssHouse = ssA + ssB`.
@@ -183,6 +198,7 @@ The spousal amount is itself reduced if claimed before FRA (via `ssAtClaim` on t
 **Inputs.** `otherOrdinaryIncome` (taxable withdrawals + pension + rental), `ssHouse`, `status`.
 
 **Logic.** Provisional income = other income + half of Social Security; thresholds `[t1, t2]` depend on filing status.
+
 ```js
 function taxableSS(other, ss, status) {
   pr = other + 0.5*ss
@@ -208,6 +224,7 @@ function taxableSS(other, ss, status) {
 **Inputs.** `pensionOn`, `plan` (2 or 3), `pYears`, `afc`, `pensionAge`.
 
 **Logic — early-retirement factor (ERF).**
+
 ```js
 function pensionERF(age, years) {
   if (age >= 65) return 1
@@ -220,6 +237,7 @@ function pensionERF(age, years) {
 ```
 
 **Logic — benefit.**
+
 ```js
 multiplier = (plan === 3 ? 0.01 : 0.02)        // Plan 3 = 1%/yr, Plan 2 = 2%/yr
 pension = pensionOn ? multiplier * pYears * afc * pensionERF(pensionAge, pYears) : 0
@@ -240,6 +258,7 @@ pension = pensionOn ? multiplier * pYears * afc * pensionERF(pensionAge, pYears)
 **Inputs.** Taxable income `ti`, `status`.
 
 **Logic.**
+
 ```js
 function fedTax(ti, status) {
   brackets = FED[status]                  // array of [threshold, marginalRate]
@@ -251,6 +270,7 @@ function fedTax(ti, status) {
   return tax
 }
 ```
+
 2026 MFJ thresholds used: 10% from $0, 12% from $24,800, 22% from $100,800, 24% from $211,400, 32% from $403,550, 35% from $512,450, 37% from $768,700 (Single thresholds are roughly half, per the 2026 schedule).
 
 **Outputs.** Federal tax dollars.
@@ -268,6 +288,7 @@ function fedTax(ti, status) {
 **Inputs.** `agi`, `status`.
 
 **Logic.**
+
 ```js
 deduction = STD[status] + SENIOR_ADDON[status]         // base + age-65 add-on
 bonus = SENIOR_BONUS * (status === "married" ? 2 : 1)  // $6,000 per eligible filer
@@ -292,6 +313,7 @@ taxableIncome = max(0, agi - deduction)
 **Inputs.** `incomeHH`, `targetPct`, the chosen retirement location's `hcPre`/`hcPost` (monthly couple healthcare), each spouse's age in the year, and any active live‑in housing saving.
 
 **Logic.**
+
 ```js
 base = incomeHH * targetPct
 perPersonHC = max(0, (hcPre - hcPost)) / 2          // monthly premium per person <65
@@ -315,6 +337,7 @@ need = max(0.35 * base, base + hcBump - liveSaving) // live-in reduces the need
 **Inputs.** Property key (`tx` or `at`) and today's `value`; the per‑property constants.
 
 **Logic.**
+
 ```js
 function propEcon(key, value) {
   m = PROP[key]                                   // sellNet, rentYield, ownRate, rentMo
@@ -324,6 +347,7 @@ function propEcon(key, value) {
   return { sell, rent, live }
 }
 ```
+
 Texas constants encode the U.S. basis step‑up and high property tax: `sellNet 0.93` (≈7% selling costs, ~$0 capital gains), `rentYield 0.035`, `ownRate 0.027` (property tax + upkeep ≈ rent → small/negative `live`). Austria constants encode the transfer + capital‑gains taxes and tiny property tax: `sellNet 0.90`, `rentYield 0.020`, `ownRate 0.012` (large positive `live`).
 
 **Outputs.** The three strategy figures, shown on the property card with the chosen one highlighted, plus a tax note per strategy.
@@ -341,6 +365,7 @@ Texas constants encode the U.S. basis step‑up and high property tax: `sellNet 
 **Inputs.** All household, timing, pension, inheritance, healthcare‑basis, and assumption parameters, plus a Social Security option `{ on, haircut, cutYear }` (UC‑11).
 
 **Logic (per year `y`, for `y = 0 … max(95-ageA, 95-ageB)`).**
+
 ```js
 aA = ageA + y;  aB = ageB + y;  cal = 2026 + y
 workA = aA < stopA;  workB = aB < stopB
@@ -386,15 +411,18 @@ record row { aA, aB, cal, salA, salB, rent, pens, ssAy, ssBy, wd, bal, need, sel
 **Inputs.** `ssMode` ("full" | "trustees" | "custom"), `ssHaircut` (0–100), `ssCutYear`.
 
 **Logic — resolve the effective scenario.**
+
 ```js
 effHaircut = ssMode == "full"     ? 1
            : ssMode == "trustees" ? 0.81
            :                        clamp(ssHaircut/100, 0, 1)
 effCutYear = ssMode == "full" ? 9999 : (ssCutYear || 2034)
 ```
+
 The simulation (UC‑10) multiplies each spouse's benefit by `effHaircut` for all years `cal ≥ effCutYear`. The steady state (UC‑12) applies `effHaircut` directly, since the long run is past the cut year.
 
 **Logic — risk comparison.** Four simulations and steady states are computed: **Full (100%)**, **Trustees (81% from cut year)**, **Custom/Chosen**, and **None (0%)**. The risk panel tabulates, for 100% / 81% / 0%: household Social Security, after‑tax income, and the age savings last; and computes a takeaway:
+
 ```js
 ssShareOfIncome = sFull.ssHouse / sFull.gross
 dropAt81        = sFull.net - sTrust.net
@@ -416,6 +444,7 @@ onTrackAt81     = (sTrust.guaranteed + sTrust.withdrawal) >= goal
 **Inputs.** A simulation's `balAtFullRet` and `fullyRetAge`; the household's benefits and pension; the inheritance set; `swr`, `tradFrac`, `status`; the effective haircut.
 
 **Logic.**
+
 ```js
 fullCal = 2026 + (fullyRetAge - ageA)
 sellAfter = Σ p.sell  for sell-properties received AFTER fullCal   // not already in balance
@@ -452,6 +481,7 @@ net = gross - tax                                      // the headline number
 **Inputs.** A location's monthly line items and `hcPre`/`hcPost`; `stage` (pre/post‑65); `couple` flag; the household's net income.
 
 **Logic.**
+
 ```js
 sFactor = couple ? 1 : 0.64
 monthly = Σ(rent, groceries, utilities, transport, dining, entertainment, other)
@@ -478,6 +508,7 @@ tier  = first TIERS entry whose max > ratio
 **Inputs.** `inflation`, `fullyRetAge`, `ageA`, an annual cost.
 
 **Logic.**
+
 ```js
 yearsToRet = max(0, fullyRetAge - ageA)
 retYear    = 2026 + yearsToRet
@@ -491,7 +522,7 @@ futureCost = annualCost * inflFactor
 
 ---
 
-### 3.15 UC-15 Atlas Affordability and Sorting
+### 3.15 UC-15 Places Affordability and Sorting
 
 **Purpose.** Render all locations ranked by cost, each compared to income.
 
@@ -500,6 +531,7 @@ futureCost = annualCost * inflFactor
 **Inputs.** All locations' costs (UC‑13), the net income.
 
 **Logic.**
+
 ```js
 rows = locations
         .map(l => ({ ...l, cost: annualCost(l), ratio: net/cost, tier: tierFor(ratio) }))
@@ -524,6 +556,7 @@ surplus = net - cost                        // shown per location, signed
 **Inputs.** Two selected locations, `stage`, `couple`, net income.
 
 **Logic.**
+
 ```js
 for each category row:
   av = A.item * sFactor;  bv = B.item * sFactor
@@ -549,6 +582,7 @@ annualDifference = |totalsA - totalsB|
 **Inputs.** The simulation rows (chosen and "none" scenarios), the steady state.
 
 **Logic.**
+
 - **Staircase**: from the first benefit/stop event onward, each row contributes stacked values for Salary (you), Salary (spouse), Rental, Pension, SS (you), SS (spouse), and Portfolio draw; the dashed line plots the per‑year `need` (UC‑8), which steps up before 65 and down after.
 - **Balance**: per‑year `bal` from the chosen scenario (modeled SS) and the "none" scenario (SS eliminated); a marker is placed where `sellLump > 0`.
 - **Income mix**: the steady‑state composition (withdrawal, rental, Social Security, pension) as a single proportional bar.
@@ -559,7 +593,143 @@ annualDifference = |totalsA - totalsB|
 
 ---
 
-## 4. Worked Example: The Default Scenario
+## 4. Life Events & Downside Modeling
+
+This section documents the four features added in the Tasks 1–8 pass: discretionary travel spending, one-time life events, a survivor-transition mode, and a sequence-of-returns stress path. It also clarifies how the headline reconciles modeled spend, sustainable capacity, and surplus.
+
+### 4.1 Discretionary Travel Spending
+
+**Purpose.** Budget a "go-go" travel phase that tapers naturally as retirement matures.
+
+**Inputs.** `travel.on` (toggle), `travel.amount` (dollars/year, default $15,000), `travel.years` (number of years, default 15), `travel.taper` (boolean, default true). All amounts are in today's (real) dollars.
+
+**Logic.**
+
+```js
+retireCal = TAX_YEAR + max(stopA - ageA, stopB - ageB)   // first year both are retired
+
+function travelSpendForYear(travel, cal, retireCal) {
+  idx = cal - retireCal                                   // 0-based retirement year
+  if (!travel.on || idx < 0 || idx >= travel.years) return 0
+  if (travel.taper && idx >= 10) return 0.5 * travel.amount
+  return travel.amount
+}
+```
+
+Travel spending is added to the year's spending `need`, which is then covered by the existing after-tax solver (salary, benefits, and if necessary a grossed-up portfolio withdrawal).
+
+**Rationale.** The taper from full to 50% after year 10 reflects the well-documented go-go/slow-go/no-go pattern in retirement spending research. All amounts are user-overrideable; no external citation anchors any specific dollar figure.
+
+**Edge cases.** Travel is active only during the years `[0, years)` counting from the first year both spouses are retired. If the toggle is off (`travel.on = false`) the function returns 0 for every year.
+
+---
+
+### 4.2 One-Time Life Events
+
+**Purpose.** Model large, discrete after-tax outflows (gifts, home-purchase help, milestone celebrations) in the years they occur.
+
+**Inputs.** `events[]` — an array of event objects `{ id, label, on, year, amount }`. Defaults are provided for common milestones (child weddings, home-purchase help, grandchild 529 seed); all are **off by default**. Users can edit labels, years, and amounts, and add or remove events dynamically. All amounts are in today's (real) dollars.
+
+**Logic.**
+
+```js
+function oneTimeSpendForYear(events, cal) {
+  return events.reduce(
+    (sum, e) => (e.on && Number(e.year) === cal ? sum + (Number(e.amount) || 0) : sum),
+    0,
+  )
+}
+```
+
+The total for the calendar year is added to the spending `need` for that year alongside travel. Because `need` is an after-tax target, the solver grosses up the portfolio withdrawal automatically to cover taxes on the extra draw.
+
+**Edge cases.** Events are deterministic — they fire in exactly the year specified and are zero in all other years. An event with `on = false` is never included. Multiple events in the same calendar year accumulate correctly.
+
+---
+
+### 4.3 Survivor Transition
+
+**Purpose.** Model the household income and tax change that follows the death of one spouse.
+
+**Inputs.** `survivor.on` (toggle, default false), `survivor.year` (the calendar year the transition takes effect).
+
+**Logic.**
+
+```js
+isSurvivor = survivor.on && cal >= survivor.year
+
+if (isSurvivor) {
+  larger = max(ssAy, ssBy)
+  ssAyEff = larger      // household keeps the larger Social Security benefit
+  ssByEff = 0           // the smaller benefit is dropped
+  yearStatus = "single" // federal tax brackets switch to single-filer tables
+}
+```
+
+The pension is assumed to continue at the same level (the model does not apply survivorship reductions to the DRS defined-benefit). All downstream calculations — federal tax, the healthcare-aware spending need, and the portfolio solver — receive the updated `yearStatus` and benefit amounts.
+
+**Edge cases.** When the toggle is off, `yearStatus` and both SS amounts remain unchanged for the entire timeline. The transition is permanent once the `survivor.year` threshold is crossed; there is no provision for a remarriage scenario.
+
+---
+
+### 4.4 Sequence-of-Returns Stress Path
+
+**Purpose.** Illustrate how a bad-return sequence in the first years of retirement can deplete a portfolio faster than the long-run average return suggests.
+
+**Inputs.** `stress` flag passed to `simulate()`; `realReturn` from the household inputs.
+
+**Logic.**
+
+```js
+function stressReturnForYear(realReturn, yearIndex) {
+  if (yearIndex <= 2) return -0.10       // years 1-3: −10% (STRESS_EARLY_DROP)
+  if (yearIndex <= 5) return realReturn - 0.02  // years 4-6: realReturn − 2%
+  return realReturn                      // year 7 onward: base assumption
+}
+```
+
+`yearIndex` is 0-based from simulation start (year 1 of retirement = index 0). The stress simulation is run in parallel with the base simulation and shown as a **brass dotted line** on the long-run portfolio balance chart.
+
+**Important:** This is a **deterministic, illustrative scenario** — not a forecast, a Monte Carlo draw, or a probability-weighted outcome. Its purpose is to show the directional effect of sequence risk so users can judge whether their plan has enough buffer. Do not interpret the stress-path balance as a likely outcome.
+
+**Known limits.** The −10% magnitude is **milder than real bear markets** (2000–02 was roughly −9%/−12%/−22% real; 2008 was about −37% in a single year), and it models a crash **only at the start of retirement** — not a mid-retirement downturn (e.g. at age 75), which is an equally dangerous but differently-timed sequence risk. For the realistic downside distribution — including crashes at any point — use the **Monte Carlo** run, whose lognormal paths and p10 / worst-case-depletion outputs capture what this single illustrative line cannot.
+
+---
+
+### 4.5 Headline Reconciliation: Modeled Spend, Capacity, and Surplus
+
+**Purpose.** Separate what the household actually plans to spend from what the portfolio could support, so the difference is not mistaken for additional spendable income.
+
+The steady-state report now surfaces three distinct quantities:
+
+| Field | Definition |
+| --- | --- |
+| `modeledSpend` | The household's projected spending `need` in the steady-state year — the healthcare-aware base plus any active travel or events. |
+| `sustainableCapacity` | After-tax income the portfolio can sustain at the chosen withdrawal rate (`net = gross − tax`). |
+| `surplus` | `max(0, sustainableCapacity − modeledSpend)` — the portion of sustainable capacity not consumed by the modeled spend. |
+
+The surplus compounds inside the portfolio rather than being paid out. It represents planning headroom — for unmodeled expenses, long-term care, inflation surprises, or bequest — and should not be treated as additional spendable income in the year it appears.
+
+**Edge cases.** Surplus is floored at 0; the report does not show a negative surplus (that condition surfaces separately as the plan being short of the spending need).
+
+### 4.6 Long-Term Care
+
+Long-term care (LTC) is **off by default** and surfaced as a persistent disclaimer (≈70% of 65-year-olds need some LTC; an episode can run $50k–$200k/yr). When enabled, the model adds one LTC episode to spending need — keyed to the older spouse reaching `startAge` (default 80) for `years` (default 3) — which forces grossed-up portfolio withdrawals and shows the drawdown.
+
+The annual cost **defaults to the selected location** (the private-pay nursing-home figure on each `LOCATIONS` entry, `ltcAnnual`), overrideable per scenario:
+
+```text
+ltcSpendForYear(ltc, ageA, locAnnual):
+  if !ltc.on -> 0
+  if ageA < startAge or ageA >= startAge + years -> 0
+  return ltc.annual (explicit override) ?? locAnnual (selected location)
+```
+
+Figures are private-pay, pre-subsidy, in today's dollars; public LTC programs (Austria Pflegegeld, France APA, Netherlands WLZ, US Medicaid) reduce real out-of-pocket cost, so the modeled figure is conservative abroad. Per-location amounts and citations are in `docs/sources.md` §17 and `docs/archive/audits/ltc-research.md`.
+
+---
+
+## 5. Worked Example: The Default Scenario
 
 Using the shipped defaults (both spouses 45; incomes $90k and $75k; savings $300k; saving $18k/yr; 30% spending goal; stop work at 62/60; claim Social Security at 67; Plan 2 pension, 20 years, AFC $78k, start 65; Social Security modeled at the Trustees' 81% from 2034; Texas home rented, Klagenfurt home lived‑in; U.S.‑national healthcare basis):
 
@@ -573,10 +743,10 @@ This illustrates the interaction the tool is designed to expose: the pre‑65 cl
 
 ---
 
-## 5. Known Simplifications and Rationale
+## 6. Known Simplifications and Rationale
 
 | Simplification | Why it is acceptable here | Where to be careful |
-|---|---|---|
+| --- | --- | --- |
 | Single real return (no volatility) | Keeps the model legible and stable in today's dollars | Real markets vary; a depletion age is a guide, not a guarantee |
 | Income used as career‑average proxy for PIA | Avoids requiring a full earnings history | Tends to overstate Social Security; reconcile with the SSA statement |
 | Flat 0.64 single‑household scaling | A reasonable rule of thumb for shared fixed costs | A re‑costed single budget would differ by category |

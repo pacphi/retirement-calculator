@@ -1,41 +1,44 @@
 # retirement-calculator
 
-> Generic ops rules, ruflo CLI, and AQE guidance live in `~/.claude/CLAUDE.md` — not repeated here.
-
 ## What this is
 
-"The Ledger & the Atlas" — a **single-file React artifact**, `RetirementCalculator.jsx` (~700 lines),
-that projects a U.S. married couple's retirement year-by-year to age 95: two-earner Social Security,
-a WA DRS teacher pension, 2026 federal tax, age-banded healthcare (pre-65 ACA bridge), cross-border
-inherited real estate (Texas + Austria), a 14-location cost-of-living atlas, and an SS funding-risk
-stress test. **Planning-grade, not advice-grade** — the in-app disclaimer must stay.
+"Nest & Next" is a React retirement planning tool for a U.S. household. Tagline: "This is about your money, your home, and what comes next." It projects annual cash flow to age 95, including Social Security, a Washington DRS pension, portfolio withdrawals, healthcare before and after 65, inherited real estate, federal tax, and location-based cost of living.
 
-## Stack & shape
+The app is still planning-grade, not advice-grade. Keep the in-app disclaimer and source links visible.
 
-- **Only deps:** React (`useState`, `useMemo`) + `recharts`. No router, no state lib, no backend.
-- **No build system.** There is no `package.json`, no test suite, no bundler. The file targets an
-  artifact/preview runtime — ignore any `npm run build && npm test` instruction; it does not apply here.
-- **Self-contained & deterministic:** all state is in-memory (no `localStorage`/`sessionStorage`),
-  same inputs → same outputs (no randomness, no Monte-Carlo).
-- **Styling:** inline `style={}` objects + a small set of `rc-*` CSS classes; serif display headings,
-  mono figures, restrained palette via the `C` color object.
+## Current structure
 
-## File layout (all in `RetirementCalculator.jsx`)
+- `RetirementCalculator.jsx` - React UI and chart/table rendering.
+- `src/retirementData.js` - source-linked 2026 constants and planning assumptions.
+- `src/calculatorCore.js` - pure calculation engine.
+- `src/calculatorCore.test.js` - deterministic formula and simulation tests.
+- `RetirementCalculator.test.jsx` - user-facing UI checks with React Testing Library.
+- `docs/` - product, logic, source, and audit documentation.
 
-1. **2026 reference constants** at the top — `FED`, `STD`, `BEND`, `SS_CAP`, `PROV`, `ERF_20`,
-   `LOCATIONS`, `PROP`, etc. These are the single source of truth for tax/benefit/COL numbers.
-2. **Pure math helpers** — `fedTax`, `pia`, `ssAtClaim`, `taxableSS`, `pensionERF`, `benefits`, `simulate`.
-   Style is intentionally terse: single-letter args, packed one-liners. Match it; don't "clean it up."
-3. **Small UI primitives** — `Field`, `NumberInput`, `Select`, `Segmented`, `Section`.
-4. **`export default function RetirementCalculator()`** — the page; `useMemo` drives live recompute.
+## Calculation rules
 
-## Working conventions
+- Use one federal tax engine for both annual depletion and headline income.
+- Treat spending needs as after-tax spending.
+- Apply age-65 deductions only to filers who are actually 65+ in the modeled year.
+- Prefer SSA statement inputs for Social Security. The income-based PIA estimate is only a fallback.
+- Spousal Social Security benefits cap at 50% of the worker PIA at FRA and do not receive delayed retirement credits.
+- Use current WA DRS early-retirement factors and service-year eligibility guards.
+- Keep rental income separate from guaranteed lifetime benefits.
 
-- **`docs/` is the spec.** `prd.md` (capabilities, FR-* IDs), `use-cases.md` (formulas/algorithms),
-  `sources.md` (where each 2026 number came from). Change behavior → keep these in sync; FR-* IDs are
-  stable references.
-- **Updating for a new tax year:** edit only the constants block, then verify against `sources.md`.
-  Every constant is 2026-dated and source-labeled for exactly this.
-- **Financial logic is load-bearing.** Don't alter `simulate`/`benefits`/tax math without checking the
-  matching FR/use-case section — these encode real IRS/SSA/DRS rules (e.g. WEP/GPO repealed Jan 2025).
-- All figures are **today's dollars** unless explicitly labeled future-dollar.
+## Test strategy
+
+The test suite follows the current Vitest and Testing Library guidance:
+
+- Pure financial logic is tested directly in `src/calculatorCore.test.js`.
+- UI behavior is tested through accessible labels, links, and buttons, not component internals.
+- Tests should remain deterministic: no dates, randomness, storage, live network calls, or dependency on chart layout.
+
+Run:
+
+```bash
+pnpm test
+```
+
+## Maintenance
+
+When changing formulas, update the matching tests and docs. When updating annual constants, cite the source in `src/retirementData.js` and `docs/sources.md`.

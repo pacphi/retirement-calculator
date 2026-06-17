@@ -1,6 +1,8 @@
-# Product Requirements Document — "The Ledger & the Atlas" Retirement Calculator
+# Product Requirements Document — "Nest & Next"
 
-> A single‑file, interactive retirement planning tool for a U.S. married couple, covering portfolio projection, two‑earner Social Security, a Washington State (DRS) teacher pension, 2026 federal tax, age‑banded healthcare, cross‑border inherited real estate, an international cost‑of‑living atlas, and a Social Security funding‑risk stress test.
+> A single-file, interactive retirement planning tool for a U.S. married couple, covering portfolio projection, two-earner Social Security, a Washington State (DRS) teacher pension, 2026 federal tax, age-banded healthcare, cross-border inherited real estate, international cost-of-living comparisons, and a Social Security funding-risk stress test.
+>
+> **Tagline:** This is about your money, your home, and what comes next.
 
 **Version:** 1.0 (current build) · **Status:** Delivered · **Document type:** Product Requirements Document (capabilities)
 
@@ -25,7 +27,7 @@
   - [6.7 Age-Banded Healthcare and the Pre-65 Bridge](#67-age-banded-healthcare-and-the-pre-65-bridge)
   - [6.8 Social Security Funding-Risk Scenarios](#68-social-security-funding-risk-scenarios)
   - [6.9 Inherited Real Estate Module](#69-inherited-real-estate-module)
-  - [6.10 The Atlas: International Cost-of-Living](#610-the-atlas-international-cost-of-living)
+  - [6.10 Places: International Cost-of-Living](#610-places-international-cost-of-living)
   - [6.11 Two-Location Side-by-Side Comparison](#611-two-location-side-by-side-comparison)
   - [6.12 Steady-State Income Synthesis and Verdict](#612-steady-state-income-synthesis-and-verdict)
   - [6.13 Visualizations and Charts](#613-visualizations-and-charts)
@@ -43,8 +45,8 @@
 ## 1. Document Control
 
 | Field | Value |
-|---|---|
-| Product name | The Ledger & the Atlas (Retirement Calculator) |
+| --- | --- |
+| Product name | Nest & Next |
 | Artifact | `RetirementCalculator.jsx` — single‑file React component |
 | Audience | The end user (a married couple planning retirement), and any future maintainer |
 | Reference year | 2026 (all tax, benefit, and premium constants) |
@@ -212,7 +214,7 @@ Each capability area below lists functional requirements (FR‑*) and, where use
 - **FR‑INH‑05** — Wire the chosen strategy into the timeline: a sale adds a lump sum to the portfolio in its year; renting adds an income band; living‑in reduces the spending need.
 - **FR‑INH‑06** — Reflect inheritance effects in the steady‑state synthesis (later sales added to the withdrawal base; rental added to guaranteed income; living‑in surfaced as housing saved).
 
-### 6.10 The Atlas: International Cost-of-Living
+### 6.10 Places: International Cost-of-Living
 
 **Description.** Translate the after‑tax income into a lifestyle verdict across fourteen places.
 
@@ -249,7 +251,7 @@ Each capability area below lists functional requirements (FR‑*) and, where use
 
 - **FR‑VIZ‑01** — **Staircase chart**: stacked areas of each income source by year, with a dashed, healthcare‑aware spending‑need line.
 - **FR‑VIZ‑02** — **Balance chart**: portfolio value over time, modeled scenario vs. a Social‑Security‑eliminated worst case, with a marker where an inherited home is sold.
-- **FR‑VIZ‑03** — **Atlas bars**: per‑location cost with an income reference line and tier badge.
+- **FR‑VIZ‑03** — **Places bars**: per‑location cost with an income reference line and tier badge.
 - **FR‑VIZ‑04** — **Income‑mix bar** and **comparison table** as above.
 - **FR‑VIZ‑05** — Tooltips reveal per‑year composition and the spending need.
 
@@ -267,7 +269,7 @@ Each capability area below lists functional requirements (FR‑*) and, where use
 All constants are 2026 values. The companion Sources document links each to its origin.
 
 | Domain | Key constants used |
-|---|---|
+| --- | --- |
 | Federal tax | 2026 marginal brackets (Single and MFJ); standard deduction $16,100 / $32,200; age‑65 additional standard deduction; senior bonus deduction $6,000 (per eligible filer, 2025–2028) with MAGI phase‑out |
 | Social Security | PIA bend points $1,286 and $7,749; taxable wage cap $184,500; Full Retirement Age 67; early/delayed factors; benefit‑taxation provisional‑income thresholds ($25k/$34k single, $32k/$44k MFJ) |
 | SS solvency | Combined trust funds projected depletion ~2034 with ~81% of scheduled benefits payable (OASI alone ~2033, ~77%), declining over time, absent Congressional action |
@@ -331,7 +333,7 @@ All constants are 2026 values. The companion Sources document links each to its 
 ## 12. Glossary
 
 | Term | Meaning |
-|---|---|
+| --- | --- |
 | **AFC** | Average Final Compensation — average of the teacher's highest 60 consecutive months of pay; the pension base |
 | **AGI / MAGI** | (Modified) Adjusted Gross Income — drives deduction phase‑outs and benefit taxation |
 | **Altvermögen / Neuvermögen** | Austrian "old"/"new" real estate (acquired before / after 31 March 2002), determining the capital‑gains method on sale |

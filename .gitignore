@@ -1,0 +1,29 @@
+# Dependencies & package-manager state
+node_modules/
+.pnpm-store/
+pnpm-debug.log*
+
+# Build output
+dist/
+
+# Test coverage
+coverage/
+
+# Editor & OS cruft
+.DS_Store
+
+# AI agent tooling — machine-local state, caches, and databases.
+# These are regenerated per machine/session and are not meant to be shared.
+.agentic-qe/
+.claude-flow/
+.claude/
+.swarm/
+ruvector.db
+
+# Local MCP server configuration — may contain machine-specific paths or credentials.
+.mcp.json
+
+# Audit/test scratch & generated reports (not part of the committed project)
+/reports/
+/.stryker-tmp/
+/audits/
