@@ -78,6 +78,8 @@ export function simulate(i, ssOpt) {
   let balAtFullRet = null;
   const rows = [];
 
+  const retireCal = TAX_YEAR + Math.max(i.stopA - i.ageA, i.stopB - i.ageB);
+
   for (let y = 0; y <= end; y++) {
     const aA = i.ageA + y;
     const aB = i.ageB + y;
@@ -108,8 +110,6 @@ export function simulate(i, ssOpt) {
       if (p.type === "live" && cal >= p.year) liveSav += p.live;
       if (p.type === "sell" && cal === p.year) sellLump += p.sell;
     }
-
-    const retireCal = TAX_YEAR + Math.max(i.stopA - i.ageA, i.stopB - i.ageB);
     const extraSpend =
       travelSpendForYear(i.travel, cal, retireCal) + oneTimeSpendForYear(i.events, cal);
     const need = spendingNeed(i, aA, aB, liveSav) + extraSpend;

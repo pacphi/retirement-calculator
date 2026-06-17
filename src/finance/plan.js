@@ -43,11 +43,11 @@ export function buildInheritanceInputs(s) {
   return out;
 }
 
-export function calculatePlan(s) {
+export function buildPlanInputs(s) {
   const incomeHH = (Number(s.incomeA) || 0) + (Number(s.incomeB) || 0);
   const retLocObj = LOCATIONS.find((l) => l.name === s.retireLoc) || LOCATIONS[10];
   const inher = buildInheritanceInputs(s);
-  const inp = {
+  return {
     ...s,
     incomeHH,
     inher,
@@ -57,6 +57,13 @@ export function calculatePlan(s) {
     events: s.events ?? [],
     survivor: s.survivor ?? { on: false, year: 9999 },
   };
+}
+
+export function calculatePlan(s) {
+  const inp = buildPlanInputs(s);
+  const incomeHH = inp.incomeHH;
+  const retLocObj = LOCATIONS.find((l) => l.name === inp.retireLoc) || LOCATIONS[10];
+  const inher = inp.inher;
   const { effHaircut, effCutYear } = resolveSocialSecurityScenario(s);
   const trustCut = Number(s.ssCutYear) || 2034;
   const simChosen = simulate(inp, { haircut: effHaircut, cutYear: effCutYear });

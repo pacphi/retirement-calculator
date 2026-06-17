@@ -1,23 +1,15 @@
 import { randomLcg, randomNormal } from "d3-random";
 import { quantile } from "d3-array";
-import { LOCATIONS, MC_DEFAULTS } from "../retirementData.js";
+import { MC_DEFAULTS } from "../retirementData.js";
 import { simulate, steadyState } from "./simulate.js";
-import { resolveSocialSecurityScenario, buildInheritanceInputs } from "./plan.js";
+import { resolveSocialSecurityScenario, buildPlanInputs } from "./plan.js";
 
 export function runMonteCarlo(s, mcOpt = {}) {
   const paths = mcOpt.paths ?? MC_DEFAULTS.paths;
   const seed = mcOpt.seed ?? MC_DEFAULTS.seed;
   const volatility = mcOpt.volatility ?? MC_DEFAULTS.volatility;
 
-  const incomeHH = (Number(s.incomeA) || 0) + (Number(s.incomeB) || 0);
-  const retLocObj = LOCATIONS.find((l) => l.name === s.retireLoc) || LOCATIONS[10];
-  const inher = buildInheritanceInputs(s);
-  const inp = {
-    ...s, incomeHH, inher, hcPre: retLocObj.hcPre, hcPost: retLocObj.hcPost,
-    travel: s.travel ?? { on: false, amount: 15000, years: 15, taper: true },
-    events: s.events ?? [],
-    survivor: s.survivor ?? { on: false, year: 9999 },
-  };
+  const inp = buildPlanInputs(s);
   const { effHaircut, effCutYear } = resolveSocialSecurityScenario(s);
 
   const rng = randomLcg(seed);                       // seeded, reproducible
@@ -32,6 +24,7 @@ export function runMonteCarlo(s, mcOpt = {}) {
   for (let p = 0; p < paths; p++) {
     const returns = Array.from({ length: end + 1 }, () => sample());
     const sim = simulate(inp, { haircut: effHaircut, cutYear: effCutYear, returns });
+    // Depleted paths contribute bal=0 to the fan — intentional so percentile arrays always have `paths` entries.
     sim.rows.forEach((r, y) => balancesByYear[y].push(r.bal));
     if (sim.depAge === null) { lasted += 1; depAges.push(96); }
     else depAges.push(sim.depAge);
