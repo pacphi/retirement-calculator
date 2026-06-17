@@ -10,9 +10,13 @@ import {
   calculatePlan,
   lineItems,
   monthlyTotal,
+  ownBenefitAtClaimMonthly,
+  proratedFraEstimate,
   propEcon,
   tierFor,
 } from "./src/calculatorCore.js";
+
+const SSA_FRA_URL = "https://secure.ssa.gov/myssa/bec-plan-prep-ui/bec-home";
 const phaseNote = (l, f) => {
   const pre = `$${Math.round(l.hcPre*f).toLocaleString()}`, post = `$${Math.round(l.hcPost*f).toLocaleString()}`;
   if (l.region === "US") return `Medicare at 65 drops healthcare from ~${pre}/mo (full-price ACA before 65) to ~${post}/mo. Keep taxable income modest in the gap years and ACA subsidies can cut the earlier figure sharply.`;
@@ -87,7 +91,7 @@ export default function RetirementCalculator() {
   const [s, setS] = useState({
     ageA:57, ageB:48, stopA:65, stopB:56, claimA:65, claimB:65, pensionAge:65,
     incomeA:0, incomeB:170000, savings:670000, contrib:18000, targetPct:0.40, status:"married",
-    ssModeA:"estimate", ssModeB:"estimate", ssFraA:36000, ssFraB:30000,
+    ssModeA:"statement", ssModeB:"statement", ssFraA:50424, ssFraB:31592,
     pensionOn:true, system:"TRS", plan:3, pYears:22, afc:170000,
     realReturn:0.05, swr:0.04, tradFrac:0.7, inflation:0.025,
     ssMode:"trustees", ssHaircut:81, ssCutYear:2034,
@@ -292,17 +296,36 @@ export default function RetirementCalculator() {
                   <Field label="Your SS claim age" hint="62–70. +8%/yr to delay."><NumberInput value={s.claimA} onChange={set("claimA")} min={62} /></Field>
                   <Field label="Spouse SS claim age"><NumberInput value={s.claimB} onChange={set("claimB")} min={62} /></Field>
                 </div>
-                <Field label="Your SS estimate source" hint="SSA statement is best. Income estimate is a fallback.">
+                <Field label="Your SS estimate source" hint="SSA statement is best. Income estimate is only a fallback.">
                   <Segmented value={s.ssModeA} onChange={set("ssModeA")} options={[{label:"Income estimate",value:"estimate"},{label:"SSA statement",value:"statement"}]} />
                 </Field>
                 <Field label="Spouse SS estimate source">
                   <Segmented value={s.ssModeB} onChange={set("ssModeB")} options={[{label:"Income estimate",value:"estimate"},{label:"SSA statement",value:"statement"}]} />
                 </Field>
-                {(s.ssModeA==="statement" || s.ssModeB==="statement") && (
-                  <div className="rc-inputs">
-                    {s.ssModeA==="statement" && <Field label="Your FRA benefit" hint="Annual amount from your SSA statement at full retirement age."><NumberInput value={s.ssFraA} onChange={set("ssFraA")} prefix="$" suffix="/yr" /></Field>}
-                    {s.ssModeB==="statement" && <Field label="Spouse FRA benefit"><NumberInput value={s.ssFraB} onChange={set("ssFraB")} prefix="$" suffix="/yr" /></Field>}
+                {(s.ssModeA==="estimate" || s.ssModeB==="estimate") && (
+                  <div role="note" style={{ fontSize:12, color:C.clay, background:"#FBEFEC", border:`1px solid ${C.clay}40`, borderRadius:8, padding:"9px 11px", lineHeight:1.5, marginTop:8 }}>
+                    ⚠ The income estimate assumes a full 35-year Social Security career. It <b>overstates</b> the benefit for a shorter covered career and <b>understates</b> it for anyone not currently earning. Prefer your SSA statement.
                   </div>
+                )}
+                {(s.ssModeA==="statement" || s.ssModeB==="statement") && (
+                  <>
+                    <div style={{ fontSize:12, color:C.slate, marginTop:8, lineHeight:1.5 }}>
+                      Enter your <b>age-67 (full retirement age) monthly amount × 12</b>, from{" "}
+                      <a href={SSA_FRA_URL} target="_blank" rel="noreferrer" style={{ color:C.brassDeep, fontWeight:600 }}>ssa.gov → my Social Security</a>. Your claim age below adjusts it (62 ≈ −30%, 70 ≈ +24%).
+                    </div>
+                    <div className="rc-inputs">
+                      {s.ssModeA==="statement" && (
+                        <Field label="Your FRA benefit (age 67)" hint={`At your claim age (${s.claimA}): ${usd0(ownBenefitAtClaimMonthly((Number(s.ssFraA)||0)/12, s.claimA))}/mo`}>
+                          <NumberInput value={s.ssFraA} onChange={set("ssFraA")} prefix="$" suffix="/yr" />
+                        </Field>
+                      )}
+                      {s.ssModeB==="statement" && (
+                        <Field label="Spouse FRA benefit (age 67)" hint={`At her claim age (${s.claimB}): ${usd0(ownBenefitAtClaimMonthly((Number(s.ssFraB)||0)/12, s.claimB))}/mo · suggested from ${s.pYears} covered yrs: ${usd0(proratedFraEstimate(Number(s.incomeB)||0, s.pYears))}/yr`}>
+                          <NumberInput value={s.ssFraB} onChange={set("ssFraB")} prefix="$" suffix="/yr" />
+                        </Field>
+                      )}
+                    </div>
+                  </>
                 )}
                 <div style={{ fontSize:12, color:C.slate, background:"#F6F4EC", borderRadius:8, padding:"9px 11px", lineHeight:1.5 }}>
                   Scheduled benefits: your SS <b style={{fontFamily:"'JetBrains Mono',monospace",color:C.ink}}>{usd0(sFull.ssA)}</b>, spouse SS <b style={{fontFamily:"'JetBrains Mono',monospace",color:C.ink}}>{usd0(sFull.ssB)}</b>/yr at full funding. The income estimate uses SSA bend points; your SSA statement is usually more reliable.

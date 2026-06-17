@@ -7,6 +7,12 @@ export const piaFromIncome = (income) => {
     + 0.15 * Math.max(0, aime - BEND[1]);
 };
 
+// A short SS-covered career drags the real 35-year AIME below current income.
+// This is the honest fallback for the income estimate: scale the full-career PIA
+// (annualized) by coveredYears/35, capped at 35. Statement values are still best.
+export const proratedFraEstimate = (income, coveredYears) =>
+  piaFromIncome(income) * 12 * (Math.min(Math.max(0, Number(coveredYears) || 0), 35) / 35);
+
 export const ownBenefitAtClaimMonthly = (pia, claimAge) => {
   if (claimAge < 67) {
     const months = (67 - claimAge) * 12;

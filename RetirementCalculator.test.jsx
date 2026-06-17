@@ -103,3 +103,14 @@ describe("Monte Carlo summary formatting", () => {
     expect(mcSummaryLines(null)).toEqual([]);
   });
 });
+
+describe("Social Security statement guidance", () => {
+  it("links to ssa.gov for the FRA amount and shows no estimate warning by default", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByRole("link", { name: /my Social Security/i })).toHaveAttribute(
+      "href",
+      expect.stringContaining("ssa.gov"),
+    );
+    expect(screen.queryByText(/assumes a full 35-year/i)).not.toBeInTheDocument();
+  });
+});

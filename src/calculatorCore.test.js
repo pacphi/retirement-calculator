@@ -11,6 +11,8 @@ import {
   runMonteCarlo,
   simulate,
   spendingNeed,
+  proratedFraEstimate,
+  piaFromIncome,
   spousalBenefitAtClaimMonthly,
   standardDeduction,
   steadyState,
@@ -393,5 +395,22 @@ describe("spendingNeed survivor healthcare", () => {
 
   it("charges no pre-65 bump for a survivor already 65+", () => {
     expect(spendingNeed(hc, 67, 66, 0, true)).toBe(0.4 * 100000);
+  });
+});
+
+describe("proratedFraEstimate (short-career SS fallback)", () => {
+  it("scales the full-career PIA by covered years / 35", () => {
+    const full = piaFromIncome(170000) * 12;
+    expect(proratedFraEstimate(170000, 22)).toBeCloseTo(full * 22 / 35, 6);
+  });
+
+  it("equals the full estimate at 35+ covered years and caps there", () => {
+    const full = piaFromIncome(170000) * 12;
+    expect(proratedFraEstimate(170000, 35)).toBeCloseTo(full, 6);
+    expect(proratedFraEstimate(170000, 40)).toBeCloseTo(full, 6);
+  });
+
+  it("returns 0 for zero covered years", () => {
+    expect(proratedFraEstimate(170000, 0)).toBe(0);
   });
 });
