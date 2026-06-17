@@ -1,0 +1,47 @@
+{
+  "name": "retirement-calculator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.5.2",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite --host 127.0.0.1",
+    "deps:outdated": "pnpm outdated",
+    "deps:update": "pnpm update",
+    "audit": "pnpm audit",
+    "audit:fix": "pnpm audit --fix update",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit",
+    "links": "SSL_CERT_FILE=${SSL_CERT_FILE:-/etc/ssl/cert.pem} lychee --offline --scheme file --include-fragments --no-progress README.md CLAUDE.md 'docs/**/*.md'",
+    "format:md": "prettier --write '**/*.md'",
+    "lint:md": "markdownlint-cli2",
+    "lint:md:fix": "markdownlint-cli2 --fix",
+    "fix": "pnpm lint:fix && pnpm format:md && pnpm lint:md:fix",
+    "check": "pnpm lint && pnpm typecheck && pnpm lint:md && pnpm links && pnpm test",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "recharts": "^3.8.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@vitejs/plugin-react": "^6.0.2",
+    "eslint": "^10.5.0",
+    "globals": "^17.6.0",
+    "jsdom": "^29.1.1",
+    "markdownlint-cli2": "^0.22.1",
+    "prettier": "^3.8.4",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16",
+    "vitest": "^4.1.9"
+  }
+}

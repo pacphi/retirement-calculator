@@ -1,54 +1,18 @@
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   ComposedChart, Area, Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ReferenceLine, ReferenceDot,
+  ResponsiveContainer, ReferenceDot,
 } from "recharts";
-
-/* ----------------------------------------------------------------------------
-   2026 reference data (IRS Rev. Proc. 2025-32, SSA, WA DRS, CMS, KFF)
----------------------------------------------------------------------------- */
-const FED = {
-  single:  [[0,.10],[12400,.12],[50400,.22],[105700,.24],[201775,.32],[256225,.35],[640600,.37]],
-  married: [[0,.10],[24800,.12],[100800,.22],[211400,.24],[403550,.32],[512450,.35],[768700,.37]],
-};
-const STD = { single: 16100, married: 32200 };
-const SENIOR_ADDON = { single: 2050, married: 3300 };
-const SENIOR_BONUS = 6000;
-const BEND = [1286, 7749];
-const SS_CAP = 184500;
-const PROV = { single: [25000, 34000], married: [32000, 44000] };
-const ERF_20 = {55:.39,56:.42,57:.45,58:.49,59:.54,60:.59,61:.66,62:.73,63:.82,64:.91,65:1};
-
-/* Cost-of-living: monthly couple line items (USD) — Numbeo, Wise, Expatistan,
-   ERI, Eurostat, BLS CES; CMS + KFF for the age-banded healthcare lines.
-   hcPre = couple healthcare before 65 · hcPost = couple healthcare 65+. */
-const LOCATIONS = [
-  { name:"Bulgaria / Romania", region:"Europe", hcPre:280, hcPost:220, m:{rent:550,groceries:400,utilities:160,transport:100,dining:200,entertainment:120,misc:170}, vat:"20%", incomeTax:"Flat 10% — among the EU's lowest", note:"Lowest-cost EU. More cultural adjustment, fewer English services." },
-  { name:"Greece", region:"Europe", hcPre:380, hcPost:300, m:{rent:780,groceries:500,utilities:200,transport:120,dining:300,entertainment:170,misc:250}, vat:"24%", incomeTax:"7% flat on foreign income for 15 yrs", note:"Treaty + 7% regime make pensions cheap to receive here." },
-  { name:"Portugal", region:"Europe", hcPre:400, hcPost:300, m:{rent:1150,groceries:450,utilities:190,transport:100,dining:250,entertainment:150,misc:230}, vat:"23%", incomeTax:"Worldwide; old NHR break closed in 2024", note:"Figures are Porto/Algarve-style; central Lisbon runs higher. D7 visa needs ~€10,440/yr." },
-  { name:"Spain", region:"Europe", hcPre:420, hcPost:320, m:{rent:1200,groceries:480,utilities:190,transport:110,dining:300,entertainment:180,misc:270}, vat:"21%", incomeTax:"Worldwide, ~19–47% progressive", note:"Non-Lucrative Visa needs ~€28,800/yr passive income." },
-  { name:"Italy", region:"Europe", hcPre:420, hcPost:320, m:{rent:1250,groceries:500,utilities:220,transport:120,dining:320,entertainment:190,misc:290}, vat:"22%", incomeTax:"7% flat option in some southern towns", note:"Best value in the south and smaller cities." },
-  { name:"France", region:"Europe", hcPre:480, hcPost:380, m:{rent:1600,groceries:580,utilities:250,transport:130,dining:400,entertainment:250,misc:340}, vat:"20%", incomeTax:"Worldwide; treaty often exempts US pensions", note:"Top-rated healthcare; Paris far pricier than the regions." },
-  { name:"Austria", region:"Europe", hcPre:520, hcPost:420, m:{rent:1650,groceries:560,utilities:350,transport:110,dining:360,entertainment:220,misc:320}, vat:"20%", incomeTax:"Worldwide, up to 55%", note:"Vienna/Klagenfurt: superb services; worldwide taxation. Your inherited home lives here." },
-  { name:"Netherlands", region:"Europe", hcPre:480, hcPost:420, m:{rent:2000,groceries:580,utilities:260,transport:130,dining:380,entertainment:240,misc:350}, vat:"21%", incomeTax:"Worldwide (box system)", note:"High quality of life, tight housing, no non-EU retirement visa." },
-  { name:"US — low-cost (WV/OK/MS)", region:"US", hcPre:2200, hcPost:900, m:{rent:1150,groceries:650,utilities:320,transport:450,dining:350,entertainment:250,misc:400}, vat:"~6–8% sales tax", incomeTax:"State 0–5%; several exempt pensions", note:"Cheapest US housing. The pre-65 ACA years are the pinch point." },
-  { name:"US — Texas / Florida", region:"US", hcPre:2400, hcPost:950, m:{rent:1500,groceries:700,utilities:350,transport:500,dining:400,entertainment:300,misc:450}, vat:"~7–8% sales tax", incomeTax:"No state income tax", note:"No state tax on her pension or withdrawals. Your inherited Texas home is here." },
-  { name:"US — national average", region:"US", hcPre:2450, hcPost:1000, m:{rent:1700,groceries:750,utilities:360,transport:550,dining:450,entertainment:330,misc:480}, vat:"~7% sales tax", incomeTax:"State varies; 9 states have none", note:"Baseline comfortable US couple budget." },
-  { name:"Bahamas", region:"Caribbean", hcPre:950, hcPost:1150, m:{rent:2900,groceries:950,utilities:420,transport:500,dining:500,entertainment:300,misc:480}, vat:"10% VAT + duties", incomeTax:"None — US federal still applies", note:"Zero income/CG/estate tax, but imports make it premium." },
-  { name:"US — California", region:"US", hcPre:2600, hcPost:1100, m:{rent:2750,groceries:820,utilities:380,transport:600,dining:550,entertainment:380,misc:550}, vat:"~8–10% sales tax", incomeTax:"Up to ~13.3% state tax", note:"High cost and a heavy state tax on pension & withdrawals." },
-  { name:"US — Hawaii / NYC", region:"US", hcPre:2300, hcPost:1100, m:{rent:3800,groceries:1150,utilities:500,transport:650,dining:750,entertainment:500,misc:700}, vat:"~4–9% sales tax", incomeTax:"Up to ~11% (HI) / ~14% (NYC)", note:"Premium cost of living; the stretch goal." },
-];
-const lineItems = (l, stage) => [
-  ["Rent — 2–3BR, quiet area", l.m.rent],
-  ["Groceries", l.m.groceries],
-  ["Utilities + internet", l.m.utilities],
-  [stage==="pre" ? "Healthcare — before 65 (ACA)" : "Healthcare — 65+ (Medicare/local)", stage==="pre" ? l.hcPre : l.hcPost],
-  ["Transport", l.m.transport],
-  ["Dining out", l.m.dining],
-  ["Entertainment", l.m.entertainment],
-  ["Other / household", l.m.misc],
-];
-const monthlyTotal = (l, stage) => Object.values(l.m).reduce((a,b)=>a+b,0) + (stage==="pre" ? l.hcPre : l.hcPost);
+import { LOCATIONS, PROP, SOURCES } from "./src/retirementData.js";
+import {
+  afcIsAuto,
+  resolveAfc,
+  calculatePlan,
+  lineItems,
+  monthlyTotal,
+  propEcon,
+  tierFor,
+} from "./src/calculatorCore.js";
 const phaseNote = (l, f) => {
   const pre = `$${Math.round(l.hcPre*f).toLocaleString()}`, post = `$${Math.round(l.hcPost*f).toLocaleString()}`;
   if (l.region === "US") return `Medicare at 65 drops healthcare from ~${pre}/mo (full-price ACA before 65) to ~${post}/mo. Keep taxable income modest in the gap years and ACA subsidies can cut the earlier figure sharply.`;
@@ -56,90 +20,9 @@ const phaseNote = (l, f) => {
   return `As a resident you can usually access the public system, so healthcare stays moderate (~${pre}/mo before 65, ~${post}/mo after). Medicare won't cover care here.`;
 };
 
-/* Inherited-property economics */
-const PROP = {
-  tx: { label:"Texas home", place:"US — Texas / Florida", sellNet:0.93, rentYield:0.035, ownRate:0.027, rentMo:1500,
-    notes:{
-      sell:"US steps basis up to date-of-death value, so a near-term sale owes ~$0 capital-gains tax. No Texas estate, inheritance, or income tax; the estate is far under the $15M federal exemption. Budget ~7% selling costs.",
-      rent:"No state income tax, but Texas property tax (~1.7%/yr) is high; federal depreciation shelters much of the rental income. Net ≈ 3.5% of value.",
-      live:"You'd own a $790k asset, but Texas property tax + upkeep (~2.7%/yr) runs slightly above local rent — owning saves little cash here. Selling or renting puts the money to work." } },
-  at: { label:"Klagenfurt home", place:"Austria", sellNet:0.90, rentYield:0.020, ownRate:0.012, rentMo:1650,
-    notes:{
-      sell:"No Austrian inheritance tax, but inheriting costs ~1.85% (transfer tax + registration), and a later sale faces 30% capital-gains tax — or 4.2% of price if the family owned it pre-2002 — with NO basis step-up. The US step-up zeroes US tax, so a foreign tax credit rarely offsets the Austrian bill.",
-      rent:"Austrian rental income is taxed at source (progressive, with depreciation) and again on your US return with a foreign tax credit. Yields are modest — net ≈ 2% of value.",
-      live:"The standout move. Austrian property tax is tiny, so owning replaces ~$1,650/mo of rent for ~$300/mo of carrying cost. A later primary-residence sale can also escape the 30% tax under the 5-of-10-years rule." } },
-};
-const propEcon = (key, value) => {
-  const m = PROP[key];
-  return { sell: value*m.sellNet, rent: value*m.rentYield, live: m.rentMo*12 - value*m.ownRate };
-};
-
-/* ----------------------------- Math ----------------------------- */
-const fedTax = (ti, s) => { const b=FED[s]; let t=0; for (let i=0;i<b.length;i++){ const lo=b[i][0], hi=i<b.length-1?b[i+1][0]:Infinity; if (ti>lo) t+=(Math.min(ti,hi)-lo)*b[i][1]; } return t; };
-const pia = (inc) => { const a=Math.min(inc,SS_CAP)/12; return 0.9*Math.min(a,BEND[0])+0.32*Math.max(0,Math.min(a,BEND[1])-BEND[0])+0.15*Math.max(0,a-BEND[1]); };
-const ssAtClaim = (p,c) => { if (c<67){ const m=(67-c)*12; const r=m<=36?m*(5/9)/100:(36*(5/9)+(m-36)*(5/12))/100; return p*(1-r);} if (c>67){ const m=Math.min((c-67)*12,36); return p*(1+m*(2/3)/100);} return p; };
-const taxableSS = (other,ss,s) => { const pr=other+0.5*ss,[t1,t2]=PROV[s]; if (pr<=t1) return 0; if (pr<=t2) return Math.min(0.5*ss,0.5*(pr-t1)); return Math.min(0.85*ss,0.85*(pr-t2)+Math.min(0.5*ss,0.5*(t2-t1))); };
-const pensionERF = (age,years) => age>=65?1:years>=30?Math.max(0,1-0.05*(65-age)):age<55?0:(ERF_20[Math.round(age)]??0.39);
-
-function benefits(i) {
-  const piaA=pia(i.incomeA), piaB=pia(i.incomeB);
-  let ssA=ssAtClaim(piaA,i.claimA)*12, ssB=ssAtClaim(piaB,i.claimB)*12;
-  ssA=Math.max(ssA, piaB>piaA?ssAtClaim(0.5*piaB,i.claimA)*12:0);
-  ssB=Math.max(ssB, piaA>piaB?ssAtClaim(0.5*piaA,i.claimB)*12:0);
-  const erf=i.pensionOn?pensionERF(i.pensionAge,i.pYears):1;
-  const pension=i.pensionOn?(i.plan===3?0.01:0.02)*i.pYears*i.afc*erf:0;
-  return { ssA, ssB, pension, erf };
-}
-
-function simulate(i, ssOpt) {
-  const on = ssOpt.on, hc = ssOpt.haircut==null?1:ssOpt.haircut, cutY = ssOpt.cutYear==null?9999:ssOpt.cutYear;
-  const { ssA:ssAfull, ssB:ssBfull, pension:pensFull } = benefits(i);
-  const base = i.incomeHH*i.targetPct, r=i.realReturn;
-  const perPersonHC = Math.max(0, (i.hcPre - i.hcPost))/2;     // monthly, per person under 65
-  const end = Math.max(95-i.ageA, 95-i.ageB);
-  let bal=i.savings, depAge=null, fullyRetAge=null, balAtFullRet=null;
-  const rows=[];
-  for (let y=0; y<=end; y++) {
-    const aA=i.ageA+y, aB=i.ageB+y, cal=2026+y;
-    const workA=aA<i.stopA, workB=aB<i.stopB;
-    const salA=workA?i.incomeA:0, salB=workB?i.incomeB:0;
-    const pens=(i.pensionOn && aB>=i.pensionAge)?pensFull:0;
-    const ssFac = cal>=cutY ? hc : 1;
-    const ssAy=(on && aA>=i.claimA)?ssAfull*ssFac:0;
-    const ssBy=(on && aB>=i.claimB)?ssBfull*ssFac:0;
-    let rent=0, liveSav=0, sellLump=0;
-    for (const p of i.inher) {
-      if (p.type==="rent" && cal>=p.year) rent+=p.rent;
-      if (p.type==="live" && cal>=p.year) liveSav+=p.live;
-      if (p.type==="sell" && cal===p.year) sellLump+=p.sell;
-    }
-    const under65 = (aA<65?1:0)+(aB<65?1:0);
-    const hcBump = perPersonHC*under65*12;
-    const need = Math.max(0.35*base, base + hcBump - liveSav);
-    const nonPort = salA+salB+pens+ssAy+ssBy+rent;
-    bal = bal*(1+r);
-    bal += ((workA?0.5:0)+(workB?0.5:0))*i.contrib;
-    bal += sellLump;
-    let wd = Math.max(0, need-nonPort);
-    wd = Math.min(wd, Math.max(0,bal));
-    bal -= wd;
-    if (bal<1) bal=0;
-    if (!workA && !workB && fullyRetAge===null) { fullyRetAge=aA; balAtFullRet=bal; }
-    if (bal<=0 && depAge===null && (need-nonPort)>0) depAge=aA;
-    rows.push({ aA, aB, cal, salA, salB, rent, pens, ssA:ssAy, ssB:ssBy, wd:Math.round(wd), bal:Math.round(bal), need:Math.round(need), sellLump:Math.round(sellLump) });
-  }
-  return { rows, depAge, fullyRetAge: fullyRetAge??i.ageA, balAtFullRet: balAtFullRet??bal };
-}
-
 /* ------------------------ Format + tiers ------------------------ */
 const usd0 = (x) => (x<0?"-$":"$") + Math.abs(Math.round(x)).toLocaleString();
 const usdK = (x) => Math.abs(x) >= 1000 ? "$" + Math.round(x/1000) + "k" : "$" + Math.round(x);
-const TIERS = [
-  { max:0.8, label:"Tight", color:"#BE4A2B" }, { max:1.15, label:"Modest", color:"#C7972F" },
-  { max:1.7, label:"Comfortable", color:"#1E7A5E" }, { max:2.6, label:"Affluent", color:"#14302E" },
-  { max:Infinity, label:"Luxurious", color:"#7A4FA0" },
-];
-const tierFor = (ratio) => TIERS.find(t => ratio < t.max);
 
 const C = { ink:"#102B28", inkSoft:"#1C3D39", paper:"#FBFAF6", panel:"#FFFFFF", line:"#E7E2D6",
   brass:"#B5852C", brassDeep:"#946B1E", viridian:"#1E7A5E", clay:"#BE4A2B", slate:"#5E6B67", mut:"#8A938F" };
@@ -152,6 +35,17 @@ function Field({ label, hint, children }) {
     {children}
     {hint && <span style={{ display:"block", fontSize:11, color:C.mut, marginTop:4, lineHeight:1.4 }}>{hint}</span>}
   </label>);
+}
+function AssumptionIcon({ title }) {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" role="img" aria-label={title}
+      style={{ marginLeft:6, verticalAlign:"-1px", cursor:"help", flexShrink:0 }}>
+      <title>{title}</title>
+      <path d="M8 1.4 15 14H1z" fill={C.brass} stroke={C.brassDeep} strokeWidth="0.9" strokeLinejoin="round" />
+      <rect x="7.25" y="5.4" width="1.5" height="4.2" rx="0.75" fill={C.paper} />
+      <circle cx="8" cy="11.6" r="0.95" fill={C.paper} />
+    </svg>
+  );
 }
 const inputStyle = { width:"100%", boxSizing:"border-box", padding:"9px 11px", border:`1px solid ${C.line}`, borderRadius:8, fontSize:15, fontFamily:"'JetBrains Mono', monospace", color:C.ink, background:C.panel, outline:"none" };
 function NumberInput({ value, onChange, prefix, suffix, min }) {
@@ -168,9 +62,9 @@ function Select({ value, onChange, options }) {
   </select>);
 }
 function Segmented({ value, onChange, options }) {
-  return (<div style={{ display:"flex", gap:4, background:"#F1EEE5", padding:4, borderRadius:9 }}>
+  return (<div style={{ display:"flex", flex:"1 1 auto", minWidth:0, gap:4, background:"#F1EEE5", padding:4, borderRadius:9 }}>
     {options.map(o => { const on=value===o.value; return (
-      <button key={String(o.value)} onClick={()=>onChange(o.value)} style={{ flex:1, padding:"7px 8px", border:"none", borderRadius:6, cursor:"pointer", whiteSpace:"nowrap", fontSize:12, fontWeight:600, fontFamily:"inherit", background:on?C.ink:"transparent", color:on?"#fff":C.slate, transition:"all .15s" }}>{o.label}</button>
+      <button key={String(o.value)} onClick={()=>onChange(o.value)} style={{ flex:1, minWidth:0, padding:"7px 8px", border:"none", borderRadius:6, cursor:"pointer", whiteSpace:"normal", textAlign:"center", lineHeight:1.2, fontSize:12, fontWeight:600, fontFamily:"inherit", background:on?C.ink:"transparent", color:on?"#fff":C.slate, transition:"all .15s" }}>{o.label}</button>
     ); })}
   </div>);
 }
@@ -187,10 +81,11 @@ export default function RetirementCalculator() {
   const [s, setS] = useState({
     ageA:45, ageB:45, stopA:62, stopB:60, claimA:67, claimB:67, pensionAge:65,
     incomeA:90000, incomeB:75000, savings:300000, contrib:18000, targetPct:0.30, status:"married",
-    pensionOn:true, system:"TRS", plan:2, pYears:20, afc:78000,
+    ssModeA:"estimate", ssModeB:"estimate", ssFraA:36000, ssFraB:30000,
+    pensionOn:true, system:"TRS", plan:2, pYears:20, afc:null,
     realReturn:0.05, swr:0.04, tradFrac:0.7, inflation:0.025,
     ssMode:"trustees", ssHaircut:81, ssCutYear:2034,
-    retireLoc:"US — national average",
+    retireLoc:"US -- national average",
     tx:{ on:true, value:790000, year:2038, strategy:"rent" },
     at:{ on:true, value:324000, year:2040, strategy:"live" },
   });
@@ -199,64 +94,21 @@ export default function RetirementCalculator() {
   const [adv, setAdv] = useState(false);
   const [openLoc, setOpenLoc] = useState("Portugal");
   const [cmpA, setCmpA] = useState("Austria");
-  const [cmpB, setCmpB] = useState("US — Texas / Florida");
+  const [cmpB, setCmpB] = useState("US -- Texas / Florida");
   const set = (k) => (v) => setS(p => ({ ...p, [k]: v }));
   const setProp = (key, field) => (v) => setS(p => ({ ...p, [key]: { ...p[key], [field]: v } }));
 
-  const incomeHH = (Number(s.incomeA)||0) + (Number(s.incomeB)||0);
-  const retLocObj = LOCATIONS.find(l => l.name === s.retireLoc) || LOCATIONS[10];
+  const calc = useMemo(() => calculatePlan(s), [s]);
+  const afcAuto = afcIsAuto(s);
+  const afcEff = resolveAfc(s);
 
-  // active inheritance effects
-  const inher = useMemo(() => {
-    const out = [];
-    for (const key of ["tx","at"]) {
-      const p = s[key]; if (!p.on) continue;
-      const e = propEcon(key, Number(p.value)||0);
-      out.push({ key, year:Number(p.year)||2038, type:p.strategy, sell:e.sell, rent:e.rent, live:e.live });
-    }
-    return out;
-  }, [s.tx, s.at]);
-
-  const inp = { ...s, incomeHH, inher, hcPre:retLocObj.hcPre, hcPost:retLocObj.hcPost };
-
-  const calc = useMemo(() => {
-    const effHaircut = s.ssMode==="full" ? 1 : s.ssMode==="trustees" ? 0.81 : Math.max(0, Math.min(1, (Number(s.ssHaircut)||0)/100));
-    const effCutYear = s.ssMode==="full" ? 9999 : (Number(s.ssCutYear)||2034);
-    const trustCut = Number(s.ssCutYear)||2034;
-    const simChosen = simulate(inp, { on: effHaircut>0, haircut: effHaircut, cutYear: effCutYear });
-    const simFull   = simulate(inp, { on:true, haircut:1, cutYear:9999 });
-    const simTrust  = simulate(inp, { on:true, haircut:0.81, cutYear:trustCut });
-    const simNone   = simulate(inp, { on:false });
-    const b = benefits(inp);
-    const cs = (sim, hc) => {
-      const fullCal = 2026 + (sim.fullyRetAge - s.ageA);
-      let sellAfter=0, rentInc=0, liveSav=0;
-      for (const p of inher) { if (p.type==="sell" && p.year>fullCal) sellAfter+=p.sell; if (p.type==="rent") rentInc+=p.rent; if (p.type==="live") liveSav+=p.live; }
-      const FV = sim.balAtFullRet + sellAfter;
-      const wd = FV*s.swr;
-      const ssA=b.ssA*hc, ssB=b.ssB*hc, ssHouse=ssA+ssB;
-      const guaranteed = ssHouse + b.pension + rentInc;
-      const gross = guaranteed + wd;
-      const ordinary = wd*s.tradFrac + b.pension + rentInc;
-      const tSS = taxableSS(ordinary, ssHouse, s.status);
-      const agi = ordinary + tSS;
-      let ded = STD[s.status]+SENIOR_ADDON[s.status];
-      let bonus = SENIOR_BONUS*(s.status==="married"?2:1); const mp=s.status==="married"?150000:75000;
-      if (agi>mp) bonus=Math.max(0,bonus-(agi-mp)*0.06); ded+=bonus;
-      const tax = fedTax(Math.max(0,agi-ded), s.status);
-      return { FV, wd, ssA, ssB, pension:b.pension, erf:b.erf, ssHouse, guaranteed, rentInc, liveSav, gross, net:gross-tax, tax, target:incomeHH*s.targetPct };
-    };
-    return { effHaircut, effCutYear, simChosen, simFull, simTrust, simNone,
-      steady: cs(simChosen, effHaircut), sFull: cs(simFull,1), sTrust: cs(simTrust,0.81), sNone: cs(simNone,0) };
-  }, [s, incomeHH, inher]);
-
-  const { simChosen, simFull, simTrust, simNone, steady, sFull, sTrust, sNone, effHaircut, effCutYear } = calc;
+  const { incomeHH, inher, simChosen, simFull, simTrust, simNone, steady, sFull, sTrust, sNone, effHaircut, effCutYear } = calc;
   const simSS = simChosen, simNo = simNone;
 
-  const onTrack = steady.guaranteed + steady.wd >= steady.target;
+  const onTrack = steady.net >= steady.targetNeed;
   const lastsTxt = (d) => d ? `age ${d}` : "beyond 95";
   const sFactor = couple ? 1 : 0.64;
-  const yearsToRet = Math.max(0, simSS.fullyRetAge - s.ageA);
+  const yearsToRet = Math.max(0, steady.startAgeA - s.ageA);
   const retYear = 2026 + yearsToRet;
   const inflFactor = Math.pow(1 + s.inflation, yearsToRet);
   const annualCost = (l) => monthlyTotal(l, stage) * 12 * sFactor;
@@ -274,7 +126,6 @@ export default function RetirementCalculator() {
   }));
   const balRows = simSS.rows.map((r, idx) => ({ age:r.aA, withSS:r.bal, withoutSS: simNo.rows[idx] ? simNo.rows[idx].bal : 0 }));
   const sellDots = simSS.rows.filter(r => r.sellLump > 0).map(r => ({ age:r.aA, bal:r.bal }));
-  const endSS = balRows[balRows.length-1].withSS, endNo = balRows[balRows.length-1].withoutSS;
   const hasRental = inher.some(p => p.type === "rent");
 
   const incomeStack = [
@@ -318,7 +169,6 @@ export default function RetirementCalculator() {
     const p = s[keyName], meta = PROP[keyName], e = propEcon(keyName, Number(p.value)||0);
     const opts = [["sell","Sell","sell"],["rent","Rent out","rent"],["live","Live in","live"]];
     const chosen = p.strategy;
-    const val = { sell:e.sell, rent:e.rent, live:e.live }[chosen];
     return (
       <div style={{ border:`1px solid ${C.line}`, borderRadius:12, padding:"14px 15px", marginBottom:12, background:"#FCFAF4" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:10 }}>
@@ -351,12 +201,13 @@ export default function RetirementCalculator() {
         * { box-sizing:border-box; }
         input[type=number]::-webkit-inner-spin-button { opacity:.25; }
         .rc-grid { display:grid; grid-template-columns:1fr; gap:0; }
-        @media (min-width:980px){ .rc-grid { grid-template-columns:430px 1fr; } }
+        @media (min-width:980px){ .rc-grid { grid-template-columns:430px 1fr; column-gap:28px; } }
         .rc-inputs { display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
         .rc-stat { animation:rise .5s ease both; }
         @keyframes rise { from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;} }
-        @media (prefers-reduced-motion:reduce){ .rc-stat{ animation:none; } }
+        @media (prefers-reduced-motion:reduce){ .rc-stat,.rc-exp{ animation:none; transition:none; } }
         .rc-loc:hover { background:#F6F2E8; }
+        .rc-loc:focus-visible { outline:2px solid ${C.brass}; outline-offset:2px; }
         .rc-exp { animation:exp .25s ease both; }
         @keyframes exp { from{opacity:0;} to{opacity:1;} }
       `}</style>
@@ -364,7 +215,10 @@ export default function RetirementCalculator() {
       <header style={{ background:C.ink, color:"#F4F1E8", padding:"30px 22px 26px" }}>
         <div style={{ maxWidth:1160, margin:"0 auto" }}>
           <div style={{ fontSize:11, letterSpacing:2.5, textTransform:"uppercase", color:C.brass, fontWeight:700 }}>Retirement planner · 2026 figures</div>
-          <h1 style={{ fontFamily:"'Newsreader', serif", fontWeight:400, fontSize:34, lineHeight:1.1, margin:"8px 0 10px", letterSpacing:-.5 }}>The Ledger &amp; the Atlas</h1>
+          <h1 style={{ fontFamily:"'Newsreader', serif", fontWeight:400, fontSize:34, lineHeight:1.1, margin:"8px 0 10px", letterSpacing:-.5 }}>Nest &amp; Next</h1>
+          <p style={{ margin:"0 0 8px", maxWidth:680, fontSize:16, lineHeight:1.45, color:"#F4F1E8" }}>
+            This is about your money, your home, and what comes next.
+          </p>
           <p style={{ margin:0, maxWidth:680, fontSize:14.5, lineHeight:1.55, color:"#C9D3CF" }}>
             Every income stream mapped year by year — salaries, two Social Security checks, her Washington
             pension, two inherited homes — against the cost of living from Sofia to the Bahamas, with the
@@ -400,8 +254,20 @@ export default function RetirementCalculator() {
                   <Field label="Your SS claim age" hint="62–70. +8%/yr to delay."><NumberInput value={s.claimA} onChange={set("claimA")} min={62} /></Field>
                   <Field label="Spouse SS claim age"><NumberInput value={s.claimB} onChange={set("claimB")} min={62} /></Field>
                 </div>
+                <Field label="Your SS estimate source" hint="SSA statement is best. Income estimate is a fallback.">
+                  <Segmented value={s.ssModeA} onChange={set("ssModeA")} options={[{label:"Income estimate",value:"estimate"},{label:"SSA statement",value:"statement"}]} />
+                </Field>
+                <Field label="Spouse SS estimate source">
+                  <Segmented value={s.ssModeB} onChange={set("ssModeB")} options={[{label:"Income estimate",value:"estimate"},{label:"SSA statement",value:"statement"}]} />
+                </Field>
+                {(s.ssModeA==="statement" || s.ssModeB==="statement") && (
+                  <div className="rc-inputs">
+                    {s.ssModeA==="statement" && <Field label="Your FRA benefit" hint="Annual amount from your SSA statement at full retirement age."><NumberInput value={s.ssFraA} onChange={set("ssFraA")} prefix="$" suffix="/yr" /></Field>}
+                    {s.ssModeB==="statement" && <Field label="Spouse FRA benefit"><NumberInput value={s.ssFraB} onChange={set("ssFraB")} prefix="$" suffix="/yr" /></Field>}
+                  </div>
+                )}
                 <div style={{ fontSize:12, color:C.slate, background:"#F6F4EC", borderRadius:8, padding:"9px 11px", lineHeight:1.5 }}>
-                  Scheduled benefits: your SS <b style={{fontFamily:"'JetBrains Mono',monospace",color:C.ink}}>{usd0(sFull.ssA)}</b>, spouse SS <b style={{fontFamily:"'JetBrains Mono',monospace",color:C.ink}}>{usd0(sFull.ssB)}</b>/yr at full funding. Use your SSA statement for precision.
+                  Scheduled benefits: your SS <b style={{fontFamily:"'JetBrains Mono',monospace",color:C.ink}}>{usd0(sFull.ssA)}</b>, spouse SS <b style={{fontFamily:"'JetBrains Mono',monospace",color:C.ink}}>{usd0(sFull.ssB)}</b>/yr at full funding. The income estimate uses SSA bend points; your SSA statement is usually more reliable.
                 </div>
                 <div style={{ marginTop:14 }}>
                   <Field label="Social Security funding scenario" hint="The 2025 Trustees project the retirement fund runs short ~2033–34; after that, payroll taxes still cover ~77–81% of benefits unless Congress acts.">
@@ -427,14 +293,22 @@ export default function RetirementCalculator() {
                 <Field label="Include the DRS pension"><Segmented value={s.pensionOn} onChange={set("pensionOn")} options={[{label:"Include",value:true},{label:"Skip",value:false}]} /></Field>
                 {s.pensionOn && (<>
                   <div className="rc-inputs">
-                    <Field label="System" hint="TRS = teachers · SERS = staff."><Segmented value={s.system} onChange={set("system")} options={[{label:"TRS",value:"TRS"},{label:"SERS",value:"SERS"}]} /></Field>
+                    <Field label="System" hint="TRS and SERS use the same formula here."><Segmented value={s.system} onChange={set("system")} options={[{label:"TRS",value:"TRS"},{label:"SERS",value:"SERS"}]} /></Field>
                     <Field label="Plan" hint="Plan 2 = 2%/yr · Plan 3 = 1%/yr."><Segmented value={s.plan} onChange={set("plan")} options={[{label:"Plan 2",value:2},{label:"Plan 3",value:3}]} /></Field>
                     <Field label="Years of service"><NumberInput value={s.pYears} onChange={set("pYears")} /></Field>
                     <Field label="Pension starts at" hint="Before 65 it's reduced."><NumberInput value={s.pensionAge} onChange={set("pensionAge")} /></Field>
                   </div>
-                  <Field label="Average final compensation (AFC)" hint="Avg pay over her highest 60 consecutive months."><NumberInput value={s.afc} onChange={set("afc")} prefix="$" suffix="/yr" /></Field>
+                  <Field
+                    label={<>Average final compensation (AFC){afcAuto && <AssumptionIcon title="Auto-filled from her current income because no AFC was entered. Wages are held flat in real terms, so today's salary stands in for final-average pay. Type a value to override." />}</>}
+                    hint="Avg pay over her highest 60 consecutive months."
+                  >
+                    <NumberInput value={afcEff} onChange={set("afc")} prefix="$" suffix="/yr" />
+                    {afcAuto
+                      ? <span style={{ display:"block", fontSize:11, color:C.brassDeep, marginTop:5, lineHeight:1.4 }}>Assumed from her income ({usd0(Number(s.incomeB)||0)}) — wages are held flat in real terms, so this is a placeholder. Type a value to override.</span>
+                      : <span onClick={()=>set("afc")(null)} style={{ display:"inline-block", fontSize:11, color:C.brassDeep, marginTop:5, cursor:"pointer", textDecoration:"underline" }}>Reset to assumed (her income)</span>}
+                  </Field>
                   <div style={{ fontSize:12, color:C.slate, background:"#F6F4EC", borderRadius:8, padding:"9px 11px", lineHeight:1.5 }}>
-                    {s.plan===2?"2%":"1%"} × {s.pYears} × {usd0(s.afc)}{steady.erf<1?` × ${steady.erf.toFixed(2)} early factor`:""} = <b style={{fontFamily:"'JetBrains Mono',monospace",color:C.ink}}>{usd0(steady.pension)}/yr</b> ({usd0(steady.pension/12)}/mo).{steady.erf<1?" Before 65 with 20–29 yrs takes a steep cut.":""}
+                    DRS calculates the monthly benefit from monthly AFC; this app annualizes the same formula. {s.plan===2?"2%":"1%"} x {s.pYears} x {usd0(afcEff)}{steady.erf<1?` x ${steady.erf.toFixed(4)} early factor`:""} = <b style={{fontFamily:"'JetBrains Mono',monospace",color:C.ink}}>{usd0(steady.pension)}/yr</b> ({usd0(steady.pension/12)}/mo). {steady.pensionNote || (steady.erf<1?"Early retirement uses the current DRS factor table.":"")}
                   </div>
                 </>)}
               </Section>
@@ -472,15 +346,17 @@ export default function RetirementCalculator() {
           {/* RESULTS */}
           <div>
             <div className="rc-stat" style={{ background:C.ink, borderRadius:14, padding:"22px 24px", color:"#F4F1E8", marginBottom:16 }}>
-              <div style={{ fontSize:11, letterSpacing:1.5, textTransform:"uppercase", color:C.brass, fontWeight:700, marginBottom:6 }}>Sustainable income, once everyone's retired</div>
+              <div style={{ fontSize:11, letterSpacing:1.5, textTransform:"uppercase", color:C.brass, fontWeight:700, marginBottom:6 }}>Sustainable income after benefits start</div>
               <div style={{ display:"flex", alignItems:"baseline", gap:12, flexWrap:"wrap" }}>
                 <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:42, fontWeight:600, lineHeight:1, color:"#fff" }}>{usd0(steady.net)}</div>
                 <div style={{ fontSize:13, color:"#C9D3CF" }}>/ yr after federal tax · today's dollars</div>
               </div>
-              <div style={{ marginTop:6, fontSize:13.5, color:"#C9D3CF" }}>{usd0(steady.net/12)}/mo · base goal {usd0(steady.target)}/yr{steady.liveSav>0?` · +${usd0(steady.liveSav)}/yr housing saved by living in an inherited home`:""}</div>
+              <div style={{ marginTop:6, fontSize:13.5, color:"#C9D3CF" }}>
+                {usd0(steady.net/12)}/mo starting around your age {steady.startAgeA} · spending need then {usd0(steady.targetNeed)}/yr{steady.liveSav>0?` · includes ${usd0(steady.liveSav)}/yr lower housing cost`:""}
+              </div>
               <div style={{ marginTop:14, display:"inline-flex", alignItems:"center", gap:8, background:onTrack?"rgba(30,122,94,.22)":"rgba(190,74,43,.22)", border:`1px solid ${onTrack?C.viridian:C.clay}`, borderRadius:999, padding:"6px 13px", fontSize:13, fontWeight:600 }}>
                 <span style={{ width:8, height:8, borderRadius:99, background:onTrack?"#5BD6A8":"#F09B82" }} />
-                {onTrack ? `On track — guaranteed income covers ${Math.min(999,Math.round(steady.guaranteed/steady.target*100))}% of the goal on its own` : `Short of the goal at this spending level`}
+                {onTrack ? `On track -- after-tax income covers the modeled spending need` : `Short of the modeled spending need`}
               </div>
               <div style={{ marginTop:10, fontSize:11.5, color:"#9FB0AB" }}>
                 Social Security modeled at {s.ssMode==="full" ? "100% (assumes Congress acts)" : `${Math.round(effHaircut*100)}% from ${effCutYear}${s.ssMode==="trustees"?" (2025 Trustees projection)":""}`} · change it under Step two
@@ -489,10 +365,10 @@ export default function RetirementCalculator() {
 
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))", gap:10, marginBottom:16 }}>
               {[
-                { k:"Portfolio when both retire", v:usd0(steady.FV), s:`@${(s.swr*100).toFixed(1)}% → ${usd0(steady.wd)}/yr (incl. property sales)` },
-                { k:"Guaranteed for life", v:usd0(steady.guaranteed), s:`SS + pension${steady.rentInc>0?" + rental":""}, COLA-adjusted` },
-                { k:"Savings last (with SS)", v:lastsTxt(simSS.depAge), s:`without SS: ${lastsTxt(simNo.depAge)}` },
-                { k:"Federal tax", v:usd0(steady.tax), s:"WA has no state income tax" },
+                { k:"Portfolio at benefit start", v:usd0(steady.FV), s:`@${(s.swr*100).toFixed(1)}% -> ${usd0(steady.wd)}/yr (incl. later property sales)` },
+                { k:"Lifetime benefits", v:usd0(steady.guaranteed), s:`Social Security + WA pension before tax` },
+                { k:"Savings last (tax-aware)", v:lastsTxt(simSS.depAge), s:`without SS: ${lastsTxt(simNo.depAge)}` },
+                { k:"Federal tax", v:usd0(steady.tax), s:"Estimated with 2026 federal rules" },
               ].map((x,idx)=>(
                 <div key={idx} className="rc-stat" style={{ background:C.panel, border:`1px solid ${C.line}`, borderRadius:12, padding:"13px 14px" }}>
                   <div style={{ fontSize:11, color:C.slate, fontWeight:600, marginBottom:5 }}>{x.k}</div>
@@ -540,8 +416,8 @@ export default function RetirementCalculator() {
               {(() => {
                 const ssShare = sFull.gross>0 ? sFull.ssHouse/sFull.gross : 0;
                 const drop = sFull.net - sTrust.net;
-                const okTrust = sTrust.guaranteed + sTrust.wd >= sTrust.target;
-                const okNone = sNone.guaranteed + sNone.wd >= sNone.target;
+                const okTrust = sTrust.net >= sTrust.targetNeed;
+                const okNone = sNone.net >= sNone.targetNeed;
                 return (
                   <div style={{ marginTop:12, fontSize:12.5, color:C.inkSoft, lineHeight:1.55, background:"#F6F4EC", borderRadius:9, padding:"10px 12px" }}>
                     Social Security is about <b style={{color:C.ink}}>{Math.round(ssShare*100)}%</b> of your retirement income, so the realistic 81% case trims roughly <b style={{color:C.ink}}>{usd0(drop)}/yr</b> — and you'd still be <b style={{color:okTrust?C.viridian:C.clay}}>{okTrust?"on track":"short of your goal"}</b>. Even if it were eliminated entirely (a deliberate worst case, not a forecast), your pension and savings would carry you {okNone?"and still meet the goal":`to age ${simNone.depAge||95}`}. Her Washington pension is the ballast here — it isn't affected by any of this.
@@ -619,10 +495,10 @@ export default function RetirementCalculator() {
               </div>
             </div>
 
-            {/* Atlas */}
+            {/* Places */}
             <div style={{ background:C.panel, border:`1px solid ${C.line}`, borderRadius:14, padding:"16px 18px 20px", marginBottom:16 }}>
               <div style={{ marginBottom:8 }}>
-                <div style={{ fontSize:11, letterSpacing:1.5, textTransform:"uppercase", color:C.brassDeep, fontWeight:700 }}>The atlas</div>
+                <div style={{ fontSize:11, letterSpacing:1.5, textTransform:"uppercase", color:C.brassDeep, fontWeight:700 }}>Places</div>
                 <h3 style={{ margin:"2px 0 0", fontFamily:"'Newsreader',serif", fontWeight:500, fontSize:20 }}>How far {usd0(steady.net)} stretches</h3>
               </div>
               <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
@@ -636,7 +512,14 @@ export default function RetirementCalculator() {
                   const open = openLoc===l.name, monthly = monthlyTotal(l,stage)*sFactor, surplus = steady.net-l.cost;
                   return (
                     <div key={l.name} style={{ border:`1px solid ${open?C.line:"transparent"}`, borderRadius:10, overflow:"hidden", background:open?"#FCFAF4":"transparent" }}>
-                      <div className="rc-loc" onClick={()=>setOpenLoc(open?null:l.name)} style={{ padding:"8px", borderRadius:9, cursor:"pointer" }}>
+                      <button
+                        type="button"
+                        className="rc-loc"
+                        aria-expanded={open}
+                        aria-controls={`loc-${l.name.replaceAll(" ","-")}`}
+                        onClick={()=>setOpenLoc(open?null:l.name)}
+                        style={{ display:"block", width:"100%", padding:"8px", border:"none", background:"transparent", borderRadius:9, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}
+                      >
                         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:5 }}>
                           <span style={{ fontSize:13, fontWeight:600, color:C.ink }}><span style={{ color:C.mut, marginRight:6, fontSize:11 }}>{open?"▾":"▸"}</span>{l.name} <span style={{ fontSize:10.5, color:C.mut, fontWeight:500 }}>· {l.region}</span></span>
                           <span style={{ display:"flex", alignItems:"center", gap:8 }}>
@@ -648,9 +531,9 @@ export default function RetirementCalculator() {
                           <div style={{ position:"absolute", inset:0, width:`${Math.min(100,(l.cost/max)*100)}%`, background:"#D9D2C2", borderRadius:6 }} />
                           <div style={{ position:"absolute", top:0, bottom:0, left:`${Math.min(100,(steady.net/max)*100)}%`, width:2.5, background:C.brass }} />
                         </div>
-                      </div>
+                      </button>
                       {open && (
-                        <div className="rc-exp" style={{ padding:"4px 12px 14px" }}>
+                        <div id={`loc-${l.name.replaceAll(" ","-")}`} className="rc-exp" style={{ padding:"4px 12px 14px" }}>
                           <div style={{ fontSize:11.5, color:C.slate, lineHeight:1.45, marginBottom:10 }}>{l.note}</div>
                           <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12.5 }}>
                             <thead><tr style={{ color:C.mut, fontSize:11 }}>
@@ -710,7 +593,7 @@ export default function RetirementCalculator() {
                   {lineItems(A,stage).map(([label,va],idx)=>{
                     const vb=lineItems(B,stage)[idx][1], av=va*sFactor, bv=vb*sFactor, isHC=label.indexOf("Healthcare")===0;
                     return (<tr key={label} style={{ borderTop:`1px solid ${C.line}`, background:isHC?"#F6F2E8":"transparent" }}>
-                      <td style={{ padding:"5px 0", color:isHC?C.brassDeep:C.inkSoft, fontWeight:isHC?600:400 }}>{label.replace(" — before 65 (ACA)","").replace(" — 65+ (Medicare/local)","")}{isHC?` (${stage==="pre"?"<65":"65+"})`:""}</td>
+                      <td style={{ padding:"5px 0", color:isHC?C.brassDeep:C.inkSoft, fontWeight:isHC?600:400 }}>{label.replace(" -- before 65","").replace(" -- 65+","")}{isHC?` (${stage==="pre"?"<65":"65+"})`:""}</td>
                       <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", color:av<=bv?C.viridian:C.ink, fontWeight:av<=bv?600:400 }}>{usd0(av)}</td>
                       <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", color:bv<av?C.viridian:C.ink, fontWeight:bv<av?600:400 }}>{usd0(bv)}</td>
                     </tr>);
@@ -756,6 +639,27 @@ export default function RetirementCalculator() {
                   <div style={{ fontSize:13, lineHeight:1.5, color:C.inkSoft }}><b style={{ color:C.ink }}>{n[0]}</b> {n[1]}</div>
                 </div>
               ))}
+            </div>
+
+            <div style={{ background:C.panel, border:`1px solid ${C.line}`, borderRadius:14, padding:"14px 18px", marginTop:16 }}>
+              <h3 style={{ margin:"0 0 8px", fontFamily:"'Newsreader',serif", fontWeight:500, fontSize:18, color:C.ink }}>Source links</h3>
+              <p style={{ margin:"0 0 10px", fontSize:12.5, color:C.slate, lineHeight:1.5 }}>
+                These are the main public sources behind the formulas. They are here so you can check the numbers yourself.
+              </p>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:"7px 12px", fontSize:12.5 }}>
+                {[
+                  ["IRS 2026 tax rules", SOURCES.irs2026],
+                  ["SSA benefit formula", SOURCES.ssaPia],
+                  ["SSA wage base", SOURCES.ssaWageBase],
+                  ["SSA spouse benefits", SOURCES.ssaRetirement],
+                  ["SSA trust funds", SOURCES.ssaTrustees],
+                  ["WA DRS pension", SOURCES.drsTrs2],
+                  ["KFF ACA premiums", SOURCES.kffAca],
+                  ["CMS Medicare", SOURCES.cmsMedicare],
+                ].map(([label, href]) => (
+                  <a key={label} href={href} target="_blank" rel="noreferrer" style={{ color:C.brassDeep, fontWeight:700 }}>{label}</a>
+                ))}
+              </div>
             </div>
 
             <p style={{ fontSize:11, color:C.mut, lineHeight:1.5, marginTop:16 }}>

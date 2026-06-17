@@ -27,10 +27,10 @@ exactly the kind of simplification the §5 table was built to list — and doesn
 ## Findings by severity
 
 | # | Severity | Finding | Claim it breaks |
-|---|----------|---------|-----------------|
+| --- | --- | --- | --- |
 | 1 | **HIGH** | Year-by-year sim charges no tax; headline does → longevity overstated, engines inconsistent | use-cases §5 (undisclosed), PRD P2/P3 |
 | 2 | **HIGH** | Steady-state applies age-65+ senior deductions + senior bonus unconditionally | PRD FR-TAX-02 |
-| 3 | **MEDIUM** | Atlas location rows are non-keyboard `<div onClick>`; reduced-motion only half-honored | NFR-06, UX-06 |
+| 3 | **MEDIUM** | Places location rows are non-keyboard `<div onClick>`; reduced-motion only half-honored | NFR-06, UX-06 |
 | 4 | **MEDIUM** | TRS/SERS selector is a no-op; computation never reads `system` | PRD FR-PEN-01 (presented as a choice) |
 | 5 | **LOW** | Spousal top-up earns delayed-retirement credits it can't have (claim > 67) | use-cases UC-3 |
 | 6 | **LOW** | `pensionERF` applies the 20–29-yr reduction table to <20-yr service silently | PRD FR-PEN-04 |
@@ -73,10 +73,12 @@ and cheap; option (a) is correct.
 ## HIGH-2 — Senior deductions applied to people who aren't seniors
 
 **What's broken.** In `cs()` (jsx:243–245):
+
 ```js
 let ded = STD[s.status] + SENIOR_ADDON[s.status];      // age-65+ add-on, always
 let bonus = SENIOR_BONUS*(s.status==="married"?2:1);   // 2025–28 senior bonus, always
 ```
+
 Both the age-65 additional standard deduction and the senior "bonus" deduction are applied
 unconditionally — regardless of the spouses' actual ages.
 
@@ -94,14 +96,15 @@ at a representative 65+ age and say so). At least document that the headline ass
 ## MEDIUM-3 — Accessibility claims outrun the code
 
 **What's broken.**
-- Atlas rows expand via `<div className="rc-loc" onClick=…>` (jsx:639) — not focusable, not
+
+- Places rows expand via `<div className="rc-loc" onClick=…>` (jsx:639) — not focusable, not
   Enter/Space-activatable. A keyboard or screen-reader user cannot open any location breakdown.
 - The reduced-motion guard (jsx:358) disables only `.rc-stat`'s rise animation; the `.rc-exp` fade and
   `.rc-loc:hover` transition are untouched.
 
 **Why it's wrong.** NFR-06 claims "Honors reduced-motion preferences; controls are keyboard/tap
 friendly" and UX-06 claims charts "degrade gracefully." The segmented toggles and property cards *do*
-use real `<button>`s (good), but the single most-used interaction in the Atlas — expanding a place — is
+use real `<button>`s (good), but the single most-used interaction in Places — expanding a place — is
 mouse-only, and charts have no text alternative. "Accessible" is overstated.
 
 **How to fix.** Make `rc-loc` a `<button>` (or add `role="button"` + `tabIndex={0}` + key handler);
@@ -137,7 +140,7 @@ imply a computation.
   minimums aren't modeled — sub-vesting service still produces a pension.)
 
 - **LOW-7 — "COLA-adjusted" overclaims.** The "Guaranteed for life" tile (jsx:493) labels SS + pension
-  + rental "COLA-adjusted," but rental is a flat `value × yield` in today's dollars and DRS COLA is
+  - rental "COLA-adjusted," but rental is a flat `value × yield` in today's dollars and DRS COLA is
   capped — neither is a true CPI COLA. Cosmetic, but it's a numeric-trust surface.
 
 - **LOW-8 — Dangling doc references.** PRD §13 points to `02_Logic_UseCases_Retirement_Calculator.md`
@@ -166,7 +169,7 @@ imply a computation.
 
 1. **Disclose or fix the tax inconsistency (HIGH-1)** — one footnote closes the biggest honesty gap.
 2. **Gate the senior deductions on age (HIGH-2).**
-3. **Make Atlas rows keyboard-operable (MEDIUM-3)** — small diff, real inclusion win.
+3. **Make Places rows keyboard-operable (MEDIUM-3)** — small diff, real inclusion win.
 4. Clean up the no-op selector and the LOW doc/label items in a single housekeeping pass.
 
 *This audit is itself a planning-grade estimate of correctness, not a formal verification. Figures and

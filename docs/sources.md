@@ -1,6 +1,8 @@
-# Sources & References — "The Ledger & the Atlas" Retirement Calculator
+# Sources & References — "Nest & Next"
 
 > Every public information source consulted while building the current version of the calculator, grouped by topic, with links and short notes on what each informed. Primary/authoritative sources (government agencies, the IRS, SSA, CMS, Austrian federal portals, Washington DRS) are flagged **(primary)**. Secondary sources were used to cross‑check and contextualize.
+>
+> **Tagline:** This is about your money, your home, and what comes next.
 
 **Version:** 1.0 · **Reference year:** 2026 · **Companion docs:** PRD; Logic & Use‑Case Specification
 

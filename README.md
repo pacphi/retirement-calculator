@@ -1,20 +1,46 @@
-# 🗺️ The Ledger & the Atlas
+# Nest & Next
 
-**Know if you can retire — and where in the world your money goes furthest.** 💰🌍
+**This is about your money, your home, and what comes next.**
 
-One interactive calculator maps every year from today to age 95, so you can stop guessing and start planning. ✨
+An interactive retirement planning tool for checking whether a household plan works year by year, and how that income compares across several places to live.
 
-## Why you'll love it 💛
+It models:
 
-- 📈 **See the whole picture** — Social Security, pension, portfolio, and rental income, stacked year by year against what you'll actually spend.
-- 🏥 **No nasty surprises** — the pre-65 healthcare "bridge" gap is built right in, not hand-waved away.
-- 🌎 **14 places, one income** — find out whether your nest egg means *tight*, *comfortable*, or *luxurious* from Portugal to Texas to the Bahamas.
-- 🏡 **Inherited a home abroad?** — sell, rent, or live in it: see the real after-tax outcome across borders.
-- 🎚️ **Stress-test the scary stuff** — model a Social Security cut and watch the ripple instantly.
-- ⚡ **Live answers** — tweak any number, everything recalculates on the spot. No accounts, no saving, no friction.
+- annual income and spending from today to age 95
+- Social Security for two people, including spousal benefits and funding-cut scenarios
+- a Washington DRS pension
+- federal income tax using 2026 rules
+- portfolio growth, contributions, and tax-aware withdrawals
+- healthcare costs before and after age 65
+- inherited real estate choices: sell, rent, or live in
+- cost-of-living comparisons across 14 locations
 
-> 🧭 Planning-grade clarity, today's dollars, your decision. *(Estimates only — not financial, tax, or legal advice.)*
+This is a planning tool, not financial, tax, or legal advice. The UI includes links to the main public sources behind the formulas.
 
-## License 📜
+## Run Locally
 
-MIT © 2026 Chris Phillipson — see [LICENSE](LICENSE).
+```bash
+pnpm install
+pnpm dev
+```
+
+## Test
+
+```bash
+pnpm test
+```
+
+The calculation tests cover the high-risk logic: federal tax, senior deductions, Social Security spousal rules, Washington DRS early-retirement factors, Social Security cuts by year, and tax-aware depletion.
+
+## Project Layout
+
+- `RetirementCalculator.jsx` - React UI
+- `src/calculatorCore.js` - calculation engine
+- `src/retirementData.js` - constants, source links, location and property assumptions
+- `src/calculatorCore.test.js` - formula and simulation tests
+- `RetirementCalculator.test.jsx` - UI/source-link/accessibility tests
+- `docs/` - product, logic, sources, and audit notes
+
+## License
+
+MIT © 2026 Chris Phillipson. See [LICENSE](LICENSE).

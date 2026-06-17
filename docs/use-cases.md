@@ -1,6 +1,8 @@
-# Logic & Use-Case Specification — "The Ledger & the Atlas" Retirement Calculator
+# Logic & Use-Case Specification — "Nest & Next"
 
 > The computational logic behind every capability area of the calculator, written as a set of use cases. Each use case states its purpose, inputs, processing logic (with formulas), outputs, and edge cases. This document is the companion to the PRD; requirement IDs (FR‑*) cross‑reference it.
+>
+> **Tagline:** This is about your money, your home, and what comes next.
 
 **Version:** 1.0 · **Reference year:** 2026 · **Companion docs:** PRD; Sources & References
 
@@ -25,7 +27,7 @@
   - [3.12 UC-12 Steady-State Income Synthesis](#312-uc-12-steady-state-income-synthesis)
   - [3.13 UC-13 Cost-of-Living Total and Lifestyle Tiers](#313-uc-13-cost-of-living-total-and-lifestyle-tiers)
   - [3.14 UC-14 Inflation and Future-Dollar Conversion](#314-uc-14-inflation-and-future-dollar-conversion)
-  - [3.15 UC-15 Atlas Affordability and Sorting](#315-uc-15-atlas-affordability-and-sorting)
+  - [3.15 UC-15 Places Affordability and Sorting](#315-uc-15-places-affordability-and-sorting)
   - [3.16 UC-16 Two-Location Comparison](#316-uc-16-two-location-comparison)
   - [3.17 UC-17 Chart Data Derivation](#317-uc-17-chart-data-derivation)
 - [4. Worked Example: The Default Scenario](#4-worked-example-the-default-scenario)
@@ -98,6 +100,7 @@ TIERS    income/cost ratio → { <0.8 Tight, <1.15 Modest, <1.7 Comfortable,
 **Inputs.** `incomeA`, `incomeB`, `targetPct`.
 
 **Logic.**
+
 ```js
 incomeHH = (incomeA || 0) + (incomeB || 0)
 spendingGoal = incomeHH * targetPct
@@ -118,6 +121,7 @@ spendingGoal = incomeHH * targetPct
 **Inputs.** `incomeA`, `incomeB`, `claimA`, `claimB`.
 
 **Logic — Primary Insurance Amount (PIA).** Average indexed monthly earnings are approximated by capping income at the wage base and dividing by 12; the bend‑point formula then applies.
+
 ```js
 function pia(inc) {
   a = min(inc, SS_CAP) / 12
@@ -128,6 +132,7 @@ function pia(inc) {
 ```
 
 **Logic — claim-age adjustment.** Full Retirement Age (FRA) is 67. Claiming early reduces the benefit by 5/9 of 1% per month for the first 36 months and 5/12 of 1% per month beyond; claiming late adds 2/3 of 1% per month (8%/yr) up to age 70.
+
 ```js
 function ssAtClaim(p, c) {                 // p = PIA, c = claim age
   if (c < 67) {
@@ -143,6 +148,7 @@ function ssAtClaim(p, c) {                 // p = PIA, c = claim age
   return p
 }
 ```
+
 Each spouse's own benefit is annualized: `ssOwn = ssAtClaim(pia(income), claim) * 12`.
 
 **Outputs.** Each spouse's own annual Social Security benefit (before spousal top‑up).
@@ -160,12 +166,14 @@ Each spouse's own benefit is annualized: `ssOwn = ssAtClaim(pia(income), claim) 
 **Inputs.** Both PIAs, both claim ages, both own benefits from UC‑2.
 
 **Logic.**
+
 ```js
 ssA = ssAtClaim(piaA, claimA) * 12
 ssB = ssAtClaim(piaB, claimB) * 12
 ssA = max(ssA, piaB > piaA ? ssAtClaim(0.5 * piaB, claimA) * 12 : 0)
 ssB = max(ssB, piaA > piaB ? ssAtClaim(0.5 * piaA, claimB) * 12 : 0)
 ```
+
 The spousal amount is itself reduced if claimed before FRA (via `ssAtClaim` on the half‑PIA).
 
 **Outputs.** `ssA`, `ssB` — each spouse's final annual benefit; `ssHouse = ssA + ssB`.
@@ -183,6 +191,7 @@ The spousal amount is itself reduced if claimed before FRA (via `ssAtClaim` on t
 **Inputs.** `otherOrdinaryIncome` (taxable withdrawals + pension + rental), `ssHouse`, `status`.
 
 **Logic.** Provisional income = other income + half of Social Security; thresholds `[t1, t2]` depend on filing status.
+
 ```js
 function taxableSS(other, ss, status) {
   pr = other + 0.5*ss
@@ -208,6 +217,7 @@ function taxableSS(other, ss, status) {
 **Inputs.** `pensionOn`, `plan` (2 or 3), `pYears`, `afc`, `pensionAge`.
 
 **Logic — early-retirement factor (ERF).**
+
 ```js
 function pensionERF(age, years) {
   if (age >= 65) return 1
@@ -220,6 +230,7 @@ function pensionERF(age, years) {
 ```
 
 **Logic — benefit.**
+
 ```js
 multiplier = (plan === 3 ? 0.01 : 0.02)        // Plan 3 = 1%/yr, Plan 2 = 2%/yr
 pension = pensionOn ? multiplier * pYears * afc * pensionERF(pensionAge, pYears) : 0
@@ -240,6 +251,7 @@ pension = pensionOn ? multiplier * pYears * afc * pensionERF(pensionAge, pYears)
 **Inputs.** Taxable income `ti`, `status`.
 
 **Logic.**
+
 ```js
 function fedTax(ti, status) {
   brackets = FED[status]                  // array of [threshold, marginalRate]
@@ -251,6 +263,7 @@ function fedTax(ti, status) {
   return tax
 }
 ```
+
 2026 MFJ thresholds used: 10% from $0, 12% from $24,800, 22% from $100,800, 24% from $211,400, 32% from $403,550, 35% from $512,450, 37% from $768,700 (Single thresholds are roughly half, per the 2026 schedule).
 
 **Outputs.** Federal tax dollars.
@@ -268,6 +281,7 @@ function fedTax(ti, status) {
 **Inputs.** `agi`, `status`.
 
 **Logic.**
+
 ```js
 deduction = STD[status] + SENIOR_ADDON[status]         // base + age-65 add-on
 bonus = SENIOR_BONUS * (status === "married" ? 2 : 1)  // $6,000 per eligible filer
@@ -292,6 +306,7 @@ taxableIncome = max(0, agi - deduction)
 **Inputs.** `incomeHH`, `targetPct`, the chosen retirement location's `hcPre`/`hcPost` (monthly couple healthcare), each spouse's age in the year, and any active live‑in housing saving.
 
 **Logic.**
+
 ```js
 base = incomeHH * targetPct
 perPersonHC = max(0, (hcPre - hcPost)) / 2          // monthly premium per person <65
@@ -315,6 +330,7 @@ need = max(0.35 * base, base + hcBump - liveSaving) // live-in reduces the need
 **Inputs.** Property key (`tx` or `at`) and today's `value`; the per‑property constants.
 
 **Logic.**
+
 ```js
 function propEcon(key, value) {
   m = PROP[key]                                   // sellNet, rentYield, ownRate, rentMo
@@ -324,6 +340,7 @@ function propEcon(key, value) {
   return { sell, rent, live }
 }
 ```
+
 Texas constants encode the U.S. basis step‑up and high property tax: `sellNet 0.93` (≈7% selling costs, ~$0 capital gains), `rentYield 0.035`, `ownRate 0.027` (property tax + upkeep ≈ rent → small/negative `live`). Austria constants encode the transfer + capital‑gains taxes and tiny property tax: `sellNet 0.90`, `rentYield 0.020`, `ownRate 0.012` (large positive `live`).
 
 **Outputs.** The three strategy figures, shown on the property card with the chosen one highlighted, plus a tax note per strategy.
@@ -341,6 +358,7 @@ Texas constants encode the U.S. basis step‑up and high property tax: `sellNet 
 **Inputs.** All household, timing, pension, inheritance, healthcare‑basis, and assumption parameters, plus a Social Security option `{ on, haircut, cutYear }` (UC‑11).
 
 **Logic (per year `y`, for `y = 0 … max(95-ageA, 95-ageB)`).**
+
 ```js
 aA = ageA + y;  aB = ageB + y;  cal = 2026 + y
 workA = aA < stopA;  workB = aB < stopB
@@ -386,15 +404,18 @@ record row { aA, aB, cal, salA, salB, rent, pens, ssAy, ssBy, wd, bal, need, sel
 **Inputs.** `ssMode` ("full" | "trustees" | "custom"), `ssHaircut` (0–100), `ssCutYear`.
 
 **Logic — resolve the effective scenario.**
+
 ```js
 effHaircut = ssMode == "full"     ? 1
            : ssMode == "trustees" ? 0.81
            :                        clamp(ssHaircut/100, 0, 1)
 effCutYear = ssMode == "full" ? 9999 : (ssCutYear || 2034)
 ```
+
 The simulation (UC‑10) multiplies each spouse's benefit by `effHaircut` for all years `cal ≥ effCutYear`. The steady state (UC‑12) applies `effHaircut` directly, since the long run is past the cut year.
 
 **Logic — risk comparison.** Four simulations and steady states are computed: **Full (100%)**, **Trustees (81% from cut year)**, **Custom/Chosen**, and **None (0%)**. The risk panel tabulates, for 100% / 81% / 0%: household Social Security, after‑tax income, and the age savings last; and computes a takeaway:
+
 ```js
 ssShareOfIncome = sFull.ssHouse / sFull.gross
 dropAt81        = sFull.net - sTrust.net
@@ -416,6 +437,7 @@ onTrackAt81     = (sTrust.guaranteed + sTrust.withdrawal) >= goal
 **Inputs.** A simulation's `balAtFullRet` and `fullyRetAge`; the household's benefits and pension; the inheritance set; `swr`, `tradFrac`, `status`; the effective haircut.
 
 **Logic.**
+
 ```js
 fullCal = 2026 + (fullyRetAge - ageA)
 sellAfter = Σ p.sell  for sell-properties received AFTER fullCal   // not already in balance
@@ -452,6 +474,7 @@ net = gross - tax                                      // the headline number
 **Inputs.** A location's monthly line items and `hcPre`/`hcPost`; `stage` (pre/post‑65); `couple` flag; the household's net income.
 
 **Logic.**
+
 ```js
 sFactor = couple ? 1 : 0.64
 monthly = Σ(rent, groceries, utilities, transport, dining, entertainment, other)
@@ -478,6 +501,7 @@ tier  = first TIERS entry whose max > ratio
 **Inputs.** `inflation`, `fullyRetAge`, `ageA`, an annual cost.
 
 **Logic.**
+
 ```js
 yearsToRet = max(0, fullyRetAge - ageA)
 retYear    = 2026 + yearsToRet
@@ -491,7 +515,7 @@ futureCost = annualCost * inflFactor
 
 ---
 
-### 3.15 UC-15 Atlas Affordability and Sorting
+### 3.15 UC-15 Places Affordability and Sorting
 
 **Purpose.** Render all locations ranked by cost, each compared to income.
 
@@ -500,6 +524,7 @@ futureCost = annualCost * inflFactor
 **Inputs.** All locations' costs (UC‑13), the net income.
 
 **Logic.**
+
 ```js
 rows = locations
         .map(l => ({ ...l, cost: annualCost(l), ratio: net/cost, tier: tierFor(ratio) }))
@@ -524,6 +549,7 @@ surplus = net - cost                        // shown per location, signed
 **Inputs.** Two selected locations, `stage`, `couple`, net income.
 
 **Logic.**
+
 ```js
 for each category row:
   av = A.item * sFactor;  bv = B.item * sFactor
@@ -549,6 +575,7 @@ annualDifference = |totalsA - totalsB|
 **Inputs.** The simulation rows (chosen and "none" scenarios), the steady state.
 
 **Logic.**
+
 - **Staircase**: from the first benefit/stop event onward, each row contributes stacked values for Salary (you), Salary (spouse), Rental, Pension, SS (you), SS (spouse), and Portfolio draw; the dashed line plots the per‑year `need` (UC‑8), which steps up before 65 and down after.
 - **Balance**: per‑year `bal` from the chosen scenario (modeled SS) and the "none" scenario (SS eliminated); a marker is placed where `sellLump > 0`.
 - **Income mix**: the steady‑state composition (withdrawal, rental, Social Security, pension) as a single proportional bar.
@@ -576,7 +603,7 @@ This illustrates the interaction the tool is designed to expose: the pre‑65 cl
 ## 5. Known Simplifications and Rationale
 
 | Simplification | Why it is acceptable here | Where to be careful |
-|---|---|---|
+| --- | --- | --- |
 | Single real return (no volatility) | Keeps the model legible and stable in today's dollars | Real markets vary; a depletion age is a guide, not a guarantee |
 | Income used as career‑average proxy for PIA | Avoids requiring a full earnings history | Tends to overstate Social Security; reconcile with the SSA statement |
 | Flat 0.64 single‑household scaling | A reasonable rule of thumb for shared fixed costs | A re‑costed single budget would differ by category |
