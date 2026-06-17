@@ -113,7 +113,11 @@ export function simulate(i, ssOpt) {
     const extraSpend =
       travelSpendForYear(i.travel, cal, retireCal) + oneTimeSpendForYear(i.events, cal);
     const need = spendingNeed(i, aA, aB, liveSav) + extraSpend;
-    const yearReturn = ssOpt.stress ? stressReturnForYear(i.realReturn, y) : i.realReturn;
+    const yearReturn = ssOpt.returns
+      ? (ssOpt.returns[y] ?? i.realReturn)
+      : ssOpt.stress
+        ? stressReturnForYear(i.realReturn, y)
+        : i.realReturn;
     bal = bal * (1 + yearReturn) + sellLump;
 
     const plannedContrib = plannedContribution(i, workA, workB);

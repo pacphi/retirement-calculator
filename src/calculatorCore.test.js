@@ -8,6 +8,7 @@ import {
   oneTimeSpendForYear,
   pensionERF,
   resolveAfc,
+  runMonteCarlo,
   simulate,
   spousalBenefitAtClaimMonthly,
   standardDeduction,
@@ -307,5 +308,38 @@ describe("sequence-of-returns stress", () => {
     const lastChosen = plan.simChosen.rows[plan.simChosen.rows.length - 1].bal;
     const lastStress = plan.simStress.rows[plan.simStress.rows.length - 1].bal;
     expect(lastStress).toBeLessThan(lastChosen);
+  });
+});
+
+describe("Monte Carlo", () => {
+  const mcState = {
+    ...baseState,
+    travel: { on: false, amount: 15000, years: 15, taper: true },
+    events: [],
+    survivor: { on: false, year: 9999 },
+  };
+
+  it("is deterministic for a fixed seed", () => {
+    const a = runMonteCarlo(mcState, { paths: 200, seed: 7, volatility: 0.12 });
+    const b = runMonteCarlo(mcState, { paths: 200, seed: 7, volatility: 0.12 });
+    expect(a.successProb).toBe(b.successProb);
+    expect(a.balanceFan[a.balanceFan.length - 1].p50).toBe(b.balanceFan[b.balanceFan.length - 1].p50);
+  });
+
+  it("returns a probability in [0,1] and an ordered percentile fan", () => {
+    const r = runMonteCarlo(mcState, { paths: 300, seed: 1, volatility: 0.12 });
+    expect(r.successProb).toBeGreaterThanOrEqual(0);
+    expect(r.successProb).toBeLessThanOrEqual(1);
+    const last = r.balanceFan[r.balanceFan.length - 1];
+    expect(last.p10).toBeLessThanOrEqual(last.p50);
+    expect(last.p50).toBeLessThanOrEqual(last.p90);
+    expect(r.sustainableIncome.p10).toBeLessThanOrEqual(r.sustainableIncome.p90);
+  });
+
+  it("produces a wider outcome spread under higher volatility", () => {
+    const lo = runMonteCarlo(mcState, { paths: 300, seed: 3, volatility: 0.05 });
+    const hi = runMonteCarlo(mcState, { paths: 300, seed: 3, volatility: 0.20 });
+    const spread = (x) => { const l = x.balanceFan[x.balanceFan.length - 1]; return l.p90 - l.p10; };
+    expect(spread(hi)).toBeGreaterThan(spread(lo));
   });
 });
