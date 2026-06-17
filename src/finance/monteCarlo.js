@@ -8,6 +8,7 @@ export function runMonteCarlo(s, mcOpt = {}) {
   const paths = mcOpt.paths ?? MC_DEFAULTS.paths;
   const seed = mcOpt.seed ?? MC_DEFAULTS.seed;
   const volatility = mcOpt.volatility ?? MC_DEFAULTS.volatility;
+  if (paths <= 0) throw new RangeError("runMonteCarlo: paths must be > 0");
 
   const inp = buildPlanInputs(s);
   const { effHaircut, effCutYear } = resolveSocialSecurityScenario(s);

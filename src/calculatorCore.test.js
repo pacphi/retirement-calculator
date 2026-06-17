@@ -524,3 +524,9 @@ describe("numeric guards (mutation hardening)", () => {
     expect(row.ssA).toBeCloseTo(2000 * (1 - 24 * (5 / 9) / 100) * 12, 0);     // FRA 24k, claim 65 reduction, annualized
   });
 });
+
+describe("Monte Carlo input guard", () => {
+  it("throws when paths is not positive", () => {
+    expect(() => runMonteCarlo({ ...baseState }, { paths: 0 })).toThrow(/paths must be > 0/);
+  });
+});
