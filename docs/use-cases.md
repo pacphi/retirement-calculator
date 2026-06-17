@@ -692,6 +692,8 @@ function stressReturnForYear(realReturn, yearIndex) {
 
 **Important:** This is a **deterministic, illustrative scenario** — not a forecast, a Monte Carlo draw, or a probability-weighted outcome. Its purpose is to show the directional effect of sequence risk so users can judge whether their plan has enough buffer. Do not interpret the stress-path balance as a likely outcome.
 
+**Known limits.** The −10% magnitude is **milder than real bear markets** (2000–02 was roughly −9%/−12%/−22% real; 2008 was about −37% in a single year), and it models a crash **only at the start of retirement** — not a mid-retirement downturn (e.g. at age 75), which is an equally dangerous but differently-timed sequence risk. For the realistic downside distribution — including crashes at any point — use the **Monte Carlo** run, whose lognormal paths and p10 / worst-case-depletion outputs capture what this single illustrative line cannot.
+
 ---
 
 ### 4.5 Headline Reconciliation: Modeled Spend, Capacity, and Surplus
