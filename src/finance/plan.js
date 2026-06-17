@@ -58,7 +58,7 @@ export function buildPlanInputs(s) {
     ltc: s.ltc ?? { on: false, startAge: 80, years: 3, annual: null },
     travel: s.travel ?? { on: false, amount: 15000, years: 15, taper: true },
     events: s.events ?? [],
-    survivor: s.survivor ?? { on: false, year: 9999 },
+    survivor: s.survivor ?? { on: false, year: 9999, pensionPct: 0 },
   };
 }
 

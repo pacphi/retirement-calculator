@@ -100,7 +100,7 @@ export default function RetirementCalculator() {
     at:{ on:true, value:324000, year:2040, strategy:"live" },
     travel: { ...DEFAULT_TRAVEL },
     events: DEFAULT_LIFE_EVENTS.map((e) => ({ ...e })),
-    survivor: { on:false, year:2055 },
+    survivor: { on:false, year:2055, pensionPct:0 },
     ltc: { on:false, startAge:80, years:3, annual:null },
   });
   const [couple, setCouple] = useState(true);
@@ -436,7 +436,14 @@ export default function RetirementCalculator() {
                   <Segmented value={s.survivor.on} onChange={(v)=>set("survivor")({ ...s.survivor, on:v })}
                     options={[{label:"Model it",value:true},{label:"Skip",value:false}]} />
                   {s.survivor.on && (
-                    <NumberInput value={s.survivor.year} onChange={(v)=>set("survivor")({ ...s.survivor, year:Number(v)||9999 })} suffix="yr" />
+                    <div style={{ marginTop:6 }}>
+                      <NumberInput value={s.survivor.year} onChange={(v)=>set("survivor")({ ...s.survivor, year:Number(v)||9999 })} suffix="yr" />
+                      <div style={{ marginTop:6 }}>
+                        <span style={{ display:"block", fontSize:11.5, color:C.slate, marginBottom:4 }}>Pension continues to survivor at</span>
+                        <Segmented value={s.survivor.pensionPct} onChange={(v)=>set("survivor")({ ...s.survivor, pensionPct:v })}
+                          options={[{label:"0% (life-only)",value:0},{label:"50%",value:50},{label:"100%",value:100}]} />
+                      </div>
+                    </div>
                   )}
                 </Field>
                 <Field label="Long-term care" hint="~70% of retirees need it; one episode can run $50k–$200k/yr depending on location.">

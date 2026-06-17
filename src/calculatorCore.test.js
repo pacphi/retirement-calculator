@@ -434,3 +434,23 @@ describe("long-term care spending", () => {
     expect(ltcSpendForYear({ on: true, startAge: 80, years: 3, annual: 100000 }, 81, 46000)).toBe(100000);
   });
 });
+
+describe("survivor pension reduction", () => {
+  const base = {
+    ...baseState, ageA: 65, ageB: 65, stopA: 65, stopB: 65, claimA: 65, claimB: 65,
+    pensionOn: true, pensionAge: 65, savings: 500000, contrib: 0,
+    tx: { ...baseState.tx, on: false }, at: { ...baseState.at, on: false }, inher: [],
+    incomeHH: baseState.incomeA + baseState.incomeB, hcPre: 2450, hcPost: 1000,
+    ltcAnnual: 129000, travel: { on: false }, events: [], ltc: { on: false },
+  };
+  const pensAt = (sim, cal) => sim.rows.find((r) => r.cal === cal).pens;
+
+  it("reduces the pension by the elected survivor percentage", () => {
+    const full = simulate({ ...base, survivor: { on: false, year: 9999, pensionPct: 0 } }, { haircut: 1, cutYear: 9999 });
+    const half = simulate({ ...base, survivor: { on: true, year: 2030, pensionPct: 50 } }, { haircut: 1, cutYear: 9999 });
+    const none = simulate({ ...base, survivor: { on: true, year: 2030, pensionPct: 0 } }, { haircut: 1, cutYear: 9999 });
+    expect(pensAt(full, 2030)).toBeGreaterThan(0);
+    expect(pensAt(half, 2030)).toBeCloseTo(pensAt(full, 2030) * 0.5, 6);
+    expect(pensAt(none, 2030)).toBe(0);
+  });
+});

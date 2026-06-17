@@ -106,6 +106,9 @@ export function simulate(i, ssOpt) {
       ssByEff = 0;
     }
     const yearStatus = isSurvivor ? "single" : i.status;
+    // DRS survivor annuity: in survivor years the pension continues only at the
+    // elected percentage (default life-only = 0%).
+    const pensEff = isSurvivor ? pens * ((Number(i.survivor.pensionPct ?? 0)) / 100) : pens;
     let rent = 0;
     let liveSav = 0;
     let sellLump = 0;
@@ -127,22 +130,22 @@ export function simulate(i, ssOpt) {
     bal = bal * (1 + yearReturn) + sellLump;
 
     const plannedContrib = plannedContribution(i, workA, workB);
-    const taxBeforeWithdrawal = taxForYear(i, aA, aB, wages, pens, rent, ssAyEff + ssByEff, 0, yearStatus);
-    const afterTaxBeforeWithdrawal = wages + pens + rent + ssAyEff + ssByEff - taxBeforeWithdrawal;
+    const taxBeforeWithdrawal = taxForYear(i, aA, aB, wages, pensEff, rent, ssAyEff + ssByEff, 0, yearStatus);
+    const afterTaxBeforeWithdrawal = wages + pensEff + rent + ssAyEff + ssByEff - taxBeforeWithdrawal;
     const contrib = Math.min(plannedContrib, Math.max(0, afterTaxBeforeWithdrawal - need));
     bal += contrib;
 
-    const { withdrawal: wd, tax } = solveWithdrawal(i, aA, aB, wages, pens, rent, ssAyEff + ssByEff, need, bal, yearStatus);
+    const { withdrawal: wd, tax } = solveWithdrawal(i, aA, aB, wages, pensEff, rent, ssAyEff + ssByEff, need, bal, yearStatus);
     bal -= wd;
     if (bal < 1) bal = 0;
     if (!workA && !workB && fullyRetAge === null) {
       fullyRetAge = aA;
       balAtFullRet = bal;
     }
-    const afterTaxCash = wages + pens + rent + ssAyEff + ssByEff + wd - tax;
+    const afterTaxCash = wages + pensEff + rent + ssAyEff + ssByEff + wd - tax;
     if (bal <= 0 && depAge === null && afterTaxCash < need) depAge = aA;
     rows.push({
-      aA, aB, cal, salA, salB, rent, pens, ssA: ssAyEff, ssB: ssByEff, survivor: isSurvivor,
+      aA, aB, cal, salA, salB, rent, pens: pensEff, ssA: ssAyEff, ssB: ssByEff, survivor: isSurvivor,
       wd: Math.round(wd), bal: Math.round(bal), need: Math.round(need),
       extraSpend: Math.round(extraSpend),
       tax: Math.round(tax), contrib: Math.round(contrib), sellLump: Math.round(sellLump),
@@ -179,7 +182,9 @@ export function steadyState(i, sim) {
   const ssA = row.ssA;
   const ssB = row.ssB;
   const ssHouse = ssA + ssB;
-  const guaranteed = ssHouse + b.pension;
+  // Pension from the row already reflects any survivor-annuity reduction.
+  const pension = row.pens;
+  const guaranteed = ssHouse + pension;
   const recurring = guaranteed + rentInc;
   const gross = recurring + wd;
   const ageA = row.aA;
@@ -191,7 +196,7 @@ export function steadyState(i, sim) {
     status: yearStatus,
     ageA,
     ageB,
-    pension: b.pension,
+    pension,
     rental: rentInc,
     socialSecurity: ssHouse,
     grossWithdrawal: wd,
@@ -201,7 +206,7 @@ export function steadyState(i, sim) {
     status: yearStatus,
     ageA,
     ageB,
-    pension: b.pension,
+    pension,
     rental: 0,
     socialSecurity: ssHouse,
     grossWithdrawal: 0,
@@ -210,7 +215,7 @@ export function steadyState(i, sim) {
   const targetNeed = row.need; // sourced from the simulated row so events/healthcare flow through
   const net = gross - taxDetails.tax;
   return {
-    FV, wd, ssA, ssB, pension: b.pension, erf: b.erf, pensionNote: b.pensionNote,
+    FV, wd, ssA, ssB, pension, erf: b.erf, pensionNote: b.pensionNote,
     ssHouse, guaranteed, recurring, rentInc, liveSav, gross,
     net,
     sustainableCapacity: net,
