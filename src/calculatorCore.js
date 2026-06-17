@@ -262,7 +262,10 @@ export function simulate(i, ssOpt) {
       if (p.type === "sell" && cal === p.year) sellLump += p.sell;
     }
 
-    const need = spendingNeed(i, aA, aB, liveSav);
+    const retireCal = TAX_YEAR + Math.max(i.stopA - i.ageA, i.stopB - i.ageB);
+    const extraSpend =
+      travelSpendForYear(i.travel, cal, retireCal) + oneTimeSpendForYear(i.events, cal);
+    const need = spendingNeed(i, aA, aB, liveSav) + extraSpend;
     bal = bal * (1 + i.realReturn) + sellLump;
 
     const plannedContrib = plannedContribution(i, workA, workB);
@@ -283,6 +286,7 @@ export function simulate(i, ssOpt) {
     rows.push({
       aA, aB, cal, salA, salB, rent, pens, ssA: ssAy, ssB: ssBy,
       wd: Math.round(wd), bal: Math.round(bal), need: Math.round(need),
+      extraSpend: Math.round(extraSpend),
       tax: Math.round(tax), contrib: Math.round(contrib), sellLump: Math.round(sellLump),
     });
   }

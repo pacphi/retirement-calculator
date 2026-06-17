@@ -8,6 +8,7 @@ import {
   oneTimeSpendForYear,
   pensionERF,
   resolveAfc,
+  simulate,
   spousalBenefitAtClaimMonthly,
   standardDeduction,
   taxableSS,
@@ -169,6 +170,43 @@ describe("one-time life events", () => {
   it("handles an empty or missing list", () => {
     expect(oneTimeSpendForYear([], 2032)).toBe(0);
     expect(oneTimeSpendForYear(undefined, 2032)).toBe(0);
+  });
+});
+
+describe("life events in simulation", () => {
+  // Retired household so withdrawals are forced from the portfolio.
+  const retired = {
+    ...baseState,
+    ageA: 65, ageB: 65, stopA: 65, stopB: 65, claimA: 65, claimB: 65,
+    pensionOn: false, savings: 1000000, contrib: 0, targetPct: 0.4,
+    tx: { ...baseState.tx, on: false }, at: { ...baseState.at, on: false },
+    inher: [],
+    incomeHH: baseState.incomeA + baseState.incomeB,
+    hcPre: 2450, hcPost: 1000,
+    travel: { on: false, amount: 15000, years: 15, taper: true },
+    events: [{ id: "wed1", label: "Wedding", on: true, year: 2030, amount: 30000 }],
+  };
+
+  it("raises spending need in a one-time event year", () => {
+    const sim = simulate(retired, { haircut: 1, cutYear: 9999 });
+    const eventRow = sim.rows.find((r) => r.cal === 2030);
+    const normalRow = sim.rows.find((r) => r.cal === 2031);
+    expect(eventRow.extraSpend).toBe(30000);
+    expect(eventRow.need).toBe(normalRow.need + 30000);
+  });
+
+  it("draws more from the portfolio in the event year than in a normal year", () => {
+    const sim = simulate(retired, { haircut: 1, cutYear: 9999 });
+    const eventRow = sim.rows.find((r) => r.cal === 2030);
+    const normalRow = sim.rows.find((r) => r.cal === 2031);
+    expect(eventRow.wd).toBeGreaterThan(normalRow.wd);
+  });
+
+  it("adds recurring travel spend during the travel window", () => {
+    const withTravel = { ...retired, events: [], travel: { on: true, amount: 15000, years: 15, taper: true } };
+    const sim = simulate(withTravel, { haircut: 1, cutYear: 9999 });
+    const firstRetYear = sim.rows.find((r) => r.cal === 2026); // ageA 65 == stopA 65 -> retired now
+    expect(firstRetYear.extraSpend).toBe(15000);
   });
 });
 
