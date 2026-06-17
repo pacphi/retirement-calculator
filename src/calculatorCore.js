@@ -12,6 +12,7 @@ import {
   SENIOR_BONUS_PHASEOUT,
   SS_CAP,
   STD,
+  STRESS_EARLY_DROP,
   TAX_YEAR,
   TIERS,
 } from "./retirementData.js";
@@ -47,6 +48,12 @@ export const oneTimeSpendForYear = (events, cal) =>
     (sum, e) => (e && e.on && Number(e.year) === cal ? sum + (Number(e.amount) || 0) : sum),
     0,
   );
+
+export const stressReturnForYear = (realReturn, yearIndex) => {
+  if (yearIndex <= 2) return STRESS_EARLY_DROP;
+  if (yearIndex <= 5) return realReturn - 0.02;
+  return realReturn;
+};
 
 export const propEcon = (key, value) => {
   const m = PROP[key];
@@ -266,7 +273,8 @@ export function simulate(i, ssOpt) {
     const extraSpend =
       travelSpendForYear(i.travel, cal, retireCal) + oneTimeSpendForYear(i.events, cal);
     const need = spendingNeed(i, aA, aB, liveSav) + extraSpend;
-    bal = bal * (1 + i.realReturn) + sellLump;
+    const yearReturn = ssOpt.stress ? stressReturnForYear(i.realReturn, y) : i.realReturn;
+    bal = bal * (1 + yearReturn) + sellLump;
 
     const plannedContrib = plannedContribution(i, workA, workB);
     const taxBeforeWithdrawal = taxForYear(i, aA, aB, wages, pens, rent, ssAy + ssBy, 0);
@@ -396,6 +404,7 @@ export function calculatePlan(s) {
   const simFull = simulate(inp, { haircut: 1, cutYear: 9999 });
   const simTrust = simulate(inp, { haircut: 0.81, cutYear: trustCut });
   const simNone = simulate(inp, { haircut: 0, cutYear: TAX_YEAR });
+  const simStress = simulate(inp, { haircut: effHaircut, cutYear: effCutYear, stress: true });
   return {
     incomeHH,
     retLocObj,
@@ -407,6 +416,7 @@ export function calculatePlan(s) {
     simFull,
     simTrust,
     simNone,
+    simStress,
     steady: steadyState(inp, simChosen, effHaircut, effCutYear),
     sFull: steadyState(inp, simFull, 1, 9999),
     sTrust: steadyState(inp, simTrust, 0.81, trustCut),

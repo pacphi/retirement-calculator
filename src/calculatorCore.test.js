@@ -11,6 +11,7 @@ import {
   simulate,
   spousalBenefitAtClaimMonthly,
   standardDeduction,
+  stressReturnForYear,
   taxableSS,
   travelSpendForYear,
 } from "./calculatorCore.js";
@@ -258,5 +259,25 @@ describe("full plan", () => {
     const firstRetiredRow = plan.simChosen.rows.find((r) => r.aA === 64);
     expect(firstRetiredRow.tax).toBeGreaterThan(0);
     expect(firstRetiredRow.wd).toBeGreaterThan(0);
+  });
+});
+
+describe("sequence-of-returns stress", () => {
+  it("models an early crash then recovery", () => {
+    expect(stressReturnForYear(0.05, 0)).toBe(-0.10);
+    expect(stressReturnForYear(0.05, 2)).toBe(-0.10);
+    expect(stressReturnForYear(0.05, 3)).toBeCloseTo(0.03, 6);
+    expect(stressReturnForYear(0.05, 6)).toBeCloseTo(0.05, 6);
+  });
+
+  it("produces a lower balance path than the baseline simulation", () => {
+    const plan = calculatePlan({
+      ...baseState,
+      travel: { on: false, amount: 15000, years: 15, taper: true },
+      events: [],
+    });
+    const lastChosen = plan.simChosen.rows[plan.simChosen.rows.length - 1].bal;
+    const lastStress = plan.simStress.rows[plan.simStress.rows.length - 1].bal;
+    expect(lastStress).toBeLessThan(lastChosen);
   });
 });

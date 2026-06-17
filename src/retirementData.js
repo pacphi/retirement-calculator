@@ -10,6 +10,8 @@ export const DEFAULT_LIFE_EVENTS = [
   { id: "gk",    label: "Grandchild 529 seed",  on: false, year: 2040, amount: 5000  },
 ];
 
+export const STRESS_EARLY_DROP = -0.10;
+
 export const SOURCES = {
   irs2026: "https://www.irs.gov/newsroom/irs-releases-tax-inflation-adjustments-for-tax-year-2026-including-amendments-from-the-one-big-beautiful-bill",
   ssaPia: "https://www.ssa.gov/oact/progdata/retirebenefit2.html",
