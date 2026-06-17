@@ -1,0 +1,32 @@
+{
+  "$schema": "https://stryker-mutator.io/schemas/stryker-core.schema.json",
+  "packageManager": "pnpm",
+  "plugins": ["@stryker-mutator/vitest-runner"],
+  "testRunner": "vitest",
+  "testRunner_comment": "Uses @stryker-mutator/vitest-runner v9",
+  "mutate": [
+    "src/finance/tax.js",
+    "src/finance/socialSecurity.js",
+    "src/finance/pension.js",
+    "src/finance/simulate.js",
+    "src/finance/events.js",
+    "src/finance/plan.js",
+    "src/finance/monteCarlo.js"
+  ],
+  "reporters": ["html", "json", "clear-text"],
+  "htmlReporter": {
+    "fileName": "reports/mutation/mutation.html"
+  },
+  "jsonReporter": {
+    "fileName": "reports/mutation/mutation.json"
+  },
+  "concurrency": 2,
+  "coverageAnalysis": "perTest",
+  "thresholds": {
+    "high": 80,
+    "low": 60,
+    "break": 0
+  },
+  "timeoutMS": 10000,
+  "timeoutFactor": 1.5
+}

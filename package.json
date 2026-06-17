@@ -21,7 +21,9 @@
     "fix": "pnpm lint:fix && pnpm format:md && pnpm lint:md:fix",
     "check": "pnpm lint && pnpm typecheck && pnpm lint:md && pnpm links && pnpm test",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:mutation": "stryker run"
   },
   "dependencies": {
     "d3-array": "^3.2.4",
@@ -32,12 +34,16 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/vitest-runner": "^9.6.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@vitejs/plugin-react": "^6.0.2",
+    "@vitest/coverage-v8": "^4.1.9",
     "eslint": "^10.5.0",
+    "fast-check": "^4.8.0",
     "globals": "^17.6.0",
     "jsdom": "^29.1.1",
     "markdownlint-cli2": "^0.22.1",
