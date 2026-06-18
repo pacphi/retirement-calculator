@@ -118,6 +118,19 @@ export default function RetirementCalculator() {
   const [mcRunning, setMcRunning] = useState(false);
   const workerRef = useRef(null);
 
+  const headerRef = useRef(null);
+  const [headerH, setHeaderH] = useState(0);
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const measure = () => setHeaderH(el.offsetHeight);
+    measure();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    window.addEventListener("resize", measure);
+    return () => { ro?.disconnect(); window.removeEventListener("resize", measure); };
+  }, []);
+
   useEffect(() => {
     workerRef.current = new Worker(new URL("./src/finance/mcWorker.js", import.meta.url), { type: "module" });
     workerRef.current.onmessage = (e) => {
@@ -265,7 +278,7 @@ export default function RetirementCalculator() {
         @keyframes exp { from{opacity:0;} to{opacity:1;} }
       `}</style>
 
-      <header style={{ background:C.ink, color:"#F4F1E8", padding:"30px 22px 26px" }}>
+      <header ref={headerRef} style={{ position:"fixed", top:0, left:0, right:0, zIndex:50, background:C.ink, color:"#F4F1E8", padding:"30px 22px 26px" }}>
         <div style={{ maxWidth:1160, margin:"0 auto" }}>
           <div style={{ fontSize:11, letterSpacing:2.5, textTransform:"uppercase", color:C.brass, fontWeight:700 }}>Retirement planner · 2026 figures</div>
           <h1 style={{ fontFamily:"'Newsreader', serif", fontWeight:400, fontSize:34, lineHeight:1.1, margin:"8px 0 10px", letterSpacing:-.5 }}>Nest &amp; Next</h1>
@@ -280,7 +293,7 @@ export default function RetirementCalculator() {
         </div>
       </header>
 
-      <div style={{ maxWidth:1160, margin:"0 auto", padding:"24px 22px 60px" }}>
+      <div style={{ maxWidth:1160, margin:"0 auto", padding:"24px 22px 60px", paddingTop:headerH + 24 }}>
         <div className="rc-grid">
           {/* INPUTS */}
           <div>
