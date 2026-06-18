@@ -248,7 +248,7 @@ export default function RetirementCalculator() {
   };
 
   return (
-    <div style={{ background:C.paper, minHeight:"100%", color:C.ink, fontFamily:"'Inter', system-ui, sans-serif", WebkitFontSmoothing:"antialiased" }}>
+    <div style={{ background:C.paper, minHeight:"100%", color:C.ink, fontFamily:"'Inter', system-ui, sans-serif", WebkitFontSmoothing:"antialiased", paddingBottom:40 }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
         * { box-sizing:border-box; }
@@ -918,12 +918,17 @@ export default function RetirementCalculator() {
               acquisition history, currency basis, and treaty treatment with a cross-border tax professional. 2026 federal brackets. Inherited-home live-in savings begin the year after inheritance; one-time relocation costs are not modeled.
               {!s.ltc.on && " Long-term care is not modeled (about 70% of retirees need it; roughly $50k–$200k/yr depending on location) — enable it under Step Five → Advanced to stress-test."}
             </p>
-            <p style={{ fontSize:10, color:C.mut, marginTop:8, letterSpacing:0.3 }}>
-              Nest &amp; Next · v{import.meta.env.VITE_APP_VERSION}
-            </p>
           </div>
         </div>
       </div>
+
+      <footer style={{ position:"fixed", left:0, right:0, bottom:0, zIndex:50, background:C.ink, color:C.paper,
+        display:"flex", justifyContent:"center", alignItems:"center", gap:10, flexWrap:"wrap",
+        padding:"7px 16px", fontSize:11, letterSpacing:0.3, borderTop:`1px solid ${C.inkSoft}` }}>
+        <span>Nest &amp; Next · v{import.meta.env.VITE_APP_VERSION}</span>
+        <span style={{ color:C.mut }}>·</span>
+        <span>Chris Phillipson</span>
+      </footer>
     </div>
   );
 }
