@@ -49,3 +49,17 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      # Install the lychee binary so the `links` script (offline, local-file
+      # link checking) can run. Pinned for reproducible CI; bump deliberately.
+      - name: Install lychee
+        run: |
+          LYCHEE_VERSION=v0.24.2
+          curl -fsSL "https://github.com/lycheeverse/lychee/releases/download/lychee-${LYCHEE_VERSION}/lychee-x86_64-unknown-linux-gnu.tar.gz" \
+            | tar -xz lychee
+          sudo install -m 0755 lychee /usr/local/bin/lychee
+          rm -f lychee
+          lychee --version
+
+      - name: Check links
+        run: pnpm links
