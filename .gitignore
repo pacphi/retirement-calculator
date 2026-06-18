@@ -16,7 +16,13 @@ coverage/
 # These are regenerated per machine/session and are not meant to be shared.
 .agentic-qe/
 .claude-flow/
-.claude/
+# Ignore everything under .claude/ EXCEPT the project-specific skill(s) we author
+# in this repo, which are version-controlled so they travel with the project.
+# Using globs (not a bare `.claude/`) lets git descend so the negations apply.
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/calculator-comparison/
 .swarm/
 ruvector.db
 
