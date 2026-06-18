@@ -1,6 +1,6 @@
 {
   "globs": ["README.md", "CLAUDE.md", "docs/**/*.md"],
-  "ignores": ["node_modules/**"],
+  "ignores": ["node_modules/**", "docs/archive/**"],
   "config": {
     "MD013": false,
     "MD033": false,

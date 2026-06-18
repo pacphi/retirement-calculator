@@ -115,7 +115,6 @@ The following features use internally derived assumptions rather than externally
 
 ## 8. Safe Withdrawal Rate Research
 
-
 - **[Morningstar — What's a safe retirement withdrawal rate for 2026](https://www.morningstar.com/retirement/whats-safe-retirement-withdrawal-rate-2026)** — the 2026 base‑case rate (3.9%).
 - **[Morningstar — What your retirement spending rate should be (2026)](https://www.morningstar.com/retirement/heres-what-your-retirement-spending-rate-should-be-2026)** and **[Morningstar — Finding your safe withdrawal rate](https://www.morningstar.com/retirement/morningstars-retirement-income-research-finding-your-safe-withdrawal-rate)** — flexible/guardrail rates up to 5.7%.
 - **[Financial Advisor Magazine — Morningstar's 2026 SWR is 3.9%](https://www.fa-mag.com/news/morningstar-safe-retirement-withdrawal-rate-for-2026-is-3-9-85940.html)** — confirmation of the headline figure.
@@ -236,7 +235,7 @@ NHS-type social care) materially reduce out-of-pocket cost in several places, so
 modeled figure is conservative for those.
 
 | Location | Annual private LTC (USD) | Basis |
-|---|---|---|
+| --- | --- | --- |
 | Bulgaria / Romania | $14,000 | Romania ~5,100 RON/mo (CAREPATH); Bulgaria expat reports |
 | Greece | $22,000 | Estimate — thin data (WHO Europe 2024; Eurocarers) |
 | Portugal | $20,000 | Private *lar* (WithPortugal; ElderGuru) |
@@ -275,7 +274,7 @@ A US citizen owes **US federal** income tax everywhere (always modeled). On top 
 - **Foreign:** the *net-of-treaty/Foreign-Tax-Credit* additional burden. The FTC (IRS Form 1116) and tax treaties mean a US citizen abroad effectively pays the **higher** of US vs. local tax, **not both** — so treaty-favorable regimes land near 0 additional, and only locations whose effective rate on pension income exceeds the US federal rate carry a positive additional rate.
 
 | Location | Additional rate beyond US federal | Basis |
-|---|---|---|
+| --- | --- | --- |
 | US — Texas / Florida | 0% | No state income tax |
 | US — low-cost (WV/OK/MS) | 2% | Low effective state rate; pension exemptions common |
 | US — national average | 3% | Representative state rate; SS exempt |
