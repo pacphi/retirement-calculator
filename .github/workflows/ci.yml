@@ -64,5 +64,10 @@ jobs:
           rm -f lychee
           lychee --version
 
+      # The `links` script defaults SSL_CERT_FILE to the macOS path
+      # (/etc/ssl/cert.pem); point it at the Ubuntu CA bundle so lychee can
+      # build its request client even though the check itself runs --offline.
       - name: Check links
         run: pnpm links
+        env:
+          SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
