@@ -95,7 +95,8 @@ Where a fact has an authoritative origin (an IRS newsroom release, an SSA press 
 
 - **[IRS — 401(k) limit increases to $24,500 for 2026; IRA to $7,500](https://www.irs.gov/newsroom/401k-limit-increases-to-24500-for-2026-ira-limit-increases-to-7500)** **(primary)** — 2026 contribution limits.
 - **[IRS — Retirement topics: catch‑up contributions](https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-catch-up-contributions)** **(primary)** — catch‑up rules.
-- **[RetireHub — Your RMD at 73: the 2026 rules](https://retirehub.org/silver-and-cents/2026-05-20/your-rmd-at-73-the-2026-rules-rewritten/)** — RMD ages (73/75) used in the assumptions discussion.
+- **[IRS — Required Minimum Distributions (RMDs) FAQs](https://www.irs.gov/retirement-plans/retirement-plan-and-ira-required-minimum-distributions-faqs)** **(primary)** — first-RMD ages (73 for born 1951–1959, 75 for born 1960+), the Uniform Lifetime Table method, and the 25%→10% excise on a missed distribution. The engine models RMDs on this basis (see PRD FR‑SIM‑07).
+- **[RetireHub — Your RMD at 73: the 2026 rules](https://retirehub.org/silver-and-cents/2026-05-20/your-rmd-at-73-the-2026-rules-rewritten/)** — RMD ages (73/75) cross‑check.
 - **[Instead — RMDs' impact on tax brackets and Medicare premiums](https://www.instead.com/resources/blog/rmds-impact-on-tax-brackets-and-medicare-premiums)** — interaction context.
 - **[Schwab — Catch‑up contributions](https://www.schwab.com/learn/story/what-to-know-about-catch-up-contributions)**, **[Mercer Advisors — 2026 contribution limits and catch‑up rules](https://www.merceradvisors.com/retirement/2026-retirement-plan-contribution-limits-and-catch-up-rules/)** — cross‑checks.
 

@@ -162,6 +162,7 @@ export default function RetirementCalculator() {
   const [couple, setCouple] = useState(true);
   const [stage, setStage] = useState("post");
   const [adv, setAdv] = useState(false);
+  const [deferredMode, setDeferredMode] = useState("pct"); // "pct" | "amt" -- view for the pre-tax share
   const [openLoc, setOpenLoc] = useState("Portugal");
   const [cmpA, setCmpA] = useState("Austria");
   const [cmpB, setCmpB] = useState("US -- Texas / Florida");
@@ -584,7 +585,18 @@ export default function RetirementCalculator() {
                 <Field label={`Real investment return — ${(s.realReturn*100).toFixed(1)}%`} hint="After inflation. A 60/40 mix has historically returned ~4–5% real."><input type="range" min={2} max={8} step={0.5} value={s.realReturn*100} onChange={(e)=>set("realReturn")(Number(e.target.value)/100)} style={{ width:"100%", accentColor:C.brass }} /></Field>
                 <Field label={`Inflation — ${(s.inflation*100).toFixed(1)}%`} hint="Translates today's costs into future dollars in the breakdowns."><input type="range" min={1} max={5} step={0.5} value={s.inflation*100} onChange={(e)=>set("inflation")(Number(e.target.value)/100)} style={{ width:"100%", accentColor:C.brass }} /></Field>
                 <Field label="Withdrawal rate"><Segmented value={s.swr} onChange={set("swr")} options={[{label:"3.9%",value:0.039},{label:"4%",value:0.04},{label:"5.7%",value:0.057}]} /></Field>
-                <Field label={`Taxable share of withdrawals — ${Math.round(s.tradFrac*100)}%`} hint="Portion from pre-tax 401(k)/IRA."><input type="range" min={0} max={100} step={10} value={s.tradFrac*100} onChange={(e)=>set("tradFrac")(Number(e.target.value)/100)} style={{ width:"100%", accentColor:C.brass }} /></Field>
+                <div style={{ display:"flex", marginBottom:8 }}>
+                  <Segmented value={deferredMode} onChange={setDeferredMode}
+                    options={[{label:"% of savings",value:"pct"},{label:"$ amount",value:"amt"}]} />
+                </div>
+                <Field
+                  label={`Pre-tax 401(k)/IRA share of savings — ${Math.round(s.tradFrac*100)}%`}
+                  hint="Portion of combined savings in pre-tax 401(k)/IRA/403(b). RMDs apply to this starting at age 75; the rest is treated as Roth/after-tax. The plan takes each RMD on schedule, so no penalty applies — a missed RMD is taxed at 25% (10% if fixed within 2 years).">
+                  {deferredMode==="pct"
+                    ? <input type="range" min={0} max={100} step={10} value={s.tradFrac*100} onChange={(e)=>set("tradFrac")(Number(e.target.value)/100)} style={{ width:"100%", accentColor:C.brass }} />
+                    : <NumberInput value={Math.round(s.tradFrac*(Number(s.savings)||0))} prefix="$" min={0}
+                        onChange={(v)=>{ const sav=Number(s.savings)||0; const amt=Number(v)||0; set("tradFrac")(sav>0 ? Math.min(1, Math.max(0, amt/sav)) : 0); }} />}
+                </Field>
                 <Field label="Plan horizon (age)" hint="How long to project. Defaults to 95; can't be set below the older spouse's current age.">
                   <NumberInput value={s.horizonAge} min={Math.max(Number(s.ageA)||0, Number(s.ageB)||0)}
                     onChange={(v)=>set("horizonAge")(v===""||v==null ? 95 : Number(v))} />

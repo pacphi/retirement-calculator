@@ -236,10 +236,21 @@ describe("Strategy & assumptions controls update the projection", () => {
     expect(headline()).not.toBe(before);
   });
 
-  it("Taxable share slider moves the headline", async () => {
+  it("Pre-tax share slider moves the headline", async () => {
     await openAssumptions();
     const before = headline();
-    fireEvent.change(screen.getByLabelText(/Taxable share/i), { target: { value: "0" } });
+    fireEvent.change(screen.getByLabelText(/Pre-tax 401\(k\)\/IRA share/i), { target: { value: "0" } });
+    expect(headline()).not.toBe(before);
+  });
+
+  it("toggling the pre-tax share to a dollar amount keeps it in sync and moves the headline", async () => {
+    const user = await openAssumptions();
+    const before = headline();
+    await user.click(screen.getByRole("button", { name: /\$ amount/i }));
+    // The dollar view shows the share applied to the $670k default savings (70% = $469k).
+    const dollarInput = screen.getByLabelText(/Pre-tax 401\(k\)\/IRA share/i);
+    expect(Number(dollarInput.value)).toBe(469000);
+    fireEvent.change(dollarInput, { target: { value: "0" } });
     expect(headline()).not.toBe(before);
   });
 
