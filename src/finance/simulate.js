@@ -159,6 +159,7 @@ export function simulate(i, ssOpt) {
         : i.realReturn;
     // The deferred pool's prior year-end value is the IRS base for this year's RMD.
     const defBalStart = defBal;
+    const growth = bal * yearReturn; // investment growth this year (excludes the sale lump)
     bal = bal * (1 + yearReturn) + sellLump;
     defBal = defBal * (1 + yearReturn); // sale proceeds are taxable savings, not deferred
 
@@ -217,10 +218,11 @@ export function simulate(i, ssOpt) {
     if (bal <= 0 && depAge === null && afterTaxCash < need) depAge = aA;
     rows.push({
       aA, aB, cal, salA, salB, rent, pens: pensEff, ssA: ssAyEff, ssB: ssByEff, survivor: isSurvivor,
-      wd: Math.round(wdTotal), bal: Math.round(bal), need: Math.round(need),
+      wd: Math.round(wdTotal), wdSpend: Math.round(wd), bal: Math.round(bal), need: Math.round(need),
       extraSpend: Math.round(extraSpend),
       tax: Math.round(tax), contrib: Math.round(contrib), sellLump: Math.round(sellLump),
-      rmd: Math.round(rmd), forcedRmd: Math.round(forcedRmd),
+      rmd: Math.round(rmd), forcedRmd: Math.round(forcedRmd), defBal: Math.round(defBal),
+      growth: Math.round(growth),
     });
   }
 

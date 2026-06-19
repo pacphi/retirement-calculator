@@ -798,4 +798,15 @@ describe("required minimum distributions", () => {
     // reinvestment keeps it above that floor (only the incremental tax leaves the plan).
     expect(r.bal).toBeGreaterThan(1_000_000 - r.forcedRmd);
   });
+
+  it("exposes the bucket and flow fields the investments chart reads", () => {
+    const r = calculatePlan({ ...rmdBase, tradFrac: 1 }).simChosen.rows.find((r) => r.cal === 2026);
+    // Total draw splits into the spending portion plus the forced RMD.
+    expect(r.wd).toBe(r.wdSpend + r.forcedRmd);
+    // The tax-deferred bucket is tracked and never exceeds the total balance.
+    expect(r.defBal).toBeGreaterThanOrEqual(0);
+    expect(r.defBal).toBeLessThanOrEqual(r.bal);
+    expect(typeof r.growth).toBe("number"); // zero real return here -> no growth
+    expect(r.growth).toBe(0);
+  });
 });

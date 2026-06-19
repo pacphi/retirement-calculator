@@ -12,11 +12,13 @@ vi.mock("recharts", () => {
     ResponsiveContainer: Chart,
     Area: Primitive,
     Line: Primitive,
+    Bar: Primitive,
     XAxis: Primitive,
     YAxis: Primitive,
     CartesianGrid: Primitive,
     Tooltip: Primitive,
     ReferenceDot: Primitive,
+    ReferenceLine: Primitive,
   };
 });
 
@@ -281,5 +283,17 @@ describe("deterministic headline caveat", () => {
     render(<RetirementCalculator />);
     expect(screen.getByText(/best-case-within-average, not a median/i)).toBeInTheDocument();
     expect(screen.getByText(/Run Monte Carlo \(below\) for the realistic range/i)).toBeInTheDocument();
+  });
+});
+
+describe("investments chart view toggle", () => {
+  it("defaults to the cash-flow view and switches to the tax-bucket view", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByRole("button", { name: "Cash flow" })).toHaveAttribute("aria-pressed", "true");
+    const buckets = screen.getByRole("button", { name: "Tax buckets" });
+    expect(buckets).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(buckets);
+    expect(buckets).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Cash flow" })).toHaveAttribute("aria-pressed", "false");
   });
 });
