@@ -41,6 +41,31 @@ describe("RetirementCalculator UI", () => {
     render(<RetirementCalculator />);
     expect(screen.getByRole("button", { name:/add event/i })).toBeInTheDocument();
   });
+
+  it("collapses and expands the header via its toggle button", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    const tagline = /This is about your money, your home, and what comes next\./i;
+    // Without matchMedia (jsdom) the header starts expanded, so the tagline is visible.
+    expect(screen.getByText(tagline)).toBeInTheDocument();
+    const toggle = screen.getByRole("button", { name:/collapse header/i });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+
+    await user.click(toggle);
+    expect(screen.queryByText(tagline)).not.toBeInTheDocument();
+    const expand = screen.getByRole("button", { name:/expand header/i });
+    expect(expand).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(expand);
+    expect(screen.getByText(tagline)).toBeInTheDocument();
+  });
+
+  it("keeps the brand name visible in the collapsed header", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    await user.click(screen.getByRole("button", { name:/collapse header/i }));
+    expect(screen.getByRole("heading", { name:/Nest & Next/i })).toBeInTheDocument();
+  });
 });
 
 describe("reframed headline", () => {
@@ -103,6 +128,13 @@ describe("Monte Carlo summary formatting", () => {
   it("returns an empty array when mc is null", () => {
     expect(mcSummaryLines(null)).toEqual([]);
   });
+
+  it("reports the never-depletes case against the plan horizon, not a hardcoded 95", () => {
+    const mc = { successProb: 1, sustainableIncome: { p10: 1, p50: 2, p90: 3 }, depletionAge: { p10: 101, p50: 101 } };
+    expect(mcSummaryLines(mc, 100)[2]).toContain("beyond 100");
+    // A depletion at or below the horizon still reports the actual age.
+    expect(mcSummaryLines({ ...mc, depletionAge: { p10: 98, p50: 98 } }, 100)[2]).toContain("98");
+  });
 });
 
 describe("Social Security statement guidance", () => {
@@ -133,6 +165,103 @@ describe("long-term care disclosure", () => {
   it("shows the app semantic version in the footer", () => {
     render(<RetirementCalculator />);
     expect(screen.getByText(/Nest & Next · v\d+\.\d+\.\d+/)).toBeInTheDocument();
+  });
+});
+
+describe("Plan horizon input", () => {
+  async function openAssumptions() {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    await user.click(screen.getByRole("button", { name: /assumptions/i }));
+    return screen.getByLabelText(/Plan horizon \(age\)/i);
+  }
+
+  it("does not jump to the age floor while typing a low leading digit", async () => {
+    const input = await openAssumptions();
+    // First keystroke of "100": the leading "1" must NOT be clamped up to the
+    // older-spouse age floor (57) mid-edit — that's what produced "5700".
+    fireEvent.change(input, { target: { value: "1" } });
+    expect(input).toHaveValue(1);
+  });
+
+  it("lets you replace the default 95 with 100", async () => {
+    const input = await openAssumptions();
+    fireEvent.change(input, { target: { value: "100" } });
+    fireEvent.blur(input);
+    expect(input).toHaveValue(100);
+  });
+
+  it("floors a below-minimum entry to the older spouse's age on blur", async () => {
+    const input = await openAssumptions();
+    fireEvent.change(input, { target: { value: "30" } });
+    expect(input).toHaveValue(30); // not clamped while editing
+    fireEvent.blur(input);
+    expect(input).toHaveValue(57); // max(ageA 57, ageB 48) applied on blur
+  });
+
+  it("drives the never-depletes labels off the chosen horizon, not a hardcoded 95", async () => {
+    const input = await openAssumptions();
+    // Default plan doesn't deplete, so labels read "beyond 95" / "95+".
+    expect(screen.getAllByText(/beyond 95|95\+/).length).toBeGreaterThan(0);
+    fireEvent.change(input, { target: { value: "100" } });
+    fireEvent.blur(input);
+    expect(screen.getAllByText(/beyond 100|100\+/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/beyond 95|95\+/)).not.toBeInTheDocument();
+  });
+});
+
+describe("Strategy & assumptions controls update the projection", () => {
+  // Every control in the advanced panel should produce a visible change. These
+  // guard the "did anything happen?" concern: the headline (or, for inflation,
+  // the future-dollar figures) must move when the control is touched.
+  async function openAssumptions() {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    await user.click(screen.getByRole("button", { name: /assumptions/i }));
+    return user;
+  }
+  const headline = () => screen.getByText(/can sustain up to/i).textContent;
+
+  it("Real investment return slider moves the sustainable-income headline", async () => {
+    await openAssumptions();
+    const before = headline();
+    fireEvent.change(screen.getByLabelText(/Real investment return/i), { target: { value: "8" } });
+    expect(headline()).not.toBe(before);
+  });
+
+  it("Withdrawal rate selection moves the headline", async () => {
+    const user = await openAssumptions();
+    const before = headline();
+    await user.click(screen.getByRole("button", { name: "5.7%" }));
+    expect(headline()).not.toBe(before);
+  });
+
+  it("Taxable share slider moves the headline", async () => {
+    await openAssumptions();
+    const before = headline();
+    fireEvent.change(screen.getByLabelText(/Taxable share/i), { target: { value: "0" } });
+    expect(headline()).not.toBe(before);
+  });
+
+  it("Extra income tax moves the headline", async () => {
+    await openAssumptions();
+    const before = headline();
+    fireEvent.change(screen.getByLabelText(/Extra income tax/i), { target: { value: "10" } });
+    expect(headline()).not.toBe(before);
+  });
+
+  it("Inflation slider updates the future-dollar cost-of-living figures", async () => {
+    await openAssumptions();
+    const infFigure = () => screen.getByText(/inflation over/i).textContent;
+    const before = infFigure();
+    fireEvent.change(screen.getByLabelText(/^Inflation/i), { target: { value: "5" } });
+    expect(infFigure()).not.toBe(before);
+  });
+
+  it("exposes the active segmented option via aria-pressed", async () => {
+    await openAssumptions();
+    expect(screen.getByRole("button", { name: "4%" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "5.7%" })).toHaveAttribute("aria-pressed", "false");
   });
 });
 

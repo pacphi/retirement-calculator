@@ -28,15 +28,54 @@ const phaseNote = (l, f) => {
 const usd0 = (x) => (x<0?"-$":"$") + Math.abs(Math.round(x)).toLocaleString();
 const usdK = (x) => Math.abs(x) >= 1000 ? "$" + Math.round(x/1000) + "k" : "$" + Math.round(x);
 
-export const mcSummaryLines = (mc) => mc ? [
+export const mcSummaryLines = (mc, horizon = 95) => mc ? [
   `Success probability: ${Math.round(mc.successProb * 100)}%`,
   `Median sustainable income: ${mc.sustainableIncome.p50.toLocaleString("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0})}`,
-  `Worst-case (10th pct) savings run out at age: ${mc.depletionAge.p10 >= 96 ? "beyond 95" : mc.depletionAge.p10}`,
+  `Worst-case (10th pct) savings run out at age: ${mc.depletionAge.p10 > horizon ? `beyond ${horizon}` : mc.depletionAge.p10}`,
 ] : [];
 
 const C = { ink:"#102B28", inkSoft:"#1C3D39", paper:"#FBFAF6", panel:"#FFFFFF", line:"#E7E2D6",
   brass:"#B5852C", brassDeep:"#946B1E", viridian:"#1E7A5E", clay:"#BE4A2B", slate:"#5E6B67", mut:"#8A938F" };
 const SRC = { salA:"#9DB4AE", salB:"#C6D2CD", rent:"#6E7F5C", pension:"#14302E", ssA:"#1E7A5E", ssB:"#69B197", wd:"#B5852C" };
+
+/* The "Nest & Next" mark: two birds in a woven nest, with an arrow looking ahead. */
+function NestLogo({ size = 46 }) {
+  const w = (size * 58) / 40;
+  return (
+    <svg width={w} height={size} viewBox="0 0 58 40" fill="none" role="img"
+      aria-label="Nest and Next logo" style={{ flexShrink:0, display:"block" }}>
+      {/* the look-ahead arrow */}
+      <path d="M41 20 H53" stroke={C.brass} strokeWidth="2.6" strokeLinecap="round" />
+      <path d="M48 14.5 L54 20 L48 25.5" stroke={C.brass} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+      {/* nest bowl + rim + woven twigs */}
+      <path d="M5 22 C7 33 13 37 19.5 37 C26 37 32 33 34 22" stroke={C.brass} strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M5 22 Q19.5 29 34 22" stroke={C.brassDeep} strokeWidth="2" strokeLinecap="round" />
+      <path d="M9 27 Q19.5 31 30 27" stroke={C.brassDeep} strokeWidth="1.2" opacity="0.7" />
+      <path d="M11 31 Q19.5 33.5 28 31" stroke={C.brassDeep} strokeWidth="1.2" opacity="0.7" />
+      {/* two birds facing each other */}
+      <g fill={C.viridian}>
+        <ellipse cx="15" cy="17" rx="3.4" ry="4.6" />
+        <circle cx="15" cy="11.4" r="2.6" />
+        <path d="M17.2 10.8 L19.8 11.6 L17.2 12.6 Z" />
+      </g>
+      <g fill="#F4F1E8">
+        <ellipse cx="24" cy="17" rx="3.4" ry="4.6" />
+        <circle cx="24" cy="11.4" r="2.6" />
+        <path d="M21.8 10.8 L19.2 11.6 L21.8 12.6 Z" />
+      </g>
+    </svg>
+  );
+}
+
+/* Chevron used by the header collapse/expand toggle. */
+function Chevron({ up }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"
+      style={{ transition:"transform .2s ease", transform: up ? "rotate(180deg)" : "none" }}>
+      <path d="M3.5 6 L8 10.5 L12.5 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 /* ---------------------------- UI atoms ---------------------------- */
 function Field({ label, hint, children }) {
@@ -59,9 +98,23 @@ function AssumptionIcon({ title }) {
 }
 const inputStyle = { width:"100%", boxSizing:"border-box", padding:"9px 11px", border:`1px solid ${C.line}`, borderRadius:8, fontSize:15, fontFamily:"'JetBrains Mono', monospace", color:C.ink, background:C.panel, outline:"none" };
 function NumberInput({ value, onChange, prefix, suffix, min }) {
+  // While focused, show exactly what the user is typing (draft). Applying `min`
+  // on every keystroke fights the user: a leading digit below the floor gets
+  // bumped up mid-edit, and the rest of their typing appends to it. Floor on blur.
+  const [draft, setDraft] = useState(null);
+  const commit = () => {
+    if (draft == null) return;
+    const d = draft; setDraft(null);
+    if (d === "") return;
+    const n = Number(d);
+    if (min != null && Number.isFinite(n) && n < min) onChange(min);
+  };
+  const display = draft != null ? draft : (value === "" || value == null ? "" : value);
   return (<div style={{ position:"relative", display:"flex", alignItems:"center" }}>
     {prefix && <span style={{ position:"absolute", left:11, fontFamily:"'JetBrains Mono',monospace", color:C.slate, fontSize:14 }}>{prefix}</span>}
-    <input type="number" value={value} min={min} onChange={(e)=>onChange(e.target.value===""?"":Number(e.target.value))}
+    <input type="number" value={display} min={min}
+      onChange={(e)=>{ setDraft(e.target.value); onChange(e.target.value===""?"":Number(e.target.value)); }}
+      onBlur={commit}
       style={{ ...inputStyle, paddingLeft: prefix?22:11, paddingRight: suffix?34:11 }} />
     {suffix && <span style={{ position:"absolute", right:11, fontFamily:"'JetBrains Mono',monospace", color:C.slate, fontSize:13 }}>{suffix}</span>}
   </div>);
@@ -74,7 +127,7 @@ function Select({ value, onChange, options }) {
 function Segmented({ value, onChange, options }) {
   return (<div style={{ display:"flex", flex:"1 1 auto", minWidth:0, gap:4, background:"#F1EEE5", padding:4, borderRadius:9 }}>
     {options.map(o => { const on=value===o.value; return (
-      <button key={String(o.value)} onClick={()=>onChange(o.value)} style={{ flex:1, minWidth:0, padding:"7px 8px", border:"none", borderRadius:6, cursor:"pointer", whiteSpace:"normal", textAlign:"center", lineHeight:1.2, fontSize:12, fontWeight:600, fontFamily:"inherit", background:on?C.ink:"transparent", color:on?"#fff":C.slate, transition:"all .15s" }}>{o.label}</button>
+      <button key={String(o.value)} type="button" aria-pressed={on} onClick={()=>onChange(o.value)} style={{ flex:1, minWidth:0, padding:"7px 8px", border:"none", borderRadius:6, cursor:"pointer", whiteSpace:"normal", textAlign:"center", lineHeight:1.2, fontSize:12, fontWeight:600, fontFamily:"inherit", background:on?C.ink:"transparent", color:on?"#fff":C.slate, transition:"all .15s" }}>{o.label}</button>
     ); })}
   </div>);
 }
@@ -120,6 +173,12 @@ export default function RetirementCalculator() {
 
   const headerRef = useRef(null);
   const [headerH, setHeaderH] = useState(0);
+  // Default to a compact header on phones and iPad-like / touch devices, where the full
+  // header would eat too much fixed vertical space. Set once on load; the user can still toggle.
+  const [headerCollapsed, setHeaderCollapsed] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia
+      ? window.matchMedia("(max-width:1024px), (pointer:coarse)").matches
+      : false);
   useEffect(() => {
     const el = headerRef.current;
     if (!el) return;
@@ -160,7 +219,8 @@ export default function RetirementCalculator() {
   const simSS = simChosen, simNo = simNone;
 
   const onTrack = steady.net >= steady.targetNeed;
-  const lastsTxt = (d) => d ? `age ${d}` : "beyond 95";
+  const horizon = Number(s.horizonAge) || 95;
+  const lastsTxt = (d) => d ? `age ${d}` : `beyond ${horizon}`;
   const sFactor = couple ? 1 : 0.64;
   const yearsToRet = Math.max(0, steady.startAgeA - s.ageA);
   const retYear = 2026 + yearsToRet;
@@ -278,18 +338,31 @@ export default function RetirementCalculator() {
         @keyframes exp { from{opacity:0;} to{opacity:1;} }
       `}</style>
 
-      <header ref={headerRef} style={{ position:"fixed", top:0, left:0, right:0, zIndex:50, background:C.ink, color:"#F4F1E8", padding:"30px 22px 26px" }}>
-        <div style={{ maxWidth:1160, margin:"0 auto" }}>
-          <div style={{ fontSize:11, letterSpacing:2.5, textTransform:"uppercase", color:C.brass, fontWeight:700 }}>Retirement planner · 2026 figures</div>
-          <h1 style={{ fontFamily:"'Newsreader', serif", fontWeight:400, fontSize:34, lineHeight:1.1, margin:"8px 0 10px", letterSpacing:-.5 }}>Nest &amp; Next</h1>
-          <p style={{ margin:"0 0 8px", maxWidth:680, fontSize:16, lineHeight:1.45, color:"#F4F1E8" }}>
-            This is about your money, your home, and what comes next.
-          </p>
-          <p style={{ margin:0, maxWidth:680, fontSize:14.5, lineHeight:1.55, color:"#C9D3CF" }}>
-            Every income stream mapped year by year — salaries, two Social Security checks, the spouse's Washington
-            pension, two inherited homes — against the cost of living from Sofia to the Bahamas, with the
-            pre-Medicare healthcare gap and cross-border inheritance taxes built in.
-          </p>
+      <header ref={headerRef} style={{ position:"fixed", top:0, left:0, right:0, zIndex:50, background:C.ink, color:"#F4F1E8", padding: headerCollapsed ? "9px 22px" : "30px 22px 26px" }}>
+        <div style={{ maxWidth:1160, margin:"0 auto", display:"flex", alignItems:"center", gap:16 }}>
+          <NestLogo size={headerCollapsed ? 34 : 46} />
+          <div style={{ flex:1, minWidth:0 }}>
+            {!headerCollapsed &&
+              <div style={{ fontSize:11, letterSpacing:2.5, textTransform:"uppercase", color:C.brass, fontWeight:700 }}>Retirement planner · 2026 figures</div>}
+            <h1 style={{ fontFamily:"'Newsreader', serif", fontWeight:400, fontSize: headerCollapsed ? 21 : 34, lineHeight:1.1, margin: headerCollapsed ? 0 : "8px 0 10px", letterSpacing:-.5 }}>Nest &amp; Next</h1>
+            {!headerCollapsed && <>
+              <p style={{ margin:"0 0 8px", maxWidth:680, fontSize:16, lineHeight:1.45, color:"#F4F1E8" }}>
+                This is about your money, your home, and what comes next.
+              </p>
+              <p style={{ margin:0, maxWidth:680, fontSize:14.5, lineHeight:1.55, color:"#C9D3CF" }}>
+                Every income stream mapped year by year — salaries, two Social Security checks, the spouse's Washington
+                pension, two inherited homes — against the cost of living from Sofia to the Bahamas, with the
+                pre-Medicare healthcare gap and cross-border inheritance taxes built in.
+              </p>
+            </>}
+          </div>
+          <button onClick={() => setHeaderCollapsed(c => !c)}
+            aria-label={headerCollapsed ? "Expand header" : "Collapse header"} aria-expanded={!headerCollapsed}
+            style={{ flexShrink:0, alignSelf: headerCollapsed ? "center" : "flex-start", display:"inline-flex", alignItems:"center",
+              justifyContent:"center", width:34, height:34, padding:0, cursor:"pointer", color:"#F4F1E8",
+              background:"rgba(244,241,232,.08)", border:`1px solid ${C.inkSoft}`, borderRadius:8 }}>
+            <Chevron up={!headerCollapsed} />
+          </button>
         </div>
       </header>
 
@@ -514,7 +587,7 @@ export default function RetirementCalculator() {
                 <Field label={`Taxable share of withdrawals — ${Math.round(s.tradFrac*100)}%`} hint="Portion from pre-tax 401(k)/IRA."><input type="range" min={0} max={100} step={10} value={s.tradFrac*100} onChange={(e)=>set("tradFrac")(Number(e.target.value)/100)} style={{ width:"100%", accentColor:C.brass }} /></Field>
                 <Field label="Plan horizon (age)" hint="How long to project. Defaults to 95; can't be set below the older spouse's current age.">
                   <NumberInput value={s.horizonAge} min={Math.max(Number(s.ageA)||0, Number(s.ageB)||0)}
-                    onChange={(v)=>set("horizonAge")(Math.max(Number(s.ageA)||0, Number(s.ageB)||0, Number(v)||95))} />
+                    onChange={(v)=>set("horizonAge")(v===""||v==null ? 95 : Number(v))} />
                 </Field>
                 <Field label="Extra income tax (state / foreign)" hint={`On top of US federal. ${locByName(s.retireLoc)?.region==="US"?"State rate on retirement income.":"Net of treaty + Foreign Tax Credit (you pay the higher, not both)."} Default for ${s.retireLoc}: ${Math.round((locByName(s.retireLoc)?.addlTaxRate||0)*100)}%. Leave blank to use it.`}>
                   <NumberInput value={s.stateRate==null ? "" : Math.round(s.stateRate*1000)/10} suffix="%"
@@ -525,7 +598,7 @@ export default function RetirementCalculator() {
                     options={[{label:"Model it",value:true},{label:"Skip",value:false}]} />
                   {!s.ltc.on && (
                     <span role="note" style={{ display:"block", fontSize:11.5, color:C.clay, marginTop:6, lineHeight:1.45 }}>
-                      Not modeled. ~70% of 65-year-olds need long-term care; a multi-year episode can erase the surplus shown above.
+                      Not modeled. ~70% of 65-year-olds need long-term care; a multi-year episode can deplete your savings years earlier than shown.
                     </span>
                   )}
                   {s.ltc.on && (() => {
@@ -616,7 +689,7 @@ export default function RetirementCalculator() {
                           <td style={{ padding:"7px 0", color:C.inkSoft, fontWeight:r.on?700:400 }}>{r.on?"▸ ":""}{r.lab}</td>
                           <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", color:C.slate }}>{usd0(r.st.ssHouse)}</td>
                           <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", color:C.ink, fontWeight:600 }}>{usd0(r.st.net)}</td>
-                          <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", color: depFor(r.key)?C.clay:C.viridian }}>{depFor(r.key)?`age ${depFor(r.key)}`:"95+"}</td>
+                          <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", color: depFor(r.key)?C.clay:C.viridian }}>{depFor(r.key)?`age ${depFor(r.key)}`:`${horizon}+`}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -728,7 +801,7 @@ export default function RetirementCalculator() {
               {mc && (
                 <div style={{ marginTop:10, padding:"10px 12px", background:C.paper, border:`1px solid ${C.line}`, borderRadius:8, fontSize:12.5, color:C.ink }}>
                   <div style={{ fontWeight:700, marginBottom:4 }}>Monte Carlo · {mc.paths.toLocaleString()} paths</div>
-                  {mcSummaryLines(mc).map((line, i) => <div key={i}>{line}</div>)}
+                  {mcSummaryLines(mc, horizon).map((line, i) => <div key={i}>{line}</div>)}
                   <div style={{ color:C.slate, marginTop:4 }}>
                     Sustainable income range: {usd0(mc.sustainableIncome.p10)} – {usd0(mc.sustainableIncome.p90)}/yr (10th–90th pct).
                   </div>

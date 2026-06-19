@@ -33,7 +33,7 @@ export function runMonteCarlo(s, mcOpt = {}) {
     const sim = simulate(inp, { haircut: effHaircut, cutYear: effCutYear, returns });
     // Depleted paths contribute bal=0 to the fan — intentional so percentile arrays always have `paths` entries.
     sim.rows.forEach((r, y) => balancesByYear[y].push(r.bal));
-    if (sim.depAge === null) { lasted += 1; depAges.push(96); }
+    if (sim.depAge === null) { lasted += 1; depAges.push(horizon + 1); }
     else depAges.push(sim.depAge);
     incomes.push(steadyState(inp, sim).net);
   }
