@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import {
-  ComposedChart, Area, Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip,
+  ComposedChart, Area, Line, LineChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceDot, ReferenceLine,
 } from "recharts";
 import { DEFAULT_LIFE, DEFAULT_LIFE_EVENTS, DEFAULT_TRAVEL, LOCATIONS, MC_DEFAULTS, PROP, SOURCES } from "./src/retirementData.js";
@@ -162,6 +162,8 @@ export default function RetirementCalculator() {
   const [couple, setCouple] = useState(true);
   const [stage, setStage] = useState("post");
   const [adv, setAdv] = useState(false);
+  const [deferredMode, setDeferredMode] = useState("pct"); // "pct" | "amt" -- view for the pre-tax share
+  const [invView, setInvView] = useState("flow"); // "flow" | "buckets" | "bucketsRmd" -- investments chart view
   const [openLoc, setOpenLoc] = useState("Portugal");
   const [cmpA, setCmpA] = useState("Austria");
   const [cmpB, setCmpB] = useState("US -- Texas / Florida");
@@ -236,7 +238,7 @@ export default function RetirementCalculator() {
   const compRows = simSS.rows.filter(r => r.aA >= firstEvent-2).map(r => ({
     age:r.aA, ageB:r.aB, "Salary (you)":Math.round(r.salA), "Salary (spouse)":Math.round(r.salB),
     "Rental":Math.round(r.rent), "Pension":Math.round(r.pens), "SS (you)":Math.round(r.ssA),
-    "SS (spouse)":Math.round(r.ssB), "Portfolio":r.wd, need:r.need, extraSpend:r.extraSpend || 0,
+    "SS (spouse)":Math.round(r.ssB), "Portfolio":(r.wdSpend ?? r.wd), need:r.need, extraSpend:r.extraSpend || 0,
   }));
   const balRows = simSS.rows.map((r, idx) => ({
     age:r.aA,
@@ -246,6 +248,22 @@ export default function RetirementCalculator() {
   }));
   const sellDots = simSS.rows.filter(r => r.sellLump > 0).map(r => ({ age:r.aA, bal:r.bal }));
   const hasRental = inher.some(p => p.type === "rent");
+
+  // Inside-the-portfolio dataset: the tax-deferred bucket vs the after-tax bucket,
+  // and the yearly money flows (in = contributions + growth, out = spending draw +
+  // forced RMD). Out-flows are negative so they read below the zero line.
+  const invRows = simSS.rows.map(r => ({
+    age: r.aA,
+    deferred: r.defBal ?? 0,
+    afterTax: Math.max(0, r.bal - (r.defBal ?? 0)),
+    contrib: r.contrib || 0,
+    growth: Math.max(0, r.growth || 0),
+    spendDraw: -(r.wdSpend ?? r.wd ?? 0),
+    forcedRmd: -(r.forcedRmd || 0),
+    rmd: r.rmd || 0,
+  }));
+  const firstRmdAge = (simSS.rows.find(r => (r.forcedRmd || 0) > 0) || {}).aA ?? null;
+  const invName = { growth:"Growth", contrib:"Contributions", spendDraw:"Spending draw", forcedRmd:"Forced RMD", deferred:"Tax-deferred (401k/IRA)", afterTax:"After-tax (Roth/taxable)", rmd:"RMD this year" };
 
   // Depletion: the age the portfolio runs out (if it does) and the guaranteed
   // income floor — SS + pension + rental — the household lives on afterward.
@@ -380,6 +398,18 @@ export default function RetirementCalculator() {
                   <Field label="Combined savings now"><NumberInput value={s.savings} onChange={set("savings")} prefix="$" /></Field>
                   <Field label="Saved per year" hint="Stops as each of you retires."><NumberInput value={s.contrib} onChange={set("contrib")} prefix="$" /></Field>
                 </div>
+                <div style={{ display:"flex", marginBottom:8 }}>
+                  <Segmented value={deferredMode} onChange={setDeferredMode}
+                    options={[{label:"% of savings",value:"pct"},{label:"$ amount",value:"amt"}]} />
+                </div>
+                <Field
+                  label={`Pre-tax 401(k)/IRA share of savings — ${Math.round(s.tradFrac*100)}%`}
+                  hint="Portion of combined savings in pre-tax 401(k)/IRA/403(b). RMDs apply to this starting at age 75; the rest is treated as Roth/after-tax. The plan takes each RMD on schedule, so no penalty applies — a missed RMD is taxed at 25% (10% if fixed within 2 years).">
+                  {deferredMode==="pct"
+                    ? <input type="range" min={0} max={100} step={10} value={s.tradFrac*100} onChange={(e)=>set("tradFrac")(Number(e.target.value)/100)} style={{ width:"100%", accentColor:C.brass }} />
+                    : <NumberInput value={Math.round(s.tradFrac*(Number(s.savings)||0))} prefix="$" min={0}
+                        onChange={(v)=>{ const sav=Number(s.savings)||0; const amt=Number(v)||0; set("tradFrac")(sav>0 ? Math.min(1, Math.max(0, amt/sav)) : 0); }} />}
+                </Field>
                 <Field label="Filing status"><Segmented value={s.status} onChange={set("status")} options={[{label:"Married",value:"married"},{label:"Single",value:"single"}]} /></Field>
                 <Field label={`Retire on this share of income — ${Math.round(s.targetPct*100)}%`} hint={`Base spending goal: ${usd0(incomeHH*s.targetPct)}/yr. The timeline adds the pre-65 healthcare gap on top.`}>
                   <input type="range" min={20} max={80} step={5} value={s.targetPct*100} onChange={(e)=>set("targetPct")(Number(e.target.value)/100)} style={{ width:"100%", accentColor:C.brass }} />
@@ -584,7 +614,6 @@ export default function RetirementCalculator() {
                 <Field label={`Real investment return — ${(s.realReturn*100).toFixed(1)}%`} hint="After inflation. A 60/40 mix has historically returned ~4–5% real."><input type="range" min={2} max={8} step={0.5} value={s.realReturn*100} onChange={(e)=>set("realReturn")(Number(e.target.value)/100)} style={{ width:"100%", accentColor:C.brass }} /></Field>
                 <Field label={`Inflation — ${(s.inflation*100).toFixed(1)}%`} hint="Translates today's costs into future dollars in the breakdowns."><input type="range" min={1} max={5} step={0.5} value={s.inflation*100} onChange={(e)=>set("inflation")(Number(e.target.value)/100)} style={{ width:"100%", accentColor:C.brass }} /></Field>
                 <Field label="Withdrawal rate"><Segmented value={s.swr} onChange={set("swr")} options={[{label:"3.9%",value:0.039},{label:"4%",value:0.04},{label:"5.7%",value:0.057}]} /></Field>
-                <Field label={`Taxable share of withdrawals — ${Math.round(s.tradFrac*100)}%`} hint="Portion from pre-tax 401(k)/IRA."><input type="range" min={0} max={100} step={10} value={s.tradFrac*100} onChange={(e)=>set("tradFrac")(Number(e.target.value)/100)} style={{ width:"100%", accentColor:C.brass }} /></Field>
                 <Field label="Plan horizon (age)" hint="How long to project. Defaults to 95; can't be set below the older spouse's current age.">
                   <NumberInput value={s.horizonAge} min={Math.max(Number(s.ageA)||0, Number(s.ageB)||0)}
                     onChange={(v)=>set("horizonAge")(v===""||v==null ? 95 : Number(v))} />
@@ -766,6 +795,58 @@ export default function RetirementCalculator() {
                   <span key={n} style={{ display:"flex", alignItems:"center", gap:5, fontSize:11.5, color:C.slate }}><span style={{ width:11, height:11, borderRadius:3, background:c }} />{n}</span>
                 ))}
                 <span style={{ display:"flex", alignItems:"center", gap:5, fontSize:11.5, color:C.slate }}><span style={{ width:14, height:0, borderTop:`2px dashed ${C.clay}` }} />spending need</span>
+              </div>
+            </div>
+
+            {/* Inside the portfolio — flows + tax buckets */}
+            <div style={{ background:C.panel, border:`1px solid ${C.line}`, borderRadius:14, padding:"16px 14px 12px", marginBottom:16 }}>
+              <div style={{ padding:"0 4px 6px" }}>
+                <div style={{ fontSize:11, letterSpacing:1.5, textTransform:"uppercase", color:C.brassDeep, fontWeight:700 }}>Inside the portfolio</div>
+                <h3 style={{ margin:"2px 0 2px", fontFamily:"'Newsreader',serif", fontWeight:500, fontSize:19 }}>What's happening to your investments</h3>
+                <p style={{ margin:"2px 0 8px", fontSize:12.5, color:C.slate, lineHeight:1.5 }}>{
+                  invView==="flow"
+                    ? <>Money moving in and out each year. <b style={{ color:C.ink }}>Above</b> the line: contributions while you're still working, then investment growth. <b style={{ color:C.ink }}>Below</b>: the cash you actually draw for spending, plus any forced RMD.{firstRmdAge!=null ? <> Forced RMDs start at <b style={{ color:C.clay }}>age {firstRmdAge}</b>.</> : <> No forced RMDs in this plan.</>}</>
+                    : <>Your savings split by tax treatment. The <b style={{ color:C.brassDeep }}>gold</b> band is pre-tax 401(k)/IRA money (subject to RMDs); the <b style={{ color:C.viridian }}>green</b> band is Roth/after-tax. {firstRmdAge!=null ? <>After <b style={{ color:C.clay }}>age {firstRmdAge}</b>, RMDs draw down the gold band — the after-tax remainder is reinvested, growing the green band, so the total keeps climbing.</> : <>With no pre-tax balance there are no RMDs to model.</>}{invView==="bucketsRmd" ? <> The <b style={{ color:C.clay }}>clay line</b> is each year's required distribution (right axis).</> : null}</>
+                }</p>
+                <div style={{ display:"flex", marginTop:4 }}>
+                  <Segmented value={invView} onChange={setInvView} options={[{label:"Cash flow",value:"flow"},{label:"Tax buckets",value:"buckets"},{label:"Buckets + RMD",value:"bucketsRmd"}]} />
+                </div>
+              </div>
+              <ResponsiveContainer width="100%" height={244}>
+                {invView==="flow" ? (
+                  <ComposedChart data={invRows} margin={{ top:6, right:12, left:4, bottom:0 }} stackOffset="sign">
+                    <CartesianGrid stroke={C.line} strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="age" tick={{ fontSize:11, fill:C.slate }} tickLine={false} axisLine={{ stroke:C.line }} />
+                    <YAxis tickFormatter={usdK} tick={{ fontSize:11, fill:C.slate }} tickLine={false} axisLine={false} width={42} />
+                    <Tooltip formatter={(v,n)=>[usd0(Math.abs(v)), invName[n]||n]} labelFormatter={(a)=>`Age ${a}`} contentStyle={{ borderRadius:8, border:`1px solid ${C.line}`, fontSize:12, fontFamily:"'JetBrains Mono',monospace" }} />
+                    <ReferenceLine y={0} stroke={C.slate} strokeWidth={1} />
+                    <Bar dataKey="growth" stackId="f" fill={SRC.ssB} />
+                    <Bar dataKey="contrib" stackId="f" fill={C.viridian} />
+                    <Bar dataKey="spendDraw" stackId="f" fill={C.brass} />
+                    <Bar dataKey="forcedRmd" stackId="f" fill={C.clay} />
+                    {firstRmdAge!=null && <ReferenceLine x={firstRmdAge} stroke={C.clay} strokeWidth={1.2} strokeDasharray="2 2" label={{ value:`RMDs · ${firstRmdAge}`, position:"insideTopRight", fontSize:10.5, fill:C.clay }} />}
+                  </ComposedChart>
+                ) : (
+                  <ComposedChart data={invRows} margin={{ top:6, right:12, left:4, bottom:0 }}>
+                    <CartesianGrid stroke={C.line} strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="age" tick={{ fontSize:11, fill:C.slate }} tickLine={false} axisLine={{ stroke:C.line }} />
+                    <YAxis yAxisId="bal" tickFormatter={usdK} tick={{ fontSize:11, fill:C.slate }} tickLine={false} axisLine={false} width={42} />
+                    <Tooltip formatter={(v,n)=>[usd0(Math.abs(v)), invName[n]||n]} labelFormatter={(a)=>`Age ${a}`} contentStyle={{ borderRadius:8, border:`1px solid ${C.line}`, fontSize:12, fontFamily:"'JetBrains Mono',monospace" }} />
+                    <Area yAxisId="bal" type="monotone" dataKey="deferred" stackId="bal" stroke="none" fill={C.brass} fillOpacity={0.85} />
+                    <Area yAxisId="bal" type="monotone" dataKey="afterTax" stackId="bal" stroke="none" fill={C.viridian} fillOpacity={0.7} />
+                    {invView==="bucketsRmd" && <YAxis yAxisId="rmd" orientation="right" tickFormatter={usdK} tick={{ fontSize:11, fill:C.clay }} tickLine={false} axisLine={false} width={42} />}
+                    {invView==="bucketsRmd" && <Line yAxisId="rmd" type="monotone" dataKey="rmd" stroke={C.clay} strokeWidth={2} dot={false} />}
+                    {firstRmdAge!=null && <ReferenceLine yAxisId="bal" x={firstRmdAge} stroke={C.clay} strokeWidth={1.2} strokeDasharray="2 2" label={{ value:`RMDs · ${firstRmdAge}`, position:"insideTopRight", fontSize:10.5, fill:C.clay }} />}
+                  </ComposedChart>
+                )}
+              </ResponsiveContainer>
+              <div style={{ display:"flex", gap:"6px 14px", flexWrap:"wrap", padding:"8px 6px 2px" }}>
+                {(invView==="flow"
+                  ? [["Contributions",C.viridian],["Growth",SRC.ssB],["Spending draw",C.brass],["Forced RMD",C.clay]]
+                  : [["Tax-deferred (401k/IRA)",C.brass],["After-tax (Roth/taxable)",C.viridian],...(invView==="bucketsRmd"?[["RMD this year",C.clay]]:[])]
+                ).map(([n,c])=>(
+                  <span key={n} style={{ display:"flex", alignItems:"center", gap:5, fontSize:11.5, color:C.slate }}><span style={{ width:11, height:11, borderRadius:3, background:c }} />{n}</span>
+                ))}
               </div>
             </div>
 

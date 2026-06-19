@@ -8,6 +8,9 @@ import {
   fedTax,
   ltcSpendForYear,
   oneTimeSpendForYear,
+  requiredMinimum,
+  rmdStartAge,
+  uniformLifetimeFactor,
   ownBenefitAtClaimMonthly,
   pensionERF,
   resolveAfc,
@@ -735,5 +738,75 @@ describe("steadyState erf sentinel", () => {
   it("returns a numeric erf when the pension is enabled", () => {
     const plan = calculatePlan({ ...baseState, pensionOn: true });
     expect(typeof plan.steady.erf).toBe("number");
+  });
+});
+
+describe("required minimum distributions", () => {
+  it("derives the first-RMD age from birth year (SECURE 2.0)", () => {
+    expect(rmdStartAge(1960)).toBe(75);
+    expect(rmdStartAge(1981)).toBe(75);
+    expect(rmdStartAge(1959)).toBe(73);
+    expect(rmdStartAge(1951)).toBe(73);
+  });
+
+  it("uses the IRS Uniform Lifetime divisors and clamps past the table", () => {
+    expect(uniformLifetimeFactor(73)).toBe(26.5);
+    expect(uniformLifetimeFactor(75)).toBe(24.6);
+    expect(uniformLifetimeFactor(95)).toBe(8.9);
+    expect(uniformLifetimeFactor(70)).toBe(27.4); // below the table -> first row
+    expect(uniformLifetimeFactor(120)).toBe(6.4); // past the table -> last row
+  });
+
+  it("computes the minimum as prior-year balance over the divisor", () => {
+    expect(requiredMinimum(500000, 73)).toBeCloseTo(18867.92, 2);
+  });
+
+  // Age 75 in 2026 (born 1951), retired, guaranteed income covers the spending need so
+  // the need-based draw is zero. Zero real return isolates the RMD's effect on balance.
+  const rmdBase = {
+    ...baseState,
+    ageA: 75, ageB: 75, stopA: 70, stopB: 70, claimA: 67, claimB: 67,
+    pensionOn: false, savings: 1_000_000, contrib: 0,
+    targetPct: 0.25, realReturn: 0,
+    ssModeA: "statement", ssModeB: "statement", ssFraA: 40000, ssFraB: 20000,
+    tx: { ...baseState.tx, on: false }, at: { ...baseState.at, on: false },
+    travel: { on: false }, events: [], horizonAge: 80,
+  };
+
+  it("leaves the timeline untouched when there is no pre-tax balance", () => {
+    const rows = calculatePlan({ ...rmdBase, tradFrac: 0 }).simChosen.rows;
+    expect(rows.every((r) => r.rmd === 0 && r.forcedRmd === 0)).toBe(true);
+    expect(rows.find((r) => r.cal === 2026).wd).toBe(0); // guaranteed income covers the need
+  });
+
+  it("forces a taxable draw once the RMD exceeds the need-based withdrawal", () => {
+    const withDeferred = calculatePlan({ ...rmdBase, tradFrac: 1 }).simChosen.rows;
+    const noDeferred = calculatePlan({ ...rmdBase, tradFrac: 0 }).simChosen.rows;
+    const r1 = withDeferred.find((r) => r.cal === 2026);
+    const r0 = noDeferred.find((r) => r.cal === 2026);
+    expect(r1.forcedRmd).toBeGreaterThan(0);
+    expect(r1.wd).toBeGreaterThan(r0.wd);
+    expect(r1.tax).toBeGreaterThan(r0.tax);
+    // The forced draw equals the Uniform Lifetime computation off the prior-year base.
+    expect(r1.wd).toBeCloseTo(requiredMinimum(1_000_000, 75), 0);
+  });
+
+  it("reinvests the after-tax remainder of a forced RMD into the taxable portfolio", () => {
+    const r = calculatePlan({ ...rmdBase, tradFrac: 1 }).simChosen.rows.find((r) => r.cal === 2026);
+    // With zero real return the year opens at the full $1M balance. If the forced RMD's
+    // after-tax cash were discarded the balance would drop by the entire gross draw;
+    // reinvestment keeps it above that floor (only the incremental tax leaves the plan).
+    expect(r.bal).toBeGreaterThan(1_000_000 - r.forcedRmd);
+  });
+
+  it("exposes the bucket and flow fields the investments chart reads", () => {
+    const r = calculatePlan({ ...rmdBase, tradFrac: 1 }).simChosen.rows.find((r) => r.cal === 2026);
+    // Total draw splits into the spending portion plus the forced RMD.
+    expect(r.wd).toBe(r.wdSpend + r.forcedRmd);
+    // The tax-deferred bucket is tracked and never exceeds the total balance.
+    expect(r.defBal).toBeGreaterThanOrEqual(0);
+    expect(r.defBal).toBeLessThanOrEqual(r.bal);
+    expect(typeof r.growth).toBe("number"); // zero real return here -> no growth
+    expect(r.growth).toBe(0);
   });
 });

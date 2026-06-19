@@ -178,6 +178,8 @@ Each capability area below lists functional requirements (FR‑*) and, where use
 - **FR‑SIM‑04** — Detect and report the **depletion age** (when the portfolio would hit zero while a shortfall remains), or report "beyond 95".
 - **FR‑SIM‑05** — Compute a steady‑state "sustainable income" using a configurable withdrawal rate (3.9% Morningstar 2026 base, 4% classic, or 5.7% flexible) on the portfolio value at full retirement.
 - **FR‑SIM‑06** — Produce a parallel projection with Social Security excluded entirely, for the longevity stress comparison.
+- **FR‑SIM‑07** — Apply **Required Minimum Distributions** as a post‑solve floor on the year's withdrawal. The pre‑tax (tax‑deferred) portion of savings is the user's "pre‑tax 401(k)/IRA share" (entered as a percent of, or dollar slice of, combined savings — the same figure that sets the ordinary‑income share of withdrawals). RMDs begin at the SECURE 2.0 first‑RMD age derived from birth year (73 for born 1951–1959, **75 for born 1960+**) and equal the prior‑year‑end tax‑deferred balance ÷ the IRS Uniform Lifetime divisor. When a year's RMD exceeds the need‑based deferred draw, the engine forces the extra distribution, taxes it as ordinary income, and **reinvests the after‑tax remainder into the taxable portfolio**; the plan always takes the RMD on schedule, so no excise penalty is incurred in‑plan. With a zero pre‑tax share the path is inert and the timeline is unchanged.
+  - **AC** — With the pre‑tax share at 100% and a long horizon, withdrawals and tax step up once the older spouse reaches 75 even when the need‑based draw is small; with the share at 0% the timeline matches the prior (no‑RMD) behavior.
 
 ### 6.7 Age-Banded Healthcare and the Pre-65 Bridge
 
@@ -316,6 +318,7 @@ All constants are 2026 values. The companion Sources document links each to its 
 - **L6** — Cost‑of‑living figures are aggregated planning estimates that vary by city, neighborhood, and lifestyle.
 - **L7** — Single‑person scaling is a flat factor, not a re‑costed budget.
 - **L8** — The "live‑in" housing saving is applied to the spending need generically; for full fidelity the healthcare basis should be matched to the live‑in country.
+- **L9** — RMDs use a **commingled‑account simplification**: a single tax‑deferred pool driven by the **older** spouse's age and first‑RMD age, rather than per‑owner accounts. Roth balances are assumed to be the non‑deferred share (exempt). The steady‑state "sustainable income" headline is left on the SWR basis and does not re‑apply the RMD floor — at the steady‑state age a 4% SWR draw already meets or exceeds the ~4.1% RMD, so the floor is non‑binding there.
 
 ---
 

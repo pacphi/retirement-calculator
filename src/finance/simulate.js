@@ -3,6 +3,7 @@ import { calculateFederalTaxYear } from "./tax.js";
 import { ownBenefitAtClaimMonthly, piaFromIncome, spousalBenefitAtClaimMonthly } from "./socialSecurity.js";
 import { drsEligibilityNote, pensionERF, resolveAfc } from "./pension.js";
 import { ltcSpendForYear, oneTimeSpendForYear, travelSpendForYear } from "./events.js";
+import { requiredMinimum, rmdStartAge } from "./rmd.js";
 
 export const stressReturnForYear = (realReturn, yearIndex) => {
   if (yearIndex <= 2) return STRESS_EARLY_DROP;
@@ -83,6 +84,12 @@ export function simulate(i, ssOpt) {
   const horizon = Number(i.horizonAge) || 95;
   const end = Math.max(0, Math.max(horizon - i.ageA, horizon - i.ageB));
   let bal = Number(i.savings) || 0;
+  // Track the pre-tax (tax-deferred) sub-balance separately so RMDs can be computed off
+  // the IRS "prior year-end" base. Commingled-account simplification: one deferred pool,
+  // RMDs driven by the older spouse's age (documented in docs/prd.md).
+  let defBal = Math.min(bal, Number(i.taxDeferred) || 0);
+  const olderAgeNow = Math.max(i.ageA, i.ageB);
+  const rmdStart = rmdStartAge(TAX_YEAR - olderAgeNow);
   let depAge = null;
   let fullyRetAge = null;
   let balAtFullRet = null;
@@ -150,28 +157,72 @@ export function simulate(i, ssOpt) {
       : ssOpt.stress
         ? stressReturnForYear(i.realReturn, y)
         : i.realReturn;
+    // The deferred pool's prior year-end value is the IRS base for this year's RMD.
+    const defBalStart = defBal;
+    const growth = bal * yearReturn; // investment growth this year (excludes the sale lump)
     bal = bal * (1 + yearReturn) + sellLump;
+    defBal = defBal * (1 + yearReturn); // sale proceeds are taxable savings, not deferred
 
     const plannedContrib = plannedContribution(i, workA, workB);
     const taxBeforeWithdrawal = taxForYear(i, aA, aB, wages, pensEff, rent, ssAyEff + ssByEff, 0, yearStatus, cal);
     const afterTaxBeforeWithdrawal = wages + pensEff + rent + ssAyEff + ssByEff - taxBeforeWithdrawal;
     const contrib = Math.min(plannedContrib, Math.max(0, afterTaxBeforeWithdrawal - need));
     bal += contrib;
+    defBal += contrib * i.tradFrac;
 
-    const { withdrawal: wd, tax } = solveWithdrawal(i, aA, aB, wages, pensEff, rent, ssAyEff + ssByEff, need, bal, yearStatus, cal);
+    const olderAge = olderAgeNow + y;
+    const rmd = (defBalStart > 0 && olderAge >= rmdStart) ? requiredMinimum(defBalStart, olderAge) : 0;
+
+    let { withdrawal: wd, tax } = solveWithdrawal(i, aA, aB, wages, pensEff, rent, ssAyEff + ssByEff, need, bal, yearStatus, cal);
     bal -= wd;
+    // RMD floor: a required distribution can only raise the year's draw. Any forced
+    // amount beyond the need-based deferred draw is fully taxable ordinary income; the
+    // after-tax surplus is reinvested into the taxable bucket.
+    const needDeferredDraw = wd * i.tradFrac;
+    let forcedRmd = 0;
+    if (rmd > needDeferredDraw) {
+      forcedRmd = Math.min(Math.min(rmd, defBal), Math.max(0, bal)) - needDeferredDraw;
+      if (forcedRmd < 0) forcedRmd = 0;
+      if (forcedRmd > 0) {
+        // The forced amount is fully-taxable ordinary income. Recompute the year's tax
+        // with it added (tradFrac 1 on the deferred draw), so the only extra tax is the
+        // RMD's incremental burden. The after-tax remainder is reinvested into the
+        // taxable bucket; the gross leaves the (tax-deferred) portfolio.
+        const taxOld = tax;
+        tax = calculateFederalTaxYear({
+          status: yearStatus,
+          ageA: aA,
+          ageB: aB,
+          wages,
+          pension: pensEff,
+          rental: rent,
+          socialSecurity: ssAyEff + ssByEff,
+          grossWithdrawal: needDeferredDraw + forcedRmd,
+          tradFrac: 1,
+          year: cal,
+          stateRate: i.taxRate,
+        }).tax;
+        const afterTaxForced = Math.max(0, forcedRmd - Math.max(0, tax - taxOld));
+        bal -= forcedRmd;
+        bal += afterTaxForced;
+      }
+    }
+    defBal = Math.max(0, defBal - (needDeferredDraw + forcedRmd));
+    const wdTotal = wd + forcedRmd;
     if (bal < 1) bal = 0;
     if (!workA && !workB && fullyRetAge === null) {
       fullyRetAge = aA;
       balAtFullRet = bal;
     }
-    const afterTaxCash = wages + pensEff + rent + ssAyEff + ssByEff + wd - tax;
+    const afterTaxCash = wages + pensEff + rent + ssAyEff + ssByEff + wdTotal - tax;
     if (bal <= 0 && depAge === null && afterTaxCash < need) depAge = aA;
     rows.push({
       aA, aB, cal, salA, salB, rent, pens: pensEff, ssA: ssAyEff, ssB: ssByEff, survivor: isSurvivor,
-      wd: Math.round(wd), bal: Math.round(bal), need: Math.round(need),
+      wd: Math.round(wdTotal), wdSpend: Math.round(wd), bal: Math.round(bal), need: Math.round(need),
       extraSpend: Math.round(extraSpend),
       tax: Math.round(tax), contrib: Math.round(contrib), sellLump: Math.round(sellLump),
+      rmd: Math.round(rmd), forcedRmd: Math.round(forcedRmd), defBal: Math.round(defBal),
+      growth: Math.round(growth),
     });
   }
 

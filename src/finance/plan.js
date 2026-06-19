@@ -47,8 +47,15 @@ export function buildPlanInputs(s) {
   const incomeHH = (Number(s.incomeA) || 0) + (Number(s.incomeB) || 0);
   const retLocObj = LOCATIONS.find((l) => l.name === s.retireLoc) || LOCATIONS[10];
   const inher = buildInheritanceInputs(s);
+  // tradFrac (the pre-tax/ordinary-income share of withdrawals) is the single source of
+  // truth; the pre-tax balance subject to RMDs is simply that share of total savings.
+  const savings = Number(s.savings) || 0;
+  const tradFrac = Math.min(1, Math.max(0, Number(s.tradFrac) || 0));
+  const taxDeferred = savings * tradFrac;
   return {
     ...s,
+    tradFrac,
+    taxDeferred,
     incomeHH,
     inher,
     retLocObj,

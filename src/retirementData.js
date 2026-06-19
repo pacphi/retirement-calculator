@@ -29,6 +29,7 @@ export const SOURCES = {
   drsTrs2: "https://www.drs.wa.gov/plan/trs2/",
   kffAca: "https://www.kff.org/interactive/subsidy-calculator/",
   cmsMedicare: "https://www.cms.gov/newsroom/fact-sheets/2026-medicare-parts-b-premiums-and-deductibles",
+  irsRmd: "https://www.irs.gov/retirement-plans/retirement-plan-and-ira-required-minimum-distributions-faqs",
 };
 
 /* 2026 reference data. Tax constants are from the IRS 2026 inflation release.
@@ -93,6 +94,21 @@ export const PROP = {
       sell:"Austria has no inheritance tax, but inheriting and later selling real estate can still create transfer and real-estate gains taxes (ImmoESt ~30% on nominal gain, plus transfer + registration fees). This simplified estimate keeps only 10% aside, which may materially understate the cost for a property with large gains since the decedent's acquisition — the true net could be 20-35% lower. A cross-border tax professional should verify the actual basis and treaty result.",
       rent:"Austrian rental income can be taxed in Austria and reported in the US, usually with foreign tax credit mechanics. The model uses a conservative 2% net yield.",
       live:"This is often the strongest cash-flow choice. Austrian carrying costs are low, so living there can replace a large rent bill with a much smaller owner cost." } },
+};
+
+/* Required Minimum Distributions (RMDs). SECURE 2.0 sets the first-RMD age at 73 for
+   those born 1951-1959 and 75 for those born 1960 or later. A missed RMD is hit with a
+   25% excise tax on the shortfall, reduced to 10% if corrected within two years. The
+   annual minimum is the prior-year-end pre-tax balance divided by the IRS Uniform
+   Lifetime Table divisor below (post-2021 schedule). Roth 401(k)/IRA balances are exempt
+   from lifetime RMDs. Source: SOURCES.irsRmd (IRS RMD FAQs / Pub. 590-B). */
+export const RMD_PENALTY = { rate: 0.25, correctedRate: 0.10 };
+
+export const UNIFORM_LIFETIME = {
+  72:27.4, 73:26.5, 74:25.5, 75:24.6, 76:23.7, 77:22.9, 78:22.0, 79:21.1, 80:20.2,
+  81:19.4, 82:18.5, 83:17.7, 84:16.8, 85:16.0, 86:15.2, 87:14.4, 88:13.7, 89:12.9,
+  90:12.2, 91:11.5, 92:10.8, 93:10.1, 94:9.5, 95:8.9, 96:8.4, 97:7.8, 98:7.3, 99:6.8,
+  100:6.4,
 };
 
 export const TIERS = [
