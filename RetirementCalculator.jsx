@@ -19,6 +19,7 @@ import { Compare } from "./src/components/charts/Compare.jsx";
 import { IncomeMix } from "./src/components/charts/IncomeMix.jsx";
 import { Headline } from "./src/components/results/Headline.jsx";
 import { HeadroomCard } from "./src/components/results/HeadroomCard.jsx";
+import { AccumulationSummary } from "./src/components/results/AccumulationSummary.jsx";
 import { Stats } from "./src/components/results/Stats.jsx";
 import { RiskTable } from "./src/components/results/RiskTable.jsx";
 import { Inheritance as InheritanceResult } from "./src/components/results/Inheritance.jsx";
@@ -140,6 +141,7 @@ export default function RetirementCalculator() {
     locRows, compRows, balRows, invRows, incomeStack,
     sFactor,
     headroom,
+    accumulation,
   } = usePlan(s, couple, stage);
 
   // Monte Carlo worker lifecycle
@@ -249,6 +251,8 @@ export default function RetirementCalculator() {
             <Stats steady={steady} simSS={simSS} simNo={simNo} horizon={horizon} swr={s.swr} />
             <RiskTable sFull={sFull} sTrust={sTrust} sNone={sNone} simFull={simFull} simTrust={simTrust} simNone={simNone} s={s} effHaircut={effHaircut} horizon={horizon} />
             <InheritanceResult s={s} setProp={setProp} />
+
+            {yearsToRet > 0 && <AccumulationSummary accumulation={accumulation} retYear={retYear} />}
 
             {/* Staircase (healthcare-aware) */}
             <Staircase

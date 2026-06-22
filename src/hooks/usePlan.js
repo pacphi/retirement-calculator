@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { calculatePlan, monthlyTotal, tierFor } from "../calculatorCore.js";
+import { accumulationSummary } from "../finance/accumulation.js";
 import { spendingHeadroom } from "../finance/headroom.js";
 import { simulate } from "../finance/simulate.js";
 import { LOCATIONS, SINGLE_COST_FACTOR } from "../retirementData.js";
@@ -83,6 +84,11 @@ export function usePlan(s, couple, stage) {
     [calc.inp, effHaircut, effCutYear, s.horizonAge],
   );
 
+  const accumulation = useMemo(
+    () => accumulationSummary(simSS.rows, s.stopA, s.ageA, s.stopB, s.ageB),
+    [simSS, s.stopA, s.ageA, s.stopB, s.ageB],
+  );
+
   return {
     calc,
     // calc destructure — exposed with identical names
@@ -97,5 +103,6 @@ export function usePlan(s, couple, stage) {
     // pass-through used by caller
     sFactor,
     headroom,
+    accumulation,
   };
 }

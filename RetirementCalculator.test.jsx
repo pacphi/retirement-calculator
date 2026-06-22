@@ -458,3 +458,13 @@ describe("live headroom read-out (E1)", () => {
     expect(screen.getByLabelText(/spending headroom/i)).toBeInTheDocument();
   });
 });
+
+describe("accumulation summary read-out (A3)", () => {
+  it("shows an accumulation summary while still working", () => {
+    render(<RetirementCalculator />); // default state has yearsToRet > 0
+    // All three read-out labels must render, not just one.
+    expect(screen.getAllByText(/at retirement/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/total contributed/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/blended return/i).length).toBeGreaterThan(0);
+  });
+});
