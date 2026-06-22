@@ -1,4 +1,5 @@
-import { SINGLE_COST_FACTOR, STRESS_EARLY_DROP, TAX_YEAR } from "../retirementData.js";
+import { STRESS_EARLY_DROP, TAX_YEAR } from "../retirementData.js";
+import { composeNeed, spendingComponents } from "./seams.js";
 import { calculateFederalTaxYear } from "./tax.js";
 import { ownBenefitAtClaimMonthly, piaFromIncome, spousalBenefitAtClaimMonthly } from "./socialSecurity.js";
 import { drsEligibilityNote, pensionERF, resolveAfc } from "./pension.js";
@@ -64,36 +65,8 @@ const solveWithdrawal = (i, aA, aB, wages, pens, rent, ss, need, bal, statusOver
 };
 
 export function spendingNeed(i, ageA, ageB, liveSav = 0, isSurvivor = false, survivorAge = null) {
-  // After a survivor transition only one person remains; when the survivor's identity is
-  // known (life-expectancy model) use their actual age, else assume the younger survives.
-  const survAge = survivorAge != null ? survivorAge : Math.min(ageA, ageB);
-
-  // Location-cost basis (opt-in): derive the need from the selected place's cost-of-living
-  // basket rather than a share of income. Healthcare lives in hcPre/hcPost (couple figures),
-  // not the basket, so summing them does not double-count. Lifestyle scales living only.
-  if (i.spendBasis === "location" && i.retLocObj) {
-    const L = i.retLocObj;
-    const livingMo = Object.values(L.m).reduce((a, b) => a + b, 0);
-    const single = isSurvivor || i.status === "single";
-    const scale = single ? SINGLE_COST_FACTOR : 1;
-    const lifestyle = (Number(i.lifestyle) || 100) / 100;
-    const living = livingMo * 12 * scale * lifestyle;
-    const hcPer = (age) => (age < 65 ? L.hcPre : L.hcPost) / 2; // hcPre/hcPost are couple-level
-    const hc = (isSurvivor
-      ? hcPer(survAge)
-      : single ? hcPer(ageA) : hcPer(ageA) + hcPer(ageB)) * 12;
-    const base = living + hc;
-    return Math.max(0.35 * base, base - liveSav);
-  }
-
-  // Income basis (default): a share of household income, with a pre-65 healthcare bump.
-  const base = i.incomeHH * i.targetPct;
-  const perPersonHC = Math.max(0, (i.hcPre - i.hcPost)) / 2;
-  const under65 = isSurvivor
-    ? (survAge < 65 ? 1 : 0)
-    : (ageA < 65 ? 1 : 0) + (ageB < 65 ? 1 : 0);
-  const hcBump = perPersonHC * under65 * 12;
-  return Math.max(0.35 * base, base + hcBump - liveSav);
+  const parts = spendingComponents(i, ageA, ageB, { isSurvivor, survivorAge });
+  return composeNeed(parts, liveSav);
 }
 
 export function simulate(i, ssOpt) {
