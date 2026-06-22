@@ -42,8 +42,15 @@ export function Staircase({
   compTip,
   spendingShape,
   housing,
+  relocationYear,
+  workLoc,
 }) {
   const locByName = (n) => LOCATIONS.find(l => l.name === n);
+
+  // Relocation boundary: convert calendar year to age for the x-axis.
+  const relocAge = (relocationYear != null && ageA != null)
+    ? ageA + (relocationYear - TAX_YEAR)
+    : null;
 
   // Housing band caption — compute payoff cliff year for mortgage tenure.
   const housingTenure = housing?.tenure;
@@ -95,6 +102,8 @@ export function Staircase({
           ))}
           {depAge != null && <ReferenceLine x={depAge} stroke={C.clay} strokeWidth={1.4} strokeDasharray="2 2"
             label={{ value: `savings gone · age ${depAge}`, position: "insideTopRight", fontSize: 10.5, fill: C.clay }} />}
+          {relocAge != null && <ReferenceLine x={relocAge} stroke={C.viridian} strokeWidth={1.2} strokeDasharray="4 3"
+            label={{ value: `leave ${workLoc ?? "work"} · age ${relocAge}`, position: "insideTopLeft", fontSize: 10, fill: C.viridian }} />}
         </ComposedChart>
       </ResponsiveContainer>
       <div style={{ display: "flex", gap: "6px 14px", flexWrap: "wrap", padding: "8px 6px 2px" }}>

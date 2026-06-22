@@ -71,7 +71,13 @@ export default function RetirementCalculator() {
     workLoc: "WA", relocationYear: 2046, stateCode: null,
     // Wave 2 Task 4: default housing is rent at the retire location (Austria 1650/mo).
     // targetPct is reframed as non-housing (0.28); the explicit housing line covers rent.
-    housing: { tenure: "rent", rent: 1650, mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: 2026 }, homeValue: 0, insuranceAnnual: 0, maintenancePct: 0.01 },
+    // Task 8: relocation defaults to sell with saleValue 0 — a no-op for a renter. The
+    // disposition UI stays hidden unless the work home is owned/mortgaged in a different state.
+    housing: { tenure: "rent", rent: 1650, mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: 2026 }, homeValue: 0, insuranceAnnual: 0, maintenancePct: 0.01, relocation: { action: "sell", saleValue: 0 } },
+    // Task 8: the retirement dwelling after relocation. null ⇒ same dwelling throughout
+    // (no relocation home transition). The Housing step seeds a rent default when the user
+    // configures a genuine move (different state + owned/mortgaged work home).
+    retireHousing: null,
   });
   const [couple, setCouple] = useState(true);
   const [stage, setStage] = useState("post");
@@ -284,6 +290,8 @@ export default function RetirementCalculator() {
               compTip={compTip}
               spendingShape={s.spendingShape}
               housing={s.housing}
+              relocationYear={s.relocationYear}
+              workLoc={s.workLoc}
             />
 
             {/* Year by year — a typical month (or full year) for the selected year */}

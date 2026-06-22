@@ -31,7 +31,8 @@ import {
   travelSpendForYear,
   yearReturn,
 } from "./calculatorCore.js";
-import { LOCATIONS, SINGLE_COST_FACTOR } from "./retirementData.js";
+import { LOCATIONS, SINGLE_COST_FACTOR, HOME_SELL_NET } from "./retirementData.js";
+import { remainingBalance } from "./finance/housing.js";
 
 const baseState = {
   ageA:45, ageB:45, stopA:62, stopB:60, claimA:67, claimB:67, pensionAge:65,
@@ -782,7 +783,7 @@ describe("inherited live-in switches housing to owned carrying cost (Task 5)", (
     // No double credit: the old flat liveSav credit is removed.
     const i = {
       ...baseState,
-      ageA: 45, ageB: 45, stopA: 62, stopB: 60, claimA: 67, claimB: 67,
+      ageA: 45, ageB: 45, stopA: 60, stopB: 60, claimA: 67, claimB: 67,
       pensionOn: false, savings: 300000, contrib: 0,
       targetPct: 0.28, realReturn: 0.05, swr: 0.04, tradFrac: 0,
       incomeHH: 165000, hcPre: 2450, hcPost: 1000, ltcAnnual: 129000,
@@ -795,17 +796,20 @@ describe("inherited live-in switches housing to owned carrying cost (Task 5)", (
       },
       // Austria home via inher directly (bypasses buildInheritanceInputs for isolation)
       at: { on: false }, tx: { on: false },
-      inher: [{ type: "live", year: 2040, live: 0, homeValue: 324000, ownRate: 0.012 }],
+      inher: [{ type: "live", year: 2042, live: 0, homeValue: 324000, ownRate: 0.012 }],
     };
     const sim = simulate(i, { haircut: 1, cutYear: 9999 });
-    // Act
-    const before = sim.rows.find((r) => r.cal === 2039); // last renting year
-    const after  = sim.rows.find((r) => r.cal === 2041); // first owned year (year+1 convention)
+    // Act — both spouses retire at 60 (2041) and turn 65 in 2046, so 2041–2045 are all
+    // retired AND under 65: the Task 8 pre-65 healthcare bridge is ON for both spouses in
+    // every comparison year, so it cancels in the delta and we isolate the pure housing
+    // saving. The live-in owned override activates the year after 2042 (year+1 convention).
+    const before = sim.rows.find((r) => r.cal === 2042); // retired, under 65, still renting
+    const after  = sim.rows.find((r) => r.cal === 2043); // retired, under 65, owned override active
     // Assert: owned carrying cost (0.012 × 324000 = $3,888) < annual rent ($19,800)
     // so need drops once the override is active.
     expect(after.need).toBeLessThan(before.need);
-    // The delta should be close to the housing saving (rent minus owned cost).
-    // rent: $19,800/yr → owned carrying cost: $3,888/yr → saving ≈ $15,912/yr
+    // With healthcare identical (both retired & under 65 in both rows), the delta is the pure
+    // housing saving: rent $19,800/yr → owned carrying cost $3,888/yr → saving ≈ $15,912/yr.
     const delta = before.need - after.need;
     expect(delta).toBeGreaterThan(10000); // well above zero: override is real
     expect(delta).toBeLessThan(25000);    // bounded: no double-count
@@ -1085,9 +1089,25 @@ describe("location-cost spending basis", () => {
     const us = LOCATIONS.find((l) => l.name === "US -- national average");
     const basket = Object.values(us.m).reduce((a, b) => a + b, 0) * 12;
     const plan = calculatePlan({ ...baseState, spendBasis: "location", retireLoc: us.name });
-    // A working year before any inheritance/travel effects; both spouses pre-65.
+    // Task 8: 2032 (age 51) is a WORKING year — both spouses carry employer insurance, so the
+    // pre-65 ACA bridge is gated OFF and healthcare uses the post-65/Medicare figure (hcPost).
+    // (Pre-Task-8 this wrongly billed hcPre while still employed.)
     const row = plan.simChosen.rows.find((r) => r.cal === 2032);
-    const hc = (us.hcPre / 2) * 2 * 12; // both under 65
+    const hc = (us.hcPost / 2) * 2 * 12; // both working → Medicare-equivalent, not ACA bridge
+    expect(row.need).toBe(Math.round(basket + hc));
+  });
+
+  it("uses the pre-65 ACA bridge once retired but still under 65 (location basis)", () => {
+    // Same persona retired early (stop 58) so 2032 (age 58) is RETIRED and under 65 → bridge ON.
+    const us = LOCATIONS.find((l) => l.name === "US -- national average");
+    const basket = Object.values(us.m).reduce((a, b) => a + b, 0) * 12;
+    const plan = calculatePlan({
+      ...baseState, spendBasis: "location", retireLoc: us.name,
+      ageA: 50, ageB: 50, stopA: 51, stopB: 51, savings: 3_000_000, pensionOn: false,
+      tx: { ...baseState.tx, on: false }, at: { ...baseState.at, on: false },
+    });
+    const row = plan.simChosen.rows.find((r) => r.cal === 2032); // age 56, retired, under 65
+    const hc = (us.hcPre / 2) * 2 * 12; // both retired & under 65 → full ACA bridge
     expect(row.need).toBe(Math.round(basket + hc));
   });
 });
@@ -1332,5 +1352,143 @@ describe("location property tax into housing (Wave 2 Task 7)", () => {
   it("a known US stateCode resolves the correct propertyTaxRate from US_STATE_TAX", () => {
     const plan = calculatePlan({ ...usOwnerBase, stateCode: "TX" });
     expect(plan.inp.activePropertyTaxRate).toBeCloseTo(0.0163, 6);
+  });
+});
+
+describe("Task 8 — work-vs-retire two-location jurisdiction split", () => {
+  // Persona: WA worker relocating to TX at relocationYear 2046.
+  // baseState: ageA:45, ageB:45, stopA:62, stopB:60 → working years until ~2041.
+  // relocationYear 2046 is after retirement stops, so all working years use WA (wageRate:0),
+  // and retirement years use TX (retireRate:0, propertyTaxRate:0.0163).
+  const relocBase = {
+    ...baseState,
+    workLoc: "WA",
+    stateCode: "TX",
+    relocationYear: 2046,
+    retireLoc: "US -- national average",
+    at: { ...baseState.at, on: false },
+    tx: { ...baseState.tx, on: false },
+    housing: {
+      tenure: "rent",
+      rent: 2000,
+      mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: 2026 },
+      homeValue: 0, insuranceAnnual: 0, maintenancePct: 0.01,
+    },
+  };
+
+  it("working-year state tax uses work-state wageRate, not retire-location addlTaxRate", () => {
+    // WA wageRate=0; CA wageRate=0.08 on wages.
+    // With CA as work state, the working-year tax burden is higher, so after-tax
+    // income is lower, and the household's ability to fund retirement is reduced.
+    // We observe this via the balance at first retirement (balAtFullRet).
+    const waPlan = calculatePlan(relocBase);
+    const caPlan = calculatePlan({ ...relocBase, workLoc: "CA" });
+    // WA (0% wage tax) accumulates more during working years than CA (8% wage tax).
+    expect(waPlan.simChosen.balAtFullRet).toBeGreaterThan(caPlan.simChosen.balAtFullRet);
+  });
+
+  it("owned work home sold at relocation realizes NET proceeds (selling costs, no mortgage)", () => {
+    // Owned outright → no remaining balance → net = HOME_SELL_NET × saleValue = 0.93 × 500000.
+    const withSell = {
+      ...relocBase,
+      housing: {
+        tenure: "own",
+        homeValue: 600000,
+        insuranceAnnual: 1200,
+        maintenancePct: 0.01,
+        rent: null,
+        mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: 2026 },
+        relocation: { action: "sell", saleValue: 500000 },
+      },
+    };
+    const planWithSell = calculatePlan(withSell);
+    const planNoSell = calculatePlan({ ...withSell, housing: { ...withSell.housing, relocation: { action: "sell", saleValue: 0 } } });
+    const sellRow = planWithSell.simChosen.rows.find((r) => r.cal === 2046);
+    const noSellRow = planNoSell.simChosen.rows.find((r) => r.cal === 2046);
+    expect(sellRow.sellLump).toBe(Math.round(HOME_SELL_NET * 500000)); // 465000, NOT raw 500000
+    expect(sellRow.bal).toBeGreaterThan(noSellRow.bal);
+  });
+
+  it("mortgaged work home sold at relocation nets proceeds minus the remaining balance (C2)", () => {
+    // A mortgage still owing at relocation reduces the net lump: 0.93×saleValue − remainingBalance.
+    const mortgaged = {
+      ...relocBase,
+      relocationYear: 2036, // mid-mortgage, so a balance is still owed
+      housing: {
+        tenure: "mortgage",
+        homeValue: 600000,
+        insuranceAnnual: 1200,
+        maintenancePct: 0.01,
+        rent: null,
+        mortgage: { principal: 400000, ratePct: 6, termYears: 30, startYear: 2026 },
+        relocation: { action: "sell", saleValue: 500000 },
+      },
+    };
+    const plan = calculatePlan(mortgaged);
+    const sellRow = plan.simChosen.rows.find((r) => r.cal === 2036);
+    const owed = remainingBalance(mortgaged.housing.mortgage, 2036);
+    expect(owed).toBeGreaterThan(0);
+    expect(sellRow.sellLump).toBe(Math.round(HOME_SELL_NET * 500000 - owed));
+    expect(sellRow.sellLump).toBeLessThan(Math.round(HOME_SELL_NET * 500000)); // mortgage drag
+  });
+
+  it("keep-as-rental: no sell-lump, work P&I gone from the residence, but sell drops more housing (I1)", () => {
+    const sellHousing = {
+      tenure: "mortgage",
+      homeValue: 600000,
+      insuranceAnnual: 1200,
+      maintenancePct: 0.01,
+      rent: null,
+      mortgage: { principal: 400000, ratePct: 6, termYears: 30, startYear: 2026 },
+      relocation: { action: "sell", saleValue: 500000 },
+    };
+    const sell = calculatePlan({ ...relocBase, relocationYear: 2046, housing: sellHousing });
+    const keep = calculatePlan({ ...relocBase, relocationYear: 2046, housing: { ...sellHousing, relocation: { action: "keep", saleValue: 0 } } });
+    const sellReloc = sell.simChosen.rows.find((r) => r.cal === 2046);
+    const keepReloc = keep.simChosen.rows.find((r) => r.cal === 2046);
+    // Sell realizes a lump; keep does not.
+    expect(sellReloc.sellLump).toBeGreaterThan(0);
+    expect(keepReloc.sellLump).toBe(0);
+    // Keep retains the work home as a rental → rental income shows up post-relocation.
+    expect(keepReloc.rent).toBeGreaterThan(0);
+    // I1: post-relocation the SOLD home's P&I cannot leak — the residence switched to retire
+    // rent, so the sold-scenario housing is just retire rent (no work P&I as a residence cost).
+    const sellAfter = sell.simChosen.rows.find((r) => r.cal === 2048);
+    const sellBefore = sell.simChosen.rows.find((r) => r.cal === 2044);
+    expect(sellAfter.need).toBeLessThan(sellBefore.need); // work mortgage residence cost gone
+  });
+
+  it("default persona (rent, saleValue=0) produces zero relocation lump", () => {
+    const plan = calculatePlan(relocBase);
+    const relocRow = plan.simChosen.rows.find((r) => r.cal === 2046);
+    expect(relocRow.sellLump).toBe(0);
+  });
+
+  // C1: pre-65 ACA healthcare bridge must NOT fire while a person is still working
+  // (employer-insured); it fires once they retire and are still under 65.
+  it("pre-65 healthcare bridge is gated OFF while working and ON once retired", () => {
+    // Spouse A retires at 60 (stopA:60), so 2026 (age 58, working) vs a retired pre-65 year.
+    // Compare the same-age person working vs not working via stopA.
+    const working = calculatePlan({
+      ...baseState,
+      ageA: 58, ageB: 58, stopA: 65, stopB: 65, claimA: 67, claimB: 67,
+      pensionOn: false, contrib: 0,
+      retireLoc: "US -- national average", spendBasis: "income",
+      tx: { ...baseState.tx, on: false }, at: { ...baseState.at, on: false },
+      travel: { on: false }, events: [],
+    });
+    const retired = calculatePlan({
+      ...baseState,
+      ageA: 58, ageB: 58, stopA: 58, stopB: 58, claimA: 67, claimB: 67,
+      pensionOn: false, contrib: 0, savings: 1_500_000,
+      retireLoc: "US -- national average", spendBasis: "income",
+      tx: { ...baseState.tx, on: false }, at: { ...baseState.at, on: false },
+      travel: { on: false }, events: [],
+    });
+    const wRow = working.simChosen.rows.find((r) => r.cal === 2026); // age 58, BOTH working
+    const rRow = retired.simChosen.rows.find((r) => r.cal === 2026); // age 58, BOTH retired
+    // Same ages, same income basis: the only difference is the pre-65 bridge gating.
+    // Working → no bridge; retired pre-65 → bridge present, so retired need is higher.
+    expect(rRow.need).toBeGreaterThan(wRow.need);
   });
 });

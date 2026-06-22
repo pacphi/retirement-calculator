@@ -1,6 +1,6 @@
 // src/finance/housing.test.js
 import { describe, expect, it } from "vitest";
-import { monthlyPI, payoffYear, housingCostForYear } from "./housing.js";
+import { monthlyPI, payoffYear, housingCostForYear, remainingBalance } from "./housing.js";
 
 describe("housing amortization", () => {
   it("computes the standard monthly P&I", () => {
@@ -33,5 +33,18 @@ describe("housingCostForYear", () => {
     const c = housingCostForYear(own, 2040, 0.025, 0.012);
     expect(c.pi).toBe(0);
     expect(c.propertyTax).toBeCloseTo(0.012 * 324000, 6);
+  });
+});
+
+describe("remainingBalance", () => {
+  const m = { principal: 300000, ratePct: 6, termYears: 30, startYear: 2026 };
+  it("computes the outstanding mortgage balance partway through the term", () => {
+    expect(remainingBalance(m, 2026)).toBeCloseTo(300000, 0);  // start
+    expect(remainingBalance(m, 2056)).toBe(0);                  // paid off
+    expect(remainingBalance(m, 2041)).toBeGreaterThan(0);       // mid-term
+    expect(remainingBalance(m, 2041)).toBeLessThan(300000);
+  });
+  it("returns 0 for no-principal mortgage", () => {
+    expect(remainingBalance({}, 2030)).toBe(0);
   });
 });

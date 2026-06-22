@@ -71,6 +71,11 @@ export function spendingComponents(i, ageA, ageB, ctx = {}) {
     cal = null,
     inflation,
     propertyTaxRate,
+    // Task 8 (v3 §4): per-person working flags. A still-working spouse carries employer
+    // insurance, so the pre-65 ACA bridge does NOT apply to them. Default false (retired)
+    // preserves pre-Task-8 behaviour for callers that don't pass these (e.g. headline/steady).
+    workingA = false,
+    workingB = false,
   } = ctx;
 
   // Preserve the survivor-age fallback from the original spendingNeed.
@@ -102,10 +107,12 @@ export function spendingComponents(i, ageA, ageB, ctx = {}) {
     const smile = smileMultiplier(ageA, retireAgeA, i.spendingShape);
     const nonHousingBase = livingMo * 12 * scale * lifestyle * smile;
 
-    const hcPer = (age) => (age < 65 ? L.hcPre : L.hcPost) / 2; // couple figures ÷ 2
+    // Task 8: the pre-65 ACA figure (hcPre) applies to a person only when under 65 AND not
+    // working; a still-working pre-65 person uses the post-65/Medicare figure (employer-insured).
+    const hcPer = (age, working) => ((age < 65 && !working) ? L.hcPre : L.hcPost) / 2; // couple figures ÷ 2
     const healthcare = (isSurvivor
-      ? hcPer(survAge)
-      : single ? hcPer(ageA) : hcPer(ageA) + hcPer(ageB)) * 12;
+      ? hcPer(survAge, false)
+      : single ? hcPer(ageA, workingA) : hcPer(ageA, workingA) + hcPer(ageB, workingB)) * 12;
 
     // Location basis: floor applies to living + healthcare together (housing excluded — Wave 2).
     const _floorBase = nonHousingBase + healthcare;
@@ -119,9 +126,11 @@ export function spendingComponents(i, ageA, ageB, ctx = {}) {
   const smile = smileMultiplier(ageA, retireAgeA, i.spendingShape);
   const nonHousingBase = i.incomeHH * i.targetPct * smile;
   const perPersonHC = Math.max(0, (i.hcPre - i.hcPost)) / 2;
+  // Task 8: count a person in the pre-65 ACA bridge only if under 65 AND not working
+  // (a still-working spouse carries employer insurance). A survivor is retired.
   const under65 = isSurvivor
     ? (survAge < 65 ? 1 : 0)
-    : (ageA < 65 ? 1 : 0) + (ageB < 65 ? 1 : 0);
+    : ((ageA < 65 && !workingA) ? 1 : 0) + ((ageB < 65 && !workingB) ? 1 : 0);
   const healthcare = perPersonHC * under65 * 12;
 
   // Income basis: floor applies to income*targetPct ONLY (not healthcare, not housing).

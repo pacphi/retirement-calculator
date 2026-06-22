@@ -114,11 +114,20 @@ export function buildPlanInputs(s) {
       };
       // Seed default rent from the retire location's basket when tenure is "rent"
       // and no explicit rent has been entered (Wave 2, Task 4).
-      if (base.tenure === "rent" && base.rent == null) {
-        return { ...base, rent: retLocObj.m.rent };
+      const withRent = (base.tenure === "rent" && base.rent == null)
+        ? { ...base, rent: retLocObj.m.rent }
+        : base;
+      // Seed housing.relocation defaults (Task 8): action="sell", saleValue=0.
+      if (!withRent.relocation) {
+        return { ...withRent, relocation: { action: "sell", saleValue: 0 } };
       }
-      return base;
+      return withRent;
     })(),
+    // Retirement housing: the dwelling after relocation. When the user has explicitly
+    // set retireHousing, use it. Otherwise fall back to i.housing itself (same dwelling
+    // — covers the single-location case where work and retire residence are the same home).
+    // Task 8: simulate.js will switch to retireHousing from relocationYear onward.
+    retireHousing: s.retireHousing ?? null,
   };
 }
 

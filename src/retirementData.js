@@ -229,6 +229,17 @@ export const INTL_TAX = {
     exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the Bahamas has no income tax so US federal is the only income tax layer.", govtPension: "Her WA DRS pension is a government-service pension — taxable only by the US; the Bahamas imposes no residence income tax on it.", residenceTaxed: "The Bahamas imposes no income tax on IRA/401(k) distributions as a resident; US federal tax applies as normal (effective added rate modeled 0).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
 };
 
+// Net sale proceeds factor for a primary residence sold at relocation: ~7% selling
+// costs (agent commission, transfer, closing) are kept aside, planning-grade. The
+// primary-residence capital-gains exclusion (~$500k MFJ) is assumed to cover the gain,
+// so no cap-gains tax is modeled here — captioned in-app. Mirrors PROP.tx.sellNet.
+export const HOME_SELL_NET = 0.93;
+
+// Net annual rental yield for a work home KEPT as a rental after relocation (planning-grade,
+// % of home value, net of vacancy/management). Mirrors PROP.tx.rentYield (~3.5%). The kept
+// home's mortgage P&I continues as a cost; this is the offsetting gross rental income.
+export const HOME_RENT_YIELD = 0.035;
+
 // Primary-residence housing. Mortgage P&I is the engine's ONE nominal flow (deflated
 // each year, zeroed after payoff). Rent / property tax / insurance / maintenance are
 // real-flat. maintenancePct is an annual % of home value. Source: SOURCES.taxFoundationProperty.

@@ -1,5 +1,26 @@
 import { TAX_YEAR } from "../retirementData.js";
 
+/**
+ * Outstanding mortgage principal at the start of calendar year `cal`.
+ * Formula: P·[(1+r)^n − (1+r)^p] / ((1+r)^n − 1), where r=monthly rate,
+ * n=total months, p=months elapsed (clamped to [0,n]). Returns 0 if before
+ * startYear payments or after payoff.
+ */
+export function remainingBalance(mortgage, cal) {
+  const m = mortgage || {};
+  const P = Number(m.principal) || 0;
+  const n = (Number(m.termYears) || 0) * 12;
+  if (P <= 0 || n <= 0) return 0;
+  const startYear = Number(m.startYear) || TAX_YEAR;
+  const p = Math.max(0, Math.min(n, (cal - startYear) * 12));
+  if (p >= n) return 0; // paid off
+  const r = (Number(m.ratePct) || 0) / 100 / 12;
+  if (r === 0) return P * (1 - p / n);
+  const f = Math.pow(1 + r, n);
+  const fp = Math.pow(1 + r, p);
+  return P * (f - fp) / (f - 1);
+}
+
 /** Standard monthly mortgage P&I. 0 if principal/term ≤ 0; rate 0 ⇒ even principal. */
 export function monthlyPI(principal, ratePct, termYears) {
   const P = Number(principal) || 0;
