@@ -964,3 +964,26 @@ describe("recurring life events", () => {
     expect(miss.extraSpend).toBe(0);
   });
 });
+
+describe("spendingNeed location basis (seam contract for 0D)", () => {
+  const L = LOCATIONS.find((x) => x.m); // any location with a basket
+  const i = { spendBasis: "location", retLocObj: L, status: "married", lifestyle: 100 };
+
+  it("sums the cost-of-living basket plus age-based healthcare (couple, pre-65)", () => {
+    const livingYr = Object.values(L.m).reduce((a, b) => a + b, 0) * 12;
+    const hcYr = (L.hcPre / 2) * 2 * 12; // both under 65, couple
+    expect(spendingNeed(i, 60, 60)).toBeCloseTo(livingYr + hcYr, 2);
+  });
+
+  it("applies the single/survivor cost factor and single healthcare", () => {
+    const livingYr = Object.values(L.m).reduce((a, b) => a + b, 0) * 12 * SINGLE_COST_FACTOR;
+    const hcYr = (L.hcPre / 2) * 12;
+    expect(spendingNeed(i, 60, 60, 0, true, 60)).toBeCloseTo(livingYr + hcYr, 2);
+  });
+
+  it("scales living (not healthcare) by lifestyle and subtracts live-in saving", () => {
+    const lo = spendingNeed({ ...i, lifestyle: 80 }, 70, 70, 5000);
+    const base = spendingNeed(i, 70, 70, 0);
+    expect(lo).toBeLessThan(base);
+  });
+});
