@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPlanInputs } from "./plan.js";
+import { buildPlanInputs, calculatePlan } from "./plan.js";
 import { RETURN_PRESETS, SMILE_DEFAULTS } from "../retirementData.js";
 
 const bareState = {
@@ -27,5 +27,16 @@ describe("buildPlanInputs Wave 1 defaults", () => {
   it("constants exist and are source-bracketed", () => {
     expect(RETURN_PRESETS.balanced.realReturn).toBe(0.05);
     expect(SMILE_DEFAULTS.upturnAge).toBe(85);
+  });
+});
+
+describe("returnPreset wiring", () => {
+  it("returnPreset overrides realReturn deterministically", () => {
+    const grow = calculatePlan({ ...bareState, returnPreset: "growth", realReturn: 0.01 });
+    const cons = calculatePlan({ ...bareState, returnPreset: "conservative", realReturn: 0.09 });
+    // growth (6.5%) ends with a larger terminal balance than conservative (3.5%),
+    // ignoring the bogus custom realReturn entirely.
+    const last = (sim) => sim.rows[sim.rows.length - 1].bal;
+    expect(last(grow.simFull)).toBeGreaterThan(last(cons.simFull));
   });
 });

@@ -1,4 +1,5 @@
 import { LOCATIONS, PROP, TAX_YEAR, TIERS } from "../retirementData.js";
+import { resolveReturn } from "./returns.js";
 import { simulate, steadyState } from "./simulate.js";
 
 export const lineItems = (l, stage) => [
@@ -72,6 +73,7 @@ export function buildPlanInputs(s) {
     survivor: s.survivor ?? { on: false, year: 9999, pensionPct: 0 },
     life: s.life ?? { on: false, deathAgeA: 95, deathAgeB: 95, pensionPct: 0 },
     returnPreset: s.returnPreset ?? "custom",
+    realReturn: resolveReturn(s.returnPreset ?? "custom", s.realReturn),
     volatility: (s.volatility != null && s.volatility !== "") ? Number(s.volatility) : 0.12,
     spendingShape: s.spendingShape ?? { mode: "flat" },
     lifestyleSteps: s.lifestyleSteps ?? [],

@@ -227,10 +227,12 @@ describe("Strategy & assumptions controls update the projection", () => {
   }
   const headline = () => screen.getByText(/can sustain up to/i).textContent;
 
-  it("Real investment return slider moves the sustainable-income headline", async () => {
-    await openAssumptions();
+  it("Return assumption preset moves the sustainable-income headline", async () => {
+    const user = await openAssumptions();
     const before = headline();
-    fireEvent.change(screen.getByLabelText(/Real investment return/i), { target: { value: "8" } });
+    // Switch from "balanced" (~5%) to "conservative" (~3.5%) — headline must shift.
+    // Use getAllByText + first match to avoid the Field <label> wrapper affecting accessible names.
+    await user.click(screen.getAllByText(/Conservative ~3\.5%/i)[0]);
     expect(headline()).not.toBe(before);
   });
 
@@ -360,5 +362,46 @@ describe("year-by-year polish", () => {
     expect(screen.getByRole("slider", { name: /select year/i })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /collapse year by year/i }));
     expect(screen.queryByRole("slider", { name: /select year/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("B1 return preset and variability controls", () => {
+  async function openAssumptions() {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    await user.click(screen.getByRole("button", { name: /assumptions/i }));
+    return user;
+  }
+
+  it("exposes the Return assumption label in the advanced panel", async () => {
+    await openAssumptions();
+    expect(screen.getByText(/Return assumption/i)).toBeInTheDocument();
+  });
+
+  it("exposes the Variability label in the advanced panel", async () => {
+    await openAssumptions();
+    expect(screen.getByText(/Variability/i)).toBeInTheDocument();
+  });
+
+  it("preset buttons are accessible and balanced is active by default", async () => {
+    await openAssumptions();
+    // Query by visible text to avoid Field <label> wrapper inflating accessible names.
+    const balanced = screen.getAllByText(/Balanced ~5%/i)[0].closest("button");
+    const conservative = screen.getAllByText(/Conservative ~3\.5%/i)[0].closest("button");
+    const growth = screen.getAllByText(/Growth ~6\.5%/i)[0].closest("button");
+    expect(balanced).toHaveAttribute("aria-pressed", "true");
+    expect(conservative).toHaveAttribute("aria-pressed", "false");
+    expect(growth).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("switching to Custom reveals the custom real return input", async () => {
+    const user = await openAssumptions();
+    expect(screen.queryByLabelText(/Custom real return/i)).not.toBeInTheDocument();
+    // "Custom" also appears in the ssMode Segmented (Timing step, always visible).
+    // The return-preset "Custom" button is the last one in DOM order — take the last match.
+    const allCustom = screen.getAllByText(/^Custom$/i);
+    const customBtn = allCustom[allCustom.length - 1].closest("button");
+    await user.click(customBtn);
+    expect(screen.getByLabelText(/Custom real return/i)).toBeInTheDocument();
   });
 });

@@ -1,6 +1,6 @@
 import { C } from "../theme.js";
 import { Field, NumberInput, Segmented, Section } from "../atoms/index.jsx";
-import { LOCATIONS } from "../../retirementData.js";
+import { LOCATIONS, SOURCES } from "../../retirementData.js";
 import { usd0 } from "../format.js";
 
 const locByName = (n) => LOCATIONS.find(l => l.name === n);
@@ -15,7 +15,39 @@ export function Advanced({ s, set, adv, onAdvToggle }) {
     <>
       <button onClick={onAdvToggle} style={{ width:"100%", background:"none", border:`1px dashed ${C.line}`, borderRadius:9, padding:"10px", color:C.slate, fontSize:12.5, fontWeight:600, cursor:"pointer", marginBottom:adv?16:8, fontFamily:"inherit" }}>{adv?"Hide assumptions ▲":"Long-term care & assumptions (return, inflation, withdrawal, tax) ▾"}</button>
       {adv && (<Section eyebrow="Optional" title="Strategy & assumptions">
-        <Field label={`Real investment return — ${(s.realReturn*100).toFixed(1)}%`} hint="After inflation. A 60/40 mix has historically returned ~4–5% real."><input type="range" min={2} max={8} step={0.5} value={s.realReturn*100} onChange={(e)=>set("realReturn")(Number(e.target.value)/100)} style={{ width:"100%", accentColor:C.brass }} /></Field>
+        <Field label="Return assumption">
+          <Segmented
+            value={s.returnPreset}
+            onChange={set("returnPreset")}
+            options={[
+              { value: "conservative", label: "Conservative ~3.5%" },
+              { value: "balanced",     label: "Balanced ~5%" },
+              { value: "growth",       label: "Growth ~6.5%" },
+              { value: "custom",       label: "Custom" },
+            ]}
+          />
+        </Field>
+        {s.returnPreset === "custom" && (
+          <Field label="Custom real return (%/yr)">
+            <NumberInput
+              value={Math.round(s.realReturn * 1000) / 10}
+              onChange={(v) => set("realReturn")((Number(v) || 0) / 100)}
+              step={0.1}
+            />
+          </Field>
+        )}
+        <Field label="Variability (±%/yr)" hint="Return volatility used for the range band">
+          <NumberInput
+            value={Math.round(s.volatility * 100)}
+            onChange={(v) => set("volatility")((Number(v) || 0) / 100)}
+            step={1} min={0} max={30}
+          />
+        </Field>
+        <p style={{ fontSize:11, color:C.mut, lineHeight:1.5, margin:"4px 0 10px" }}>
+          Central return anchored to long-run 60/40 history (~5% real, with dispersion);
+          the band is a Monte Carlo p10–p90 fan.{" "}
+          <a href={SOURCES.cfa6040 ?? "https://rpc.cfainstitute.org/research/reports/2025/performance-of-the-60-40-portfolio"} target="_blank" rel="noreferrer" style={{ color:C.brassDeep }}>Source</a>.
+        </p>
         <Field label={`Inflation — ${(s.inflation*100).toFixed(1)}%`} hint="Translates today's costs into future dollars in the breakdowns."><input type="range" min={1} max={5} step={0.5} value={s.inflation*100} onChange={(e)=>set("inflation")(Number(e.target.value)/100)} style={{ width:"100%", accentColor:C.brass }} /></Field>
         <Field label="Withdrawal rate"><Segmented value={s.swr} onChange={set("swr")} options={[{label:"3.9%",value:0.039},{label:"4%",value:0.04},{label:"5.7%",value:0.057}]} /></Field>
         <Field label="Plan horizon (age)" hint="How long to project. Defaults to 95; can't be set below the older spouse's current age.">
