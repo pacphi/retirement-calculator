@@ -10,7 +10,6 @@ import {
   afcIsAuto,
   resolveAfc,
   calculatePlan,
-  lineItems,
   monthlyTotal,
   ownBenefitAtClaimMonthly,
   proratedFraEstimate,
@@ -20,14 +19,12 @@ import {
 import { Staircase } from "./src/components/charts/Staircase.jsx";
 import { YearByYear } from "./src/components/charts/YearByYear.jsx";
 import { PortfolioFlows } from "./src/components/charts/PortfolioFlows.jsx";
+import { LongRun } from "./src/components/charts/LongRun.jsx";
+import { Places } from "./src/components/charts/Places.jsx";
+import { Compare } from "./src/components/charts/Compare.jsx";
+import { IncomeMix } from "./src/components/charts/IncomeMix.jsx";
 
 const SSA_FRA_URL = "https://secure.ssa.gov/myssa/bec-plan-prep-ui/bec-home";
-const phaseNote = (l, f) => {
-  const pre = `$${Math.round(l.hcPre*f).toLocaleString()}`, post = `$${Math.round(l.hcPost*f).toLocaleString()}`;
-  if (l.region === "US") return `Medicare at 65 drops healthcare from ~${pre}/mo (full-price ACA before 65) to ~${post}/mo. Keep taxable income modest in the gap years and ACA subsidies can cut the earlier figure sharply.`;
-  if (l.name === "Bahamas") return `No Medicare coverage abroad and private cover is age-rated, so healthcare here rises from ~${pre}/mo to ~${post}/mo. Budget for medical evacuation too.`;
-  return `As a resident you can usually access the public system, so healthcare stays moderate (~${pre}/mo before 65, ~${post}/mo after). Medicare won't cover care here.`;
-};
 
 /* ------------------------ Format + tiers ------------------------ */
 const usd0 = (x) => (x<0?"-$":"$") + Math.abs(Math.round(x)).toLocaleString();
@@ -200,9 +197,6 @@ export default function RetirementCalculator() {
   ];
 
   const locByName = (n) => LOCATIONS.find(l => l.name === n);
-  const A = locByName(cmpA), B = locByName(cmpB);
-  const aTot = annualCost(A), bTot = annualCost(B);
-  const cheaper = aTot <= bTot ? cmpA : cmpB, cmpDiff = Math.abs(aTot - bTot);
 
   const compTip = ({ active, payload, label }) => {
     if (!active || !payload || !payload.length) return null;
@@ -213,19 +207,6 @@ export default function RetirementCalculator() {
         <div key={p.name} style={{ display:"flex", justifyContent:"space-between", gap:14, color:p.color }}><span>{p.name}</span><span>{usd0(p.value)}</span></div>
       ))}
       <div style={{ borderTop:`1px solid ${C.line}`, marginTop:4, paddingTop:3, color:C.clay }}>need&nbsp;{usd0(row.need)}</div>
-    </div>);
-  };
-
-  const SummaryCard = ({ name }) => {
-    const l=locByName(name), tot=annualCost(l), surplus=steady.net-tot, tier=tierFor(steady.net/tot);
-    return (<div style={{ flex:"1 1 160px", background:"#fff", border:`1px solid ${C.line}`, borderRadius:10, padding:"11px 13px" }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:6 }}>
-        <span style={{ fontSize:12.5, fontWeight:700, color:C.ink }}>{name}</span>
-        <span style={{ fontSize:10.5, fontWeight:700, color:tier.color, background:tier.color+"18", padding:"1px 7px", borderRadius:999 }}>{tier.label}</span>
-      </div>
-      <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:18, fontWeight:600, color:C.ink }}>{usd0(tot)}<span style={{ fontSize:11, color:C.mut, fontWeight:400 }}>/yr</span></div>
-      <div style={{ fontSize:11.5, color:surplus>=0?C.viridian:C.clay, fontWeight:600, marginTop:2 }}>{surplus>=0?`+${usd0(surplus)} · ${(steady.net/tot).toFixed(1)}×`:`${usd0(surplus)} short`}</div>
-      <div style={{ fontSize:10.5, color:C.mut, marginTop:5, lineHeight:1.4 }}>{usd0(tot*inflFactor)}/yr in {retYear} · VAT {l.vat}<br/>Income tax: {l.incomeTax}</div>
     </div>);
   };
 
@@ -746,193 +727,54 @@ export default function RetirementCalculator() {
             />
 
             {/* Balance with vs without SS */}
-            <div style={{ background:C.panel, border:`1px solid ${C.line}`, borderRadius:14, padding:"16px 14px 12px", marginBottom:16 }}>
-              <div style={{ padding:"0 4px 6px" }}>
-                <div style={{ fontSize:11, letterSpacing:1.5, textTransform:"uppercase", color:C.brassDeep, fontWeight:700 }}>The long run</div>
-                <h3 style={{ margin:"2px 0 2px", fontFamily:"'Newsreader',serif", fontWeight:500, fontSize:19 }}>How far the savings stretch</h3>
-                <p style={{ margin:"2px 0 8px", fontSize:12.5, color:C.slate, lineHeight:1.5 }}>The green line is your plan as modeled ({s.ssMode==="full"?"full SS":`${Math.round(effHaircut*100)}% SS`}). The clay dashed line drops Social Security entirely. The brass dotted line is a sequence-risk stress test — a market crash in your first retirement years (illustrative and milder than 2008; for the full downside range run Monte Carlo below).{sellDots.length>0?" The step up is an inherited home being sold.":""}</p>
-              </div>
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={balRows} margin={{ top:6, right:14, left:4, bottom:0 }}>
-                  <CartesianGrid stroke={C.line} strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="age" tick={{ fontSize:11, fill:C.slate }} tickLine={false} axisLine={{ stroke:C.line }} />
-                  <YAxis tickFormatter={usdK} tick={{ fontSize:11, fill:C.slate }} tickLine={false} axisLine={false} width={42} />
-                  <Tooltip formatter={(v,n)=>[usd0(v), ({withSS:"With SS",withoutSS:"Without SS",stress:"Sequence-risk stress"}[n]??n)]} labelFormatter={(a)=>`Age ${a}`} contentStyle={{ borderRadius:8, border:`1px solid ${C.line}`, fontSize:12, fontFamily:"'JetBrains Mono',monospace" }} />
-                  <Line type="monotone" dataKey="withSS" stroke={C.viridian} strokeWidth={2.6} dot={false} name="withSS" />
-                  <Line type="monotone" dataKey="withoutSS" stroke={C.clay} strokeWidth={2} strokeDasharray="5 4" dot={false} name="withoutSS" />
-                  <Line type="monotone" dataKey="stress" stroke={C.brassDeep} strokeWidth={2} strokeDasharray="2 3" dot={false} name="stress" />
-                  {sellDots.map((d,i)=><ReferenceDot key={i} x={d.age} y={d.bal} r={4} fill={C.brass} stroke="#fff" strokeWidth={1.5} />)}
-                </LineChart>
-              </ResponsiveContainer>
-              <div style={{ display:"flex", gap:16, flexWrap:"wrap", padding:"6px 6px 2px" }}>
-                <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:C.slate }}><span style={{ width:16, height:3, background:C.viridian, borderRadius:2 }} />With Social Security</span>
-                <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:C.slate }}><span style={{ width:16, height:3, background:C.clay, borderRadius:2, borderTop:`2px dashed ${C.clay}` }} />Without SS</span>
-                <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:C.slate }}><span style={{ width:16, height:3, background:C.brassDeep, borderRadius:2 }} />Sequence-risk stress</span>
-              </div>
-              <button onClick={runMc} disabled={mcRunning}
-                style={{ marginTop:8, padding:"7px 14px", fontSize:12.5, fontWeight:600, cursor: mcRunning?"default":"pointer",
-                  background:C.viridian, color:"#fff", border:"none", borderRadius:6, opacity: mcRunning?0.6:1 }}>
-                {mcRunning ? "Running 1,000 paths…" : "Run Monte Carlo (1,000 paths)"}
-              </button>
-              {mc && (
-                <div style={{ marginTop:10, padding:"10px 12px", background:C.paper, border:`1px solid ${C.line}`, borderRadius:8, fontSize:12.5, color:C.ink }}>
-                  <div style={{ fontWeight:700, marginBottom:4 }}>Monte Carlo · {mc.paths.toLocaleString()} paths</div>
-                  {mcSummaryLines(mc, horizon).map((line, i) => <div key={i}>{line}</div>)}
-                  <div style={{ color:C.slate, marginTop:4 }}>
-                    Sustainable income range: {usd0(mc.sustainableIncome.p10)} – {usd0(mc.sustainableIncome.p90)}/yr (10th–90th pct).
-                  </div>
-                </div>
-              )}
-              {mc && (
-                <div style={{ marginTop:12 }}>
-                  <div style={{ fontSize:11, letterSpacing:1.5, textTransform:"uppercase", color:C.brassDeep, fontWeight:700, marginBottom:4, paddingLeft:4 }}>Monte Carlo · percentile fan</div>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <ComposedChart data={mc.balanceFan} margin={{ top:6, right:14, left:4, bottom:0 }}>
-                      <CartesianGrid stroke={C.line} strokeDasharray="2 4" vertical={false} />
-                      <XAxis dataKey="age" tick={{ fontSize:11, fill:C.slate }} tickLine={false} axisLine={{ stroke:C.line }} />
-                      <YAxis tickFormatter={usdK} tick={{ fontSize:11, fill:C.slate }} tickLine={false} axisLine={false} width={42} />
-                      <Area type="monotone" dataKey="p90" stroke="none" fill={C.viridian} fillOpacity={0.12} />
-                      <Area type="monotone" dataKey="p10" stroke="none" fill="#fff" fillOpacity={1} />
-                      <Line type="monotone" dataKey="p50" stroke={C.viridian} strokeWidth={2.4} dot={false} />
-                      <Line type="monotone" dataKey="p10" stroke={C.clay} strokeWidth={1.4} strokeDasharray="4 3" dot={false} />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                  <div style={{ display:"flex", gap:14, flexWrap:"wrap", padding:"4px 6px 2px" }}>
-                    <span style={{ display:"flex", alignItems:"center", gap:5, fontSize:11.5, color:C.slate }}><span style={{ width:11, height:11, borderRadius:3, background:C.viridian, opacity:0.25 }} />p10–p90 band</span>
-                    <span style={{ display:"flex", alignItems:"center", gap:5, fontSize:11.5, color:C.slate }}><span style={{ width:16, height:3, background:C.viridian, borderRadius:2 }} />p50 median</span>
-                    <span style={{ display:"flex", alignItems:"center", gap:5, fontSize:11.5, color:C.slate }}><span style={{ width:16, height:0, borderTop:`2px dashed ${C.clay}` }} />p10 worst-case</span>
-                  </div>
-                </div>
-              )}
-            </div>
+            <LongRun
+              balRows={balRows}
+              sellDots={sellDots}
+              mc={mc}
+              mcRunning={mcRunning}
+              onRunMc={runMc}
+              horizon={horizon}
+              ssMode={s.ssMode}
+              effHaircut={effHaircut}
+              mcSummaryLines={mcSummaryLines}
+            />
 
             {/* Places */}
-            <div style={{ background:C.panel, border:`1px solid ${C.line}`, borderRadius:14, padding:"16px 18px 20px", marginBottom:16 }}>
-              <div style={{ marginBottom:8 }}>
-                <div style={{ fontSize:11, letterSpacing:1.5, textTransform:"uppercase", color:C.brassDeep, fontWeight:700 }}>Places</div>
-                <h3 style={{ margin:"2px 0 0", fontFamily:"'Newsreader',serif", fontWeight:500, fontSize:20 }}>How far {usd0(steady.net)} stretches</h3>
-              </div>
-              <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
-                <Segmented value={couple} onChange={setCouple} options={[{label:"Couple",value:true},{label:"Single",value:false}]} />
-                <Segmented value={stage} onChange={setStage} options={[{label:"Before 65",value:"pre"},{label:"65+ (Medicare)",value:"post"}]} />
-              </div>
-              <p style={{ margin:"0 0 14px", fontSize:12.5, color:C.slate, lineHeight:1.5 }}>Tap a place for the full monthly breakdown. The gold line is your after-tax income; switch the healthcare basis to see the pre-Medicare years.</p>
-              <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
-                {locRows.map((l)=>{
-                  const max = Math.max(steady.net, locRows[locRows.length-1].cost)*1.05;
-                  const open = openLoc===l.name, monthly = monthlyTotal(l,stage)*sFactor, surplus = steady.net-l.cost;
-                  return (
-                    <div key={l.name} style={{ border:`1px solid ${open?C.line:"transparent"}`, borderRadius:10, overflow:"hidden", background:open?"#FCFAF4":"transparent" }}>
-                      <button
-                        type="button"
-                        className="rc-loc"
-                        aria-expanded={open}
-                        aria-controls={`loc-${l.name.replaceAll(" ","-")}`}
-                        onClick={()=>setOpenLoc(open?null:l.name)}
-                        style={{ display:"block", width:"100%", padding:"8px", border:"none", background:"transparent", borderRadius:9, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}
-                      >
-                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:5 }}>
-                          <span style={{ fontSize:13, fontWeight:600, color:C.ink }}><span style={{ color:C.mut, marginRight:6, fontSize:11 }}>{open?"▾":"▸"}</span>{l.name} <span style={{ fontSize:10.5, color:C.mut, fontWeight:500 }}>· {l.region}</span></span>
-                          <span style={{ display:"flex", alignItems:"center", gap:8 }}>
-                            <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:12, color:C.slate }}>{usdK(l.cost)}/yr</span>
-                            <span style={{ fontSize:11, fontWeight:700, color:l.tier.color, background:l.tier.color+"18", padding:"2px 8px", borderRadius:999 }}>{l.tier.label}</span>
-                          </span>
-                        </div>
-                        <div style={{ position:"relative", height:12, background:"#F1EEE5", borderRadius:6, overflow:"hidden" }}>
-                          <div style={{ position:"absolute", inset:0, width:`${Math.min(100,(l.cost/max)*100)}%`, background:"#D9D2C2", borderRadius:6 }} />
-                          <div style={{ position:"absolute", top:0, bottom:0, left:`${Math.min(100,(steady.net/max)*100)}%`, width:2.5, background:C.brass }} />
-                        </div>
-                      </button>
-                      {open && (
-                        <div id={`loc-${l.name.replaceAll(" ","-")}`} className="rc-exp" style={{ padding:"4px 12px 14px" }}>
-                          <div style={{ fontSize:11.5, color:C.slate, lineHeight:1.45, marginBottom:10 }}>{l.note}</div>
-                          <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12.5 }}>
-                            <thead><tr style={{ color:C.mut, fontSize:11 }}>
-                              <th style={{ textAlign:"left", fontWeight:600, padding:"3px 0" }}>Monthly ({couple?"couple":"single"}, {stage==="pre"?"<65":"65+"})</th>
-                              <th style={{ textAlign:"right", fontWeight:600 }}>/mo</th><th style={{ textAlign:"right", fontWeight:600 }}>/yr</th>
-                            </tr></thead>
-                            <tbody>
-                              {lineItems(l,stage).map(([label,val])=>{ const isHC=label.indexOf("Healthcare")===0; return (
-                                <tr key={label} style={{ borderTop:`1px solid ${C.line}`, background:isHC?"#F6F2E8":"transparent" }}>
-                                  <td style={{ padding:"5px 0", color:isHC?C.brassDeep:C.inkSoft, fontWeight:isHC?600:400 }}>{label}</td>
-                                  <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", color:C.ink }}>{usd0(val*sFactor)}</td>
-                                  <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", color:C.slate }}>{usdK(val*sFactor*12)}</td>
-                                </tr>
-                              );})}
-                              <tr style={{ borderTop:`2px solid ${C.ink}` }}>
-                                <td style={{ padding:"6px 0", fontWeight:700, color:C.ink }}>Total cost of living</td>
-                                <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", fontWeight:700, color:C.ink }}>{usd0(monthly)}</td>
-                                <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", fontWeight:700, color:C.ink }}>{usdK(l.cost)}</td>
-                              </tr>
-                            </tbody>
-                          </table>
-                          <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginTop:12 }}>
-                            <div style={{ flex:"1 1 150px", background:"#fff", border:`1px solid ${C.line}`, borderRadius:9, padding:"9px 11px" }}>
-                              <div style={{ fontSize:10.5, color:C.mut, fontWeight:600, marginBottom:3 }}>YOUR INCOME vs THIS BUDGET</div>
-                              <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:15, fontWeight:600, color:surplus>=0?C.viridian:C.clay }}>{surplus>=0?"+":""}{usd0(surplus)}/yr</div>
-                              <div style={{ fontSize:11, color:C.slate, marginTop:2 }}>{surplus>=0?`${(steady.net/l.cost).toFixed(1)}× the local budget`:"income falls short here"}</div>
-                            </div>
-                            <div style={{ flex:"1 1 150px", background:"#fff", border:`1px solid ${C.line}`, borderRadius:9, padding:"9px 11px" }}>
-                              <div style={{ fontSize:10.5, color:C.mut, fontWeight:600, marginBottom:3 }}>SAME BUDGET IN {retYear}</div>
-                              <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:15, fontWeight:600, color:C.ink }}>{usd0(l.cost*inflFactor)}/yr</div>
-                              <div style={{ fontSize:11, color:C.slate, marginTop:2 }}>at {(s.inflation*100).toFixed(1)}% inflation over {yearsToRet} yrs</div>
-                            </div>
-                          </div>
-                          <div style={{ marginTop:10, fontSize:11.5, color:C.slate, lineHeight:1.5, background:"#F6F2E8", borderRadius:8, padding:"8px 10px" }}><b style={{ color:C.brassDeep }}>Healthcare by age.</b> {phaseNote(l, sFactor)}</div>
-                          <div style={{ marginTop:8, fontSize:11.5, color:C.slate, lineHeight:1.5, background:"#F1EEE5", borderRadius:8, padding:"8px 10px" }}><b style={{ color:C.ink }}>Tax profile.</b> Consumption: {l.vat}. Income: {l.incomeTax}.</div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              <p style={{ fontSize:10.5, color:C.mut, lineHeight:1.5, marginTop:12 }}>Cost figures aggregated from Numbeo, Wise, Expatistan, ERI, Eurostat, BLS CES, plus CMS (2026 Medicare: Part B $202.90/mo) and KFF (ACA). Rent = 2–3BR, quiet outside-centre area.</p>
-            </div>
+            <Places
+              locRows={locRows}
+              steadyNet={steady.net}
+              couple={couple}
+              onCoupleChange={setCouple}
+              stage={stage}
+              onStageChange={setStage}
+              openLoc={openLoc}
+              onToggle={setOpenLoc}
+              sFactor={sFactor}
+              retYear={retYear}
+              inflFactor={inflFactor}
+              inflation={s.inflation}
+              yearsToRet={yearsToRet}
+            />
 
             {/* Compare */}
-            <div style={{ background:C.panel, border:`1px solid ${C.line}`, borderRadius:14, padding:"16px 18px 18px", marginBottom:16 }}>
-              <div style={{ fontSize:11, letterSpacing:1.5, textTransform:"uppercase", color:C.brassDeep, fontWeight:700 }}>Side by side</div>
-              <h3 style={{ margin:"2px 0 12px", fontFamily:"'Newsreader',serif", fontWeight:500, fontSize:20 }}>Compare two places</h3>
-              <div style={{ display:"flex", gap:10, marginBottom:6 }}>
-                <div style={{ flex:1 }}><Select value={cmpA} onChange={setCmpA} options={LOCATIONS.map(l=>l.name)} /></div>
-                <div style={{ flex:1 }}><Select value={cmpB} onChange={setCmpB} options={LOCATIONS.map(l=>l.name)} /></div>
-              </div>
-              <p style={{ margin:"2px 0 12px", fontSize:12.5, color:C.slate, lineHeight:1.5 }}>{cmpA===cmpB ? "Pick two different places to compare." : <>Living in <b style={{color:C.ink}}>{cheaper}</b> runs about <b style={{color:C.viridian}}>{usd0(cmpDiff)}/yr</b> less — {couple?"couple":"single"}, healthcare {stage==="pre"?"before 65":"at 65+"}.</>}</p>
-              <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12.5 }}>
-                <thead><tr style={{ color:C.mut, fontSize:11 }}><th style={{ textAlign:"left", fontWeight:600, padding:"3px 0" }}>Monthly</th><th style={{ textAlign:"right", fontWeight:700, color:C.ink }}>{cmpA}</th><th style={{ textAlign:"right", fontWeight:700, color:C.ink }}>{cmpB}</th></tr></thead>
-                <tbody>
-                  {lineItems(A,stage).map(([label,va],idx)=>{
-                    const vb=lineItems(B,stage)[idx][1], av=va*sFactor, bv=vb*sFactor, isHC=label.indexOf("Healthcare")===0;
-                    return (<tr key={label} style={{ borderTop:`1px solid ${C.line}`, background:isHC?"#F6F2E8":"transparent" }}>
-                      <td style={{ padding:"5px 0", color:isHC?C.brassDeep:C.inkSoft, fontWeight:isHC?600:400 }}>{label.replace(" -- before 65","").replace(" -- 65+","")}{isHC?` (${stage==="pre"?"<65":"65+"})`:""}</td>
-                      <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", color:av<=bv?C.viridian:C.ink, fontWeight:av<=bv?600:400 }}>{usd0(av)}</td>
-                      <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", color:bv<av?C.viridian:C.ink, fontWeight:bv<av?600:400 }}>{usd0(bv)}</td>
-                    </tr>);
-                  })}
-                  <tr style={{ borderTop:`2px solid ${C.ink}` }}><td style={{ padding:"6px 0", fontWeight:700, color:C.ink }}>Total /mo</td>
-                    <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", fontWeight:700, color:aTot<=bTot?C.viridian:C.ink }}>{usd0(aTot/12)}</td>
-                    <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", fontWeight:700, color:bTot<aTot?C.viridian:C.ink }}>{usd0(bTot/12)}</td></tr>
-                  <tr><td style={{ padding:"2px 0", fontSize:11, color:C.mut }}>Total /yr</td>
-                    <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", fontSize:11, color:C.slate }}>{usdK(aTot)}</td>
-                    <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", fontSize:11, color:C.slate }}>{usdK(bTot)}</td></tr>
-                </tbody>
-              </table>
-              <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginTop:14 }}><SummaryCard name={cmpA} /><SummaryCard name={cmpB} /></div>
-            </div>
+            <Compare
+              cmpA={cmpA}
+              cmpB={cmpB}
+              onPickA={setCmpA}
+              onPickB={setCmpB}
+              stage={stage}
+              couple={couple}
+              sFactor={sFactor}
+              steadyNet={steady.net}
+              inflFactor={inflFactor}
+              retYear={retYear}
+            />
 
             {/* Income mix */}
-            <div style={{ background:C.panel, border:`1px solid ${C.line}`, borderRadius:14, padding:"16px 18px", marginBottom:16 }}>
-              <div style={{ fontSize:11, letterSpacing:1.5, textTransform:"uppercase", color:C.brassDeep, fontWeight:700, marginBottom:2 }}>Steady state</div>
-              <h3 style={{ margin:"0 0 12px", fontFamily:"'Newsreader',serif", fontWeight:500, fontSize:18 }}>Sustainable income mix: {usd0(steady.gross)}/yr</h3>
-              <div style={{ display:"flex", height:26, borderRadius:7, overflow:"hidden", marginBottom:10 }}>
-                {incomeStack.map((seg,idx)=>(<div key={idx} title={`${seg.name}: ${usd0(seg.value)}`} style={{ width:`${(seg.value/steady.gross)*100}%`, background:seg.color }} />))}
-              </div>
-              <div style={{ display:"flex", gap:16, flexWrap:"wrap" }}>
-                {incomeStack.map((seg,idx)=>(<div key={idx} style={{ display:"flex", alignItems:"center", gap:6, fontSize:12.5 }}>
-                  <span style={{ width:11, height:11, borderRadius:3, background:seg.color }} /><span style={{ color:C.slate }}>{seg.name}</span>
-                  <span style={{ fontFamily:"'JetBrains Mono',monospace", fontWeight:600, color:C.ink }}>{usd0(seg.value)}</span></div>))}
-              </div>
-            </div>
+            <IncomeMix
+              incomeStack={incomeStack}
+              steadyGross={steady.gross}
+            />
 
             {/* Notes */}
             <div style={{ background:"#F6F4EC", border:`1px solid ${C.line}`, borderRadius:14, padding:"16px 18px" }}>
