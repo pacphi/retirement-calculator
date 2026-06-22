@@ -116,15 +116,33 @@ export function composeNeed(parts, liveSav = 0) {
 }
 
 /**
+ * Apply the stress-test return schedule for a given year index.
+ *
+ * Schedule:
+ *   y <= 2 → STRESS_EARLY_DROP (-0.10)
+ *   y <= 5 → realReturn - 0.02
+ *   y >  5 → realReturn
+ *
+ * Single source of truth — simulate.js imports this rather than defining its own.
+ *
+ * @param {number} realReturn  - The base real return rate
+ * @param {number} yearIndex   - Year index (0-based) within the simulation
+ * @returns {number}
+ */
+export function stressReturnForYear(realReturn, yearIndex) {
+  if (yearIndex <= 2) return STRESS_EARLY_DROP;
+  if (yearIndex <= 5) return realReturn - 0.02;
+  return realReturn;
+}
+
+/**
  * Resolve the per-year portfolio return for a simulation step.
  *
  * Resolution order (mirrors the inline expression previously in simulate.js):
  *   1. If ssOpt.returns is provided, use ssOpt.returns[y] (falling back to
  *      i.realReturn if the array has no entry at y).
- *   2. Else if ssOpt.stress is set, apply the stress schedule:
- *        y <= 2 → STRESS_EARLY_DROP (-0.10)
- *        y <= 5 → realReturn - 0.02
- *        y >  5 → realReturn
+ *   2. Else if ssOpt.stress is set, apply the stress schedule via
+ *      stressReturnForYear(realReturn, y).
  *   3. Else return i.realReturn.
  *
  * Wave 1 (B1: return presets / variability / glidepath) swaps the body of
@@ -140,9 +158,7 @@ export function yearReturn(i, y, ssOpt) {
     return ssOpt.returns[y] ?? i.realReturn;
   }
   if (ssOpt.stress) {
-    if (y <= 2) return STRESS_EARLY_DROP;
-    if (y <= 5) return i.realReturn - 0.02;
-    return i.realReturn;
+    return stressReturnForYear(i.realReturn, y);
   }
   return i.realReturn;
 }

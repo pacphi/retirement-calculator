@@ -1,16 +1,10 @@
-import { STRESS_EARLY_DROP, TAX_YEAR } from "../retirementData.js";
+import { TAX_YEAR } from "../retirementData.js";
 import { composeNeed, spendingComponents, yearReturn } from "./seams.js";
 import { calculateFederalTaxYear } from "./tax.js";
 import { ownBenefitAtClaimMonthly, piaFromIncome, spousalBenefitAtClaimMonthly } from "./socialSecurity.js";
 import { drsEligibilityNote, pensionERF, resolveAfc } from "./pension.js";
 import { ltcSpendForYear, oneTimeSpendForYear, travelSpendForYear } from "./events.js";
 import { requiredMinimum, rmdStartAge } from "./rmd.js";
-
-export const stressReturnForYear = (realReturn, yearIndex) => {
-  if (yearIndex <= 2) return STRESS_EARLY_DROP;
-  if (yearIndex <= 5) return realReturn - 0.02;
-  return realReturn;
-};
 
 export function benefits(i) {
   const piaA = i.ssModeA === "statement" ? (Number(i.ssFraA) || 0) / 12 : piaFromIncome(i.incomeA);
