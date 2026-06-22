@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   ComposedChart, Area, Line, LineChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceDot, ReferenceLine,
@@ -9,9 +9,6 @@ import { Chevron, NestLogo } from "./src/components/atoms/index.jsx";
 import {
   afcIsAuto,
   resolveAfc,
-  calculatePlan,
-  monthlyTotal,
-  tierFor,
 } from "./src/calculatorCore.js";
 import { Staircase } from "./src/components/charts/Staircase.jsx";
 import { YearByYear } from "./src/components/charts/YearByYear.jsx";
@@ -31,6 +28,8 @@ import { Inheritance as InheritanceStep } from "./src/components/steps/Inheritan
 import { Milestones } from "./src/components/steps/Milestones.jsx";
 import { TravelLongevity } from "./src/components/steps/TravelLongevity.jsx";
 import { Advanced } from "./src/components/steps/Advanced.jsx";
+import { usePlan } from "./src/hooks/usePlan.js";
+import { useMonteCarlo } from "./src/hooks/useMonteCarlo.js";
 
 /* ------------------------ Format + tiers ------------------------ */
 const usd0 = (x) => (x<0?"-$":"$") + Math.abs(Math.round(x)).toLocaleString();
@@ -75,9 +74,6 @@ export default function RetirementCalculator() {
   const [cmpB, setCmpB] = useState("US -- Texas / Florida");
   const set = (k) => (v) => setS(p => ({ ...p, [k]: v }));
   const setProp = (key, field) => (v) => setS(p => ({ ...p, [key]: { ...p[key], [field]: v } }));
-  const [mc, setMc] = useState(null);
-  const [mcRunning, setMcRunning] = useState(false);
-  const workerRef = useRef(null);
 
   const headerRef = useRef(null);
   const [headerH, setHeaderH] = useState(0);
@@ -97,20 +93,6 @@ export default function RetirementCalculator() {
     window.addEventListener("resize", measure);
     return () => { ro?.disconnect(); window.removeEventListener("resize", measure); };
   }, []);
-
-  useEffect(() => {
-    workerRef.current = new Worker(new URL("./src/finance/mcWorker.js", import.meta.url), { type: "module" });
-    workerRef.current.onmessage = (e) => {
-      if (e.data?.type === "mc-result") { setMc(e.data.result); setMcRunning(false); }
-    };
-    return () => workerRef.current && workerRef.current.terminate();
-  }, []);
-
-  const runMc = () => {
-    setMcRunning(true);
-    setMc(null);
-    workerRef.current.postMessage({ state: s, mcOpt: MC_DEFAULTS });
-  };
 
   // Auto-advance the year-by-year navigator while "play" is on; stop at the last year.
   // The play button seeds selYear to a concrete year on start, so `y` is never null here.
@@ -136,54 +118,32 @@ export default function RetirementCalculator() {
   };
   const removeEvent = (idx) => set("events")(s.events.filter((_, i) => i !== idx));
 
-  const calc = useMemo(() => calculatePlan(s), [s]);
+  // Plan derivation (calc + all downstream memos)
+  const {
+    incomeHH, inher,
+    simFull, simTrust, simNone,
+    steady, sFull, sTrust, sNone,
+    effHaircut, effCutYear,
+    simSS, simNo,
+    locRows, compRows, balRows, invRows, incomeStack,
+    sFactor,
+  } = usePlan(s, couple, stage);
+
+  // Monte Carlo worker lifecycle
+  const { mc, mcRunning, runMc } = useMonteCarlo(s);
+
   const afcAuto = afcIsAuto(s);
   const afcEff = resolveAfc(s);
 
-  const { incomeHH, inher, simChosen, simFull, simTrust, simNone, simStress, steady, sFull, sTrust, sNone, effHaircut, effCutYear } = calc;
-  const simSS = simChosen, simNo = simNone;
-
   const onTrack = steady.net >= steady.targetNeed;
   const horizon = Number(s.horizonAge) || 95;
-  const sFactor = couple ? 1 : SINGLE_COST_FACTOR;
   const yearsToRet = Math.max(0, steady.startAgeA - s.ageA);
   const retYear = 2026 + yearsToRet;
   const inflFactor = Math.pow(1 + s.inflation, yearsToRet);
-  const annualCost = (l) => monthlyTotal(l, stage) * 12 * sFactor;
 
-  const locRows = useMemo(() => LOCATIONS.map(l => {
-    const cost = annualCost(l); const ratio = steady.net / cost;
-    return { ...l, cost, ratio, tier: tierFor(ratio) };
-  }).sort((a,b)=>a.cost-b.cost), [steady.net, sFactor, stage]);
-
-  const firstEvent = Math.min(s.stopA, s.stopB + (s.ageA - s.ageB));
-  const compRows = simSS.rows.filter(r => r.aA >= firstEvent-2).map(r => ({
-    age:r.aA, ageB:r.aB, "Salary (you)":Math.round(r.salA), "Salary (spouse)":Math.round(r.salB),
-    "Rental":Math.round(r.rent), "Pension":Math.round(r.pens), "SS (you)":Math.round(r.ssA),
-    "SS (spouse)":Math.round(r.ssB), "Portfolio":(r.wdSpend ?? r.wd), need:r.need, extraSpend:r.extraSpend || 0,
-  }));
-  const balRows = simSS.rows.map((r, idx) => ({
-    age:r.aA,
-    withSS:r.bal,
-    withoutSS: simNo.rows[idx] ? simNo.rows[idx].bal : 0,
-    stress: simStress.rows[idx] ? simStress.rows[idx].bal : 0,
-  }));
   const sellDots = simSS.rows.filter(r => r.sellLump > 0).map(r => ({ age:r.aA, bal:r.bal }));
   const hasRental = inher.some(p => p.type === "rent");
 
-  // Inside-the-portfolio dataset: the tax-deferred bucket vs the after-tax bucket,
-  // and the yearly money flows (in = contributions + growth, out = spending draw +
-  // forced RMD). Out-flows are negative so they read below the zero line.
-  const invRows = simSS.rows.map(r => ({
-    age: r.aA,
-    deferred: r.defBal ?? 0,
-    afterTax: Math.max(0, r.bal - (r.defBal ?? 0)),
-    contrib: r.contrib || 0,
-    growth: Math.max(0, r.growth || 0),
-    spendDraw: -(r.wdSpend ?? r.wd ?? 0),
-    forcedRmd: -(r.forcedRmd || 0),
-    rmd: r.rmd || 0,
-  }));
   const firstRmdAge = (simSS.rows.find(r => (r.forcedRmd || 0) > 0) || {}).aA ?? null;
 
   // Depletion: the age the portfolio runs out (if it does) and the guaranteed
@@ -192,13 +152,6 @@ export default function RetirementCalculator() {
   const depRow = depAge != null ? simSS.rows.find(r => r.aA === depAge) : null;
   const floorAtDep = depRow ? Math.round(depRow.ssA + depRow.ssB + depRow.pens + depRow.rent) : 0;
   const needAtDep = depRow ? Math.round(depRow.need) : 0;
-
-  const incomeStack = [
-    { name:"Savings draw", value: Math.round(steady.wd), color:C.brass },
-    ...(steady.rentInc>0 ? [{ name:"Rental", value: Math.round(steady.rentInc), color:SRC.rent }] : []),
-    { name:"Social Security", value: Math.round(steady.ssHouse), color:C.viridian },
-    ...(s.pensionOn ? [{ name:"WA pension", value: Math.round(steady.pension), color:C.ink }] : []),
-  ];
 
   const compTip = ({ active, payload, label }) => {
     if (!active || !payload || !payload.length) return null;
