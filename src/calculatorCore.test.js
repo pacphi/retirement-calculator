@@ -1042,3 +1042,66 @@ describe("lifestyle step need-composition guard (C2)", () => {
     expect(after - before).toBeCloseTo(12000, 6);
   });
 });
+
+describe("emergent-shock overlay derivation (C3 / Task 10)", () => {
+  it("shock balance in later years is lower than baseline when a large emergent event is active", () => {
+    // Arrange: baseState extended with a large emergent event in a post-retirement
+    // year (2055, age 74) so the spend is met from the portfolio (a withdrawal
+    // regime, not a working-year surplus) and therefore compounds the balance down.
+    const s = {
+      ...baseState,
+      events: [
+        { id: "evt-shock", label: "Roof replacement", on: true, year: 2055, amount: 200000, type: "purchase", emergent: true },
+      ],
+      travel: { on: false, amount: 0, years: 0 },
+      ltc: { on: false, startAge: 80, years: 3, annual: null },
+      survivor: { on: false, year: 9999, pensionPct: 0 },
+      life: { on: false, deathAgeA: 95, deathAgeB: 95, pensionPct: 0 },
+      returnPreset: "custom",
+      horizonAge: 95,
+      spendingShape: { mode: "flat" },
+      lifestyleSteps: [],
+    };
+
+    // Act: run calculatePlan which produces both simChosen (baseline) and simShock
+    const { simChosen, simShock } = calculatePlan(s);
+
+    // Pick a late row (after the event year) where the portfolio is in a withdrawal regime
+    const laterRows = simChosen.rows.filter(r => r.aA >= 75);
+    expect(laterRows.length).toBeGreaterThan(0);
+
+    const lastAge = laterRows[laterRows.length - 1].aA;
+    const baselineBal = laterRows[laterRows.length - 1].bal;
+    const shockBal = simShock.rows.find(r => r.aA === lastAge)?.bal ?? 0;
+
+    // Assert: shock scenario has a strictly lower balance in late years — a large
+    // emergent expenditure in a withdrawal year compounds to a strictly lower balance.
+    expect(shockBal).toBeLessThan(baselineBal);
+  });
+
+  it("shock balance equals baseline when no emergent events are enabled", () => {
+    // Arrange: events present but none marked emergent
+    const s = {
+      ...baseState,
+      events: [
+        { id: "evt-plan", label: "Wedding gift", on: true, year: 2035, amount: 20000, type: "gift", emergent: false },
+      ],
+      travel: { on: false, amount: 0, years: 0 },
+      ltc: { on: false, startAge: 80, years: 3, annual: null },
+      survivor: { on: false, year: 9999, pensionPct: 0 },
+      life: { on: false, deathAgeA: 95, deathAgeB: 95, pensionPct: 0 },
+      returnPreset: "custom",
+      horizonAge: 95,
+      spendingShape: { mode: "flat" },
+      lifestyleSteps: [],
+    };
+
+    // Act
+    const { simChosen, simShock } = calculatePlan(s);
+
+    // Assert: with no emergent events, simShock rows should match simChosen rows
+    const lastBaseline = simChosen.rows[simChosen.rows.length - 1];
+    const lastShock = simShock.rows[simShock.rows.length - 1];
+    expect(lastShock.bal).toBeCloseTo(lastBaseline.bal, 0);
+  });
+});

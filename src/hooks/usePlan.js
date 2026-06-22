@@ -23,7 +23,7 @@ export function usePlan(s, couple, stage) {
   const calc = useMemo(() => calculatePlan(s), [s]);
 
   const {
-    incomeHH, inher, simChosen, simFull, simTrust, simNone, simStress,
+    incomeHH, inher, simChosen, simFull, simTrust, simNone, simStress, simShock,
     steady, sFull, sTrust, sNone, effHaircut, effCutYear,
   } = calc;
 
@@ -54,12 +54,15 @@ export function usePlan(s, couple, stage) {
       "Portfolio": (r.wdSpend ?? r.wd), need: r.need, extraSpend: r.extraSpend || 0,
     })), [simSS, firstEvent]);
 
+  const hasEmergent = (s.events || []).some(e => e.on && e.emergent);
+
   const balRows = useMemo(() => simSS.rows.map((r, idx) => ({
     age: r.aA,
     withSS: r.bal,
     withoutSS: simNo.rows[idx] ? simNo.rows[idx].bal : 0,
     stress: simStress.rows[idx] ? simStress.rows[idx].bal : 0,
-  })), [simSS, simNo, simStress]);
+    shock: simShock.rows[idx] ? simShock.rows[idx].bal : 0,
+  })), [simSS, simNo, simStress, simShock]);
 
   const invRows = useMemo(() => simSS.rows.map(r => ({
     age: r.aA,
@@ -100,6 +103,7 @@ export function usePlan(s, couple, stage) {
     simSS, simNo,
     // derived arrays
     locRows, compRows, balRows, invRows, incomeStack,
+    hasEmergent,
     // pass-through used by caller
     sFactor,
     headroom,

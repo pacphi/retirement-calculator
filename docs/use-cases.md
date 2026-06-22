@@ -953,9 +953,9 @@ shockEvents = events
 effectiveAmount(e) = e.type === "windfall" ? -Math.abs(e.amount) : Math.abs(e.amount)
 ```
 
-The UI renders a **Baseline vs. Shock** panel showing the portfolio balance and depletion age under each scenario.
+The UI renders a **Baseline vs. Shock** overlay on the long-run balance chart: when at least one emergent event is active, a dashed clay line shows the shock-scenario portfolio balance alongside the baseline, so the user can see the buffer their plan must carry for surprises.
 
-**Outputs.** Two simulation runs: `simBaseline` (no emergent events) and `simShock` (all events); the delta in depletion age and end balance is surfaced.
+**Outputs.** Two simulation runs: `simBaseline` (no emergent events) and `simShock` (all events); the shock balance is overlaid as a dashed line on the long-run chart when any emergent event is enabled.
 
 **Scenario.** *"The couple knows they'll need a roof replacement (~$25,000) and a furnace (~$12,000) sometime in their early 70s but can't be sure of the year. They flag both as emergent purchases."* The baseline shows their plan without these shocks; the shock scenario subtracts both in the flagged year. The depletion age in the shock scenario shifts 18 months earlier, confirming the plan has enough buffer to absorb both — but only just. They decide to raise their contribution by $1,000/yr and re-check the shock delta.
 

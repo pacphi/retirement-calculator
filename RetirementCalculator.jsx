@@ -142,6 +142,7 @@ export default function RetirementCalculator() {
     sFactor,
     headroom,
     accumulation,
+    hasEmergent,
   } = usePlan(s, couple, stage);
 
   // Monte Carlo worker lifecycle
@@ -307,6 +308,7 @@ export default function RetirementCalculator() {
               effHaircut={effHaircut}
               mcSummaryLines={mcSummaryLines}
               showStress={s.showStress}
+              hasShock={hasEmergent}
             />
 
             {/* Places */}
