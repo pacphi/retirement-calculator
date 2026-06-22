@@ -3,7 +3,7 @@ import {
   ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { DEFAULT_LIFE, DEFAULT_LIFE_EVENTS, DEFAULT_TRAVEL, LOCATIONS, MC_DEFAULTS, SINGLE_COST_FACTOR, SOURCES } from "./src/retirementData.js";
+import { DEFAULT_LIFE, DEFAULT_LIFE_EVENTS, DEFAULT_TRAVEL, INTL_TAX, LOCATIONS, MC_DEFAULTS, SINGLE_COST_FACTOR, SOURCES } from "./src/retirementData.js";
 import { C, SRC, FONTS } from "./src/components/theme.js";
 import { Chevron, NestLogo } from "./src/components/atoms/index.jsx";
 import {
@@ -30,8 +30,10 @@ import { Inheritance as InheritanceStep } from "./src/components/steps/Inheritan
 import { Milestones } from "./src/components/steps/Milestones.jsx";
 import { SpendingStrategy } from "./src/components/steps/SpendingStrategy.jsx";
 import { Housing } from "./src/components/steps/Housing.jsx";
+import { LocationTax } from "./src/components/steps/LocationTax.jsx";
 import { TravelLongevity } from "./src/components/steps/TravelLongevity.jsx";
 import { Advanced } from "./src/components/steps/Advanced.jsx";
+import { DualTaxExposure } from "./src/components/results/DualTaxExposure.jsx";
 import { usePlan } from "./src/hooks/usePlan.js";
 import { useMonteCarlo } from "./src/hooks/useMonteCarlo.js";
 import { usd0 } from "./src/components/format.js";
@@ -246,6 +248,7 @@ export default function RetirementCalculator() {
               <Milestones s={s} set={set} addEvent={addEvent} removeEvent={removeEvent} />
               <SpendingStrategy s={s} set={set} setProp={setProp} addLifestyleStep={addLifestyleStep} removeLifestyleStep={removeLifestyleStep} setLifestyleStep={setLifestyleStep} />
               <Housing s={s} set={set} />
+              <LocationTax s={s} set={set} />
               <TravelLongevity s={s} set={set} />
               <Advanced s={s} set={set} adv={adv} onAdvToggle={() => setAdv(a => !a)} />
             </div>
@@ -258,6 +261,9 @@ export default function RetirementCalculator() {
             <Stats steady={steady} simSS={simSS} simNo={simNo} horizon={horizon} swr={s.swr} />
             <RiskTable sFull={sFull} sTrust={sTrust} sNone={sNone} simFull={simFull} simTrust={simTrust} simNone={simNone} s={s} effHaircut={effHaircut} horizon={horizon} />
             <InheritanceResult s={s} setProp={setProp} />
+
+            {/* Cross-border tax exposure — shown only when retirement location is international */}
+            <DualTaxExposure profile={s.stateCode ? null : INTL_TAX[s.retireLoc]} />
 
             {yearsToRet > 0 && <AccumulationSummary accumulation={accumulation} retYear={retYear} />}
 
@@ -333,6 +339,14 @@ export default function RetirementCalculator() {
               inflFactor={inflFactor}
               inflation={s.inflation}
               yearsToRet={yearsToRet}
+              stateCode={s.stateCode}
+              retireLoc={s.retireLoc}
+              steadyIncomeMix={{
+                ss: steady.ssHouse,
+                ssTaxablePortion: steady.taxDetails?.taxableSocialSecurity,
+                pension: steady.pension,
+                deferredWithdrawal: steady.wd * (s.tradFrac || 0.7),
+              }}
             />
 
             {/* Compare */}

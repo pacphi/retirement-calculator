@@ -2,6 +2,8 @@ import { C } from "../theme.js";
 import { Segmented } from "../atoms/index.jsx";
 import { lineItems, monthlyTotal } from "../../calculatorCore.js";
 import { usd0, usdK } from "../format.js";
+import { INTL_TAX, US_STATE_TAX } from "../../retirementData.js";
+import { residenceTaxForYear } from "../../finance/residenceTax.js";
 
 const phaseNote = (l, f) => {
   const pre = `$${Math.round(l.hcPre*f).toLocaleString()}`, post = `$${Math.round(l.hcPost*f).toLocaleString()}`;
@@ -28,6 +30,44 @@ const phaseNote = (l, f) => {
  *   inflation      — annual inflation rate (fraction); root: s.inflation
  *   yearsToRet     — years until retirement (number); root: yearsToRet
  */
+/**
+ * Compute a plain-language "residence tax on your income mix" note for the active
+ * retirement location. Returns null when there is nothing typed to say (no profile,
+ * or the profile produces zero additional tax).
+ */
+function computeResidenceTaxNote(locName, stateCode, steadyIncomeMix) {
+  const profile = (stateCode && US_STATE_TAX[stateCode])
+    || (locName && INTL_TAX[locName])
+    || null;
+  if (!profile) return null;
+
+  const { ss = 0, ssTaxablePortion, pension = 0, deferredWithdrawal = 0 } = steadyIncomeMix || {};
+  const tax = residenceTaxForYear(profile, {
+    isRetirement: true,
+    ss,
+    ssTaxablePortion, // SS-taxing states tax only the federally-taxable portion, not gross SS
+    pension,
+    deferredWithdrawal,
+  });
+
+  if (tax <= 0) {
+    if (profile.retireRate === 0) {
+      return `${profile.name} adds no residence income tax on your SS, pension, or withdrawals.`;
+    }
+    return null;
+  }
+
+  // Mirror residenceTaxForYear's base: SS uses the taxable portion when taxesSS.
+  const ssBase = profile.taxesSS ? (ssTaxablePortion ?? ss) : 0;
+  const rateLabel = `${(profile.retireRate * 100).toFixed(2)}%`;
+  const taxable = Math.max(0,
+    ssBase
+    + (profile.pensionExclusion === "full" ? 0 : Math.max(0, pension - (profile.pensionExclusion || 0)))
+    + (profile.taxesTradWithdrawal ? deferredWithdrawal : 0),
+  );
+  return `${profile.name}: ~${rateLabel} on ~$${Math.round(taxable / 1000)}k of your retirement income mix, adding ~$${Math.round(tax / 1000)}k/yr in residence tax (SS${profile.taxesSS ? " taxed" : " exempt"}, pension${profile.pensionExclusion === "full" ? " fully exempt" : " taxed"}).`;
+}
+
 export function Places({
   locRows,
   steadyNet,
@@ -42,7 +82,12 @@ export function Places({
   inflFactor,
   inflation,
   yearsToRet,
+  stateCode,
+  steadyIncomeMix,
 }) {
+  // Residence-tax note for the active retirement location (the expanded row).
+  const activeLoc = openLoc;
+  const residenceTaxNote = computeResidenceTaxNote(activeLoc, stateCode, steadyIncomeMix);
   return (
     <div style={{ background:C.panel, border:`1px solid ${C.line}`, borderRadius:14, padding:"16px 18px 20px", marginBottom:16 }}>
       <div style={{ marginBottom:8 }}>
@@ -117,6 +162,11 @@ export function Places({
                   </div>
                   <div style={{ marginTop:10, fontSize:11.5, color:C.slate, lineHeight:1.5, background:"#F6F2E8", borderRadius:8, padding:"8px 10px" }}><b style={{ color:C.brassDeep }}>Healthcare by age.</b> {phaseNote(l, sFactor)}</div>
                   <div style={{ marginTop:8, fontSize:11.5, color:C.slate, lineHeight:1.5, background:"#F1EEE5", borderRadius:8, padding:"8px 10px" }}><b style={{ color:C.ink }}>Tax profile.</b> Consumption: {l.vat}. Income: {l.incomeTax}.</div>
+                  {residenceTaxNote && l.name === activeLoc && (
+                    <div style={{ marginTop:6, fontSize:11.5, color:C.inkSoft, lineHeight:1.5, background:"#F6F2E8", borderRadius:8, padding:"8px 10px" }}>
+                      <b style={{ color:C.brassDeep }}>Residence tax on your income mix.</b> {residenceTaxNote}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

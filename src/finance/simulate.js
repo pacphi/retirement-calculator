@@ -1,10 +1,28 @@
-import { TAX_YEAR } from "../retirementData.js";
+import { TAX_YEAR, US_STATE_TAX, INTL_TAX } from "../retirementData.js";
 import { composeNeed, spendingComponents, yearReturn } from "./seams.js";
 import { calculateFederalTaxYear } from "./tax.js";
+import { residenceTaxForYear } from "./residenceTax.js";
 import { ownBenefitAtClaimMonthly, piaFromIncome, spousalBenefitAtClaimMonthly } from "./socialSecurity.js";
 import { drsEligibilityNote, pensionERF, resolveAfc } from "./pension.js";
 import { ltcSpendForYear, oneTimeSpendForYear, travelSpendForYear } from "./events.js";
 import { requiredMinimum, rmdStartAge } from "./rmd.js";
+
+/**
+ * Resolve the typed residence-tax profile for retirement years.
+ * An explicit `stateRate` override always wins ⇒ returns null so the flat i.taxRate
+ * path (which already reflects the override) applies (per brief: "manual override →
+ * keep the flat stateRate path"). Otherwise US stateCode wins over INTL_TAX; returns
+ * null when no typed entry exists (flat path — identical to pre-Task-6 behaviour).
+ * Task 8 will supply the per-year profile via activeJurisdiction; for now we resolve
+ * it once from the plan inputs so the retirement years are type-aware.
+ */
+function retirementProfile(i) {
+  // Manual override: power-user stateRate bypasses the typed rules (flat path).
+  if (i.stateRate != null && i.stateRate !== "") return null;
+  if (i.stateCode && US_STATE_TAX[i.stateCode]) return US_STATE_TAX[i.stateCode];
+  if (i.retireLoc && INTL_TAX[i.retireLoc]) return INTL_TAX[i.retireLoc];
+  return null;
+}
 
 export function benefits(i) {
   const piaA = i.ssModeA === "statement" ? (Number(i.ssFraA) || 0) / 12 : piaFromIncome(i.incomeA);
@@ -25,8 +43,40 @@ export function benefits(i) {
 
 const plannedContribution = (i, workA, workB) => ((workA ? 0.5 : 0) + (workB ? 0.5 : 0)) * i.contrib;
 
-const taxForYear = (i, aA, aB, wages, pens, rent, ss, grossWithdrawal, statusOverride, year) =>
-  calculateFederalTaxYear({
+// profile: a typed US_STATE_TAX or INTL_TAX entry, or null for the flat fallback.
+// When profile is provided the year is a full-retirement year (no wages), so the
+// federal engine is called with stateRate:0 and residenceTaxForYear adds the typed
+// residence layer on top. The federal engine is NEVER forked.
+const taxForYear = (i, aA, aB, wages, pens, rent, ss, grossWithdrawal, statusOverride, year, profile) => {
+  if (profile) {
+    // Typed retirement path: federal (stateRate:0) + residence layer composed separately.
+    const fedResult = calculateFederalTaxYear({
+      status: statusOverride || i.status,
+      ageA: aA,
+      ageB: aB,
+      wages,
+      pension: pens,
+      rental: rent,
+      socialSecurity: ss,
+      grossWithdrawal,
+      tradFrac: i.tradFrac,
+      year,
+      stateRate: 0,
+    });
+    // Thread the deferred-withdrawal share into the residence base so income-type
+    // rules (taxesTradWithdrawal, pensionExclusion) apply to the correct slice.
+    const deferredWithdrawal = grossWithdrawal * (Number(i.tradFrac) || 0);
+    const residenceTax = residenceTaxForYear(profile, {
+      isRetirement: true,
+      ss,
+      ssTaxablePortion: fedResult.taxableSocialSecurity,
+      pension: pens,
+      deferredWithdrawal,
+    });
+    return fedResult.federalTax + residenceTax;
+  }
+  // Flat path: unchanged from pre-Task-6 (working years, no typed entry, or manual override).
+  return calculateFederalTaxYear({
     status: statusOverride || i.status,
     ageA: aA,
     ageB: aB,
@@ -39,23 +89,24 @@ const taxForYear = (i, aA, aB, wages, pens, rent, ss, grossWithdrawal, statusOve
     year,
     stateRate: i.taxRate,
   }).tax;
+};
 
-const solveWithdrawal = (i, aA, aB, wages, pens, rent, ss, need, bal, statusOverride, year) => {
+const solveWithdrawal = (i, aA, aB, wages, pens, rent, ss, need, bal, statusOverride, year, profile) => {
   const income = wages + pens + rent + ss;
-  const taxNoWithdrawal = taxForYear(i, aA, aB, wages, pens, rent, ss, 0, statusOverride, year);
+  const taxNoWithdrawal = taxForYear(i, aA, aB, wages, pens, rent, ss, 0, statusOverride, year, profile);
   if (income - taxNoWithdrawal >= need) return { withdrawal: 0, tax: taxNoWithdrawal };
   let lo = 0;
   let hi = Math.max(0, bal);
   const covers = (withdrawal) =>
-    income + withdrawal - taxForYear(i, aA, aB, wages, pens, rent, ss, withdrawal, statusOverride, year) >= need;
-  const taxAtHi = taxForYear(i, aA, aB, wages, pens, rent, ss, hi, statusOverride, year);
-  if (income + hi - taxAtHi < need) return { withdrawal: hi, tax: taxAtHi }; // insolvent: cap at balance (reuse the tax already computed)
+    income + withdrawal - taxForYear(i, aA, aB, wages, pens, rent, ss, withdrawal, statusOverride, year, profile) >= need;
+  const taxAtHi = taxForYear(i, aA, aB, wages, pens, rent, ss, hi, statusOverride, year, profile);
+  if (income + hi - taxAtHi < need) return { withdrawal: hi, tax: taxAtHi };
   for (let n = 0; n < 32; n++) {
     const mid = (lo + hi) / 2;
     if (covers(mid)) hi = mid;
     else lo = mid;
   }
-  return { withdrawal: hi, tax: taxForYear(i, aA, aB, wages, pens, rent, ss, hi, statusOverride, year) };
+  return { withdrawal: hi, tax: taxForYear(i, aA, aB, wages, pens, rent, ss, hi, statusOverride, year, profile) };
 };
 
 export function spendingNeed(i, ageA, ageB, liveSav = 0, isSurvivor = false, survivorAge = null, ctx = {}) {
@@ -94,6 +145,9 @@ export function simulate(i, ssOpt) {
     : end;
 
   const retireAgeA = Math.max(i.stopA, i.stopB + (i.ageA - i.ageB));
+  // Typed retirement-year profile resolved once. null → flat stateRate path (unchanged).
+  // Task 8 will replace this with a per-year activeJurisdiction lookup.
+  const retireProf = retirementProfile(i);
 
   for (let y = 0; y <= endEff; y++) {
     const aA = i.ageA + y;
@@ -188,7 +242,10 @@ export function simulate(i, ssOpt) {
     defBal = defBal * (1 + yr); // sale proceeds are taxable savings, not deferred
 
     const plannedContrib = plannedContribution(i, workA, workB);
-    const taxBeforeWithdrawal = taxForYear(i, aA, aB, wages, pensEff, rent, ssAyEff + ssByEff, 0, yearStatus, cal);
+    // Pass the typed profile only for full-retirement years (both spouses stopped working).
+    // Working years keep the flat stateRate path; Task 8 will add the work-state wage face.
+    const yearProfile = (!workA && !workB) ? retireProf : null;
+    const taxBeforeWithdrawal = taxForYear(i, aA, aB, wages, pensEff, rent, ssAyEff + ssByEff, 0, yearStatus, cal, yearProfile);
     const afterTaxBeforeWithdrawal = wages + pensEff + rent + ssAyEff + ssByEff - taxBeforeWithdrawal;
     const contrib = Math.min(plannedContrib, Math.max(0, afterTaxBeforeWithdrawal - need));
     bal += contrib;
@@ -197,7 +254,7 @@ export function simulate(i, ssOpt) {
     const olderAge = olderAgeNow + y;
     const rmd = (defBalStart > 0 && olderAge >= rmdStart) ? requiredMinimum(defBalStart, olderAge) : 0;
 
-    let { withdrawal: wd, tax } = solveWithdrawal(i, aA, aB, wages, pensEff, rent, ssAyEff + ssByEff, need, bal, yearStatus, cal);
+    let { withdrawal: wd, tax } = solveWithdrawal(i, aA, aB, wages, pensEff, rent, ssAyEff + ssByEff, need, bal, yearStatus, cal, yearProfile);
     bal -= wd;
     // RMD floor: a required distribution can only raise the year's draw. Any forced
     // amount beyond the need-based deferred draw is fully taxable ordinary income; the
@@ -213,19 +270,46 @@ export function simulate(i, ssOpt) {
         // RMD's incremental burden. The after-tax remainder is reinvested into the
         // taxable bucket; the gross leaves the (tax-deferred) portfolio.
         const taxOld = tax;
-        tax = calculateFederalTaxYear({
-          status: yearStatus,
-          ageA: aA,
-          ageB: aB,
-          wages,
-          pension: pensEff,
-          rental: rent,
-          socialSecurity: ssAyEff + ssByEff,
-          grossWithdrawal: needDeferredDraw + forcedRmd,
-          tradFrac: 1,
-          year: cal,
-          stateRate: i.taxRate,
-        }).tax;
+        const rmdGrossWithdrawal = needDeferredDraw + forcedRmd;
+        if (yearProfile) {
+          // Typed path: federal (stateRate:0) + residence layer. tradFrac:1 because the
+          // entire RMD draw is from the deferred pool (fully ordinary income).
+          const rmdFedResult = calculateFederalTaxYear({
+            status: yearStatus,
+            ageA: aA,
+            ageB: aB,
+            wages,
+            pension: pensEff,
+            rental: rent,
+            socialSecurity: ssAyEff + ssByEff,
+            grossWithdrawal: rmdGrossWithdrawal,
+            tradFrac: 1,
+            year: cal,
+            stateRate: 0,
+          });
+          const rmdResidenceTax = residenceTaxForYear(yearProfile, {
+            isRetirement: true,
+            ss: ssAyEff + ssByEff,
+            ssTaxablePortion: rmdFedResult.taxableSocialSecurity,
+            pension: pensEff,
+            deferredWithdrawal: rmdGrossWithdrawal, // tradFrac:1 → full draw is deferred
+          });
+          tax = rmdFedResult.federalTax + rmdResidenceTax;
+        } else {
+          tax = calculateFederalTaxYear({
+            status: yearStatus,
+            ageA: aA,
+            ageB: aB,
+            wages,
+            pension: pensEff,
+            rental: rent,
+            socialSecurity: ssAyEff + ssByEff,
+            grossWithdrawal: rmdGrossWithdrawal,
+            tradFrac: 1,
+            year: cal,
+            stateRate: i.taxRate,
+          }).tax;
+        }
         const afterTaxForced = Math.max(0, forcedRmd - Math.max(0, tax - taxOld));
         bal -= forcedRmd;
         bal += afterTaxForced;
@@ -293,30 +377,48 @@ export function steadyState(i, sim) {
   // The chosen row already carries the survivor flag from the simulation; in a
   // survivor year the household files single, so the headline tax must match.
   const yearStatus = row.survivor ? "single" : i.status;
-  const taxDetails = calculateFederalTaxYear({
-    status: yearStatus,
-    ageA,
-    ageB,
-    pension,
-    rental: rentInc,
-    socialSecurity: ssHouse,
-    grossWithdrawal: wd,
-    tradFrac: i.tradFrac,
-    year: row.cal,
-    stateRate: i.taxRate,
-  });
-  const guaranteedTaxDetails = calculateFederalTaxYear({
-    status: yearStatus,
-    ageA,
-    ageB,
-    pension,
-    rental: 0,
-    socialSecurity: ssHouse,
-    grossWithdrawal: 0,
-    tradFrac: i.tradFrac,
-    year: row.cal,
-    stateRate: i.taxRate,
-  });
+  // SINGLE-TAX-SOURCE invariant: the headline must use the SAME tax computation as the
+  // simulation rows. Resolve the typed retirement profile exactly as the rows do; when
+  // present, compute federal (stateRate:0) + the typed residence layer separately so the
+  // headline and the rows agree on residence tax (e.g. Austria → 0 via treaty/FTC).
+  // When null (manual override / no INTL entry), keep the flat i.taxRate path (unchanged).
+  const retireProf = retirementProfile(i);
+  // Compose federal-only details + the typed residence layer into a tax-details-shaped
+  // object whose .tax is federalTax + residence tax (mirrors taxForYear in the rows).
+  const composeTyped = (fedResult, deferredWithdrawal) => {
+    const residenceTax = residenceTaxForYear(retireProf, {
+      isRetirement: true,
+      ss: ssHouse,
+      ssTaxablePortion: fedResult.taxableSocialSecurity,
+      pension,
+      deferredWithdrawal,
+    });
+    return { ...fedResult, stateTax: residenceTax, tax: fedResult.federalTax + residenceTax };
+  };
+  const taxDetails = retireProf
+    ? composeTyped(
+        calculateFederalTaxYear({
+          status: yearStatus, ageA, ageB, pension, rental: rentInc, socialSecurity: ssHouse,
+          grossWithdrawal: wd, tradFrac: i.tradFrac, year: row.cal, stateRate: 0,
+        }),
+        wd * (Number(i.tradFrac) || 0),
+      )
+    : calculateFederalTaxYear({
+        status: yearStatus, ageA, ageB, pension, rental: rentInc, socialSecurity: ssHouse,
+        grossWithdrawal: wd, tradFrac: i.tradFrac, year: row.cal, stateRate: i.taxRate,
+      });
+  const guaranteedTaxDetails = retireProf
+    ? composeTyped(
+        calculateFederalTaxYear({
+          status: yearStatus, ageA, ageB, pension, rental: 0, socialSecurity: ssHouse,
+          grossWithdrawal: 0, tradFrac: i.tradFrac, year: row.cal, stateRate: 0,
+        }),
+        0, // no withdrawal in the guaranteed-only base
+      )
+    : calculateFederalTaxYear({
+        status: yearStatus, ageA, ageB, pension, rental: 0, socialSecurity: ssHouse,
+        grossWithdrawal: 0, tradFrac: i.tradFrac, year: row.cal, stateRate: i.taxRate,
+      });
   const targetNeed = row.need; // sourced from the simulated row so events/healthcare flow through
   const net = gross - taxDetails.tax;
   return {

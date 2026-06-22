@@ -710,6 +710,35 @@ describe("location-aware additional income tax", () => {
   });
 });
 
+describe("typed residence tax — single-tax-source invariant (Task 6)", () => {
+  // The headline (steadyState) and the year-by-year rows must use the SAME tax
+  // computation. The steady-state row's tax is rebuilt by steadyState() with the
+  // typed residence layer; the simulated row carries the same composition, so the
+  // chosen steady row's tax must match what steadyState reports for guaranteed-only.
+
+  it("zeroes the residence layer for an international treaty location (Austria retireRate 0)", () => {
+    // Austria: pensionExclusion "full", retireRate 0.0 → typed residence tax = 0.
+    // The headline tax must therefore equal the pure federal tax (no phantom 5% flat).
+    const austria = calculatePlan({ ...baseState, retireLoc: "Austria", stateCode: null, stateRate: null });
+    const txState = calculatePlan({ ...baseState, retireLoc: "Austria", stateCode: "TX", stateRate: null });
+    // TX is a no-income-tax US state (retireRate 0) — same zero residence layer as Austria.
+    expect(austria.steady.tax).toBeCloseTo(txState.steady.tax, 6);
+  });
+
+  it("applies a higher headline tax for a US state that taxes pension+withdrawals (CA) than a no-tax one (TX)", () => {
+    const ca = calculatePlan({ ...baseState, stateCode: "CA" }); // 8% on pension + deferred
+    const tx = calculatePlan({ ...baseState, stateCode: "TX" }); // 0
+    expect(ca.steady.tax).toBeGreaterThan(tx.steady.tax);
+  });
+
+  it("an explicit stateRate override re-engages the flat path even when a typed location exists", () => {
+    // Austria typed (retireRate 0) → no residence tax; a 10% override must raise the tax.
+    const typed = calculatePlan({ ...baseState, retireLoc: "Austria", stateCode: null, stateRate: null });
+    const overridden = calculatePlan({ ...baseState, retireLoc: "Austria", stateCode: null, stateRate: 0.10 });
+    expect(overridden.steady.tax).toBeGreaterThan(typed.steady.tax);
+  });
+});
+
 describe("live-in inheritance timing", () => {
   it("activates the owned tenure override only from the year after inheritance (Task 5)", () => {
     // Task 5 re-baseline: the old flat liveSav credit is replaced by an owned tenure

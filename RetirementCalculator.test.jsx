@@ -507,3 +507,53 @@ describe("Housing step (Wave 2 Task 4)", () => {
     expect(screen.getAllByText(/outside.*35%.*floor|hard.*obligation/i).length).toBeGreaterThan(0);
   });
 });
+
+describe("LocationTax step (Wave 2 Task 6)", () => {
+  it("renders the Retirement state select with accessible label", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByLabelText(/retirement state/i)).toBeInTheDocument();
+  });
+
+  it("shows the state rate override input with accessible label", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByLabelText(/state rate override/i)).toBeInTheDocument();
+  });
+
+  it("shows a plain-language note when a no-tax state is selected", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    const select = screen.getByLabelText(/retirement state/i);
+    await user.selectOptions(select, "TX");
+    expect(screen.getByText(/Texas.*no state income tax/i)).toBeInTheDocument();
+  });
+
+  it("shows a typed-rate note when CA is selected", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    const select = screen.getByLabelText(/retirement state/i);
+    await user.selectOptions(select, "CA");
+    expect(screen.getByText(/California.*effective state income tax/i)).toBeInTheDocument();
+  });
+});
+
+describe("DualTaxExposure panel (Wave 2 Task 6)", () => {
+  it("renders cross-border tax exposure for the default international location (Austria)", () => {
+    render(<RetirementCalculator />);
+    // The accessible label marks the section.
+    expect(screen.getByRole("region", { name: /cross-border tax exposure/i })).toBeInTheDocument();
+  });
+
+  it("shows the worldwide taxation and government pension notes", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getAllByText(/worldwide income/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/government-service pension|WA DRS pension/i).length).toBeGreaterThan(0);
+  });
+
+  it("hides the panel when a US state is selected", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    const select = screen.getByLabelText(/retirement state/i);
+    await user.selectOptions(select, "TX");
+    expect(screen.queryByRole("region", { name: /cross-border tax exposure/i })).not.toBeInTheDocument();
+  });
+});
