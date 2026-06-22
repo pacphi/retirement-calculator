@@ -93,15 +93,15 @@ root. Theme tokens stay centralized so all new UI matches the existing brass/vir
 
 ## 5. Wave plan (task DAG)
 
-### Wave 0 — Foundation (serial, single-owner; unblocks everything)
+### Wave 0 — Foundation (serial, single-owner; unblocks everything) ✅ COMPLETE (2026-06-22)
 Ordered so we never extract components around code we might scrap:
 - `0c` **TDD due-diligence first** on the three uncommitted features (location-basis spend,
   year-by-year navigator + `breakdown.js`, recurring events) → decide keep / rework / scrap against
   full-roadmap scope. Lock the verdict with characterization tests before touching structure.
 - `0a` Extract `theme.js` + atoms.
-- `0b` Extract charts/results/steps into components; shrink composition root.
+- `0b` Extract charts/results/steps into components; shrink composition root (387 lines, down from ~1294).
 - `0d` Define engine seams in `simulate.js` + `plan.js`.
-- Gate: `pnpm check` green; behavior unchanged (characterization tests).
+- Gate: `pnpm lint` + `pnpm test` green (192/192); behavior unchanged (characterization tests).
 
 Parallel waves use `git worktree` isolation (confirmed acceptable) so concurrent subagents don't
 collide on shared files.
@@ -116,6 +116,8 @@ the wiring of one seam interface.
 First land the shared `taxProfile` data shape (tiny sub-task), then parallelize: housing/mortgage
 module · typed state tax · property tax · work-vs-retire two-location split · month-by-month
 refinement (incl. housing-explicit need recomposition and inherited live-in → owned override).
+_Floor policy required:_ when `housing > 0`, decide whether the 0.35 spending floor applies to total
+(incl. housing) or non-housing only, then update `_floorBase` in `seams.js` `composeNeed` accordingly.
 
 ### Wave 3 — Engine depth (most invasive; short serial chain at the end)
 A1/A2 multi-vehicle + limits → D1 buckets + withdrawal order → D2 surplus reinvest → v2 §1.2
