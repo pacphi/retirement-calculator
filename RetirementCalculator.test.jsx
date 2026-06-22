@@ -365,6 +365,26 @@ describe("year-by-year polish", () => {
   });
 });
 
+describe("B2 sequence-of-returns stress toggle", () => {
+  async function openAssumptions() {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    await user.click(screen.getByRole("button", { name: /assumptions/i }));
+    return user;
+  }
+
+  it("exposes a sequence-of-returns stress toggle", async () => {
+    await openAssumptions();
+    expect(screen.getByLabelText(/bad first decade|sequence stress/i)).toBeInTheDocument();
+  });
+
+  it("stress toggle is unchecked by default", async () => {
+    await openAssumptions();
+    const toggle = screen.getByLabelText(/bad first decade|sequence stress/i);
+    expect(toggle).not.toBeChecked();
+  });
+});
+
 describe("B1 return preset and variability controls", () => {
   async function openAssumptions() {
     const user = userEvent.setup();

@@ -289,6 +289,7 @@ export default function RetirementCalculator() {
               ssMode={s.ssMode}
               effHaircut={effHaircut}
               mcSummaryLines={mcSummaryLines}
+              showStress={s.showStress}
             />
 
             {/* Places */}

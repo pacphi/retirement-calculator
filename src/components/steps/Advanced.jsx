@@ -43,6 +43,13 @@ export function Advanced({ s, set, adv, onAdvToggle }) {
             step={1} min={0} max={30}
           />
         </Field>
+        <Field label="Sequence stress">
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+            <input type="checkbox" aria-label="Bad first decade (sequence stress)"
+              checked={!!s.showStress} onChange={(e) => set("showStress")(e.target.checked)} />
+            Show a "bad first decade" return path on the long-run chart
+          </label>
+        </Field>
         <p style={{ fontSize:11, color:C.mut, lineHeight:1.5, margin:"4px 0 10px" }}>
           Central return anchored to long-run 60/40 history (~5% real, with dispersion);
           the band is a Monte Carlo p10–p90 fan.{" "}
