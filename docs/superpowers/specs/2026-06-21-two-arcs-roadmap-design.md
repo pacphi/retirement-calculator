@@ -25,7 +25,7 @@ each subsequent wave. Wave 0 (foundation) is executed first.
 
 ## 3. Invariants (must not regress)
 
-1. **Real-dollar consistency.** The model is in today's dollars. The *only* sanctioned nominal flow
+1. **Real-dollar consistency.** The model is in today's dollars. The _only_ sanctioned nominal flow
    is mortgage P&I, which is deflated explicitly each year and zeroed at payoff (`s.inflation`
    graduates from a display label to a real engine input — documented at the boundary).
 2. **One federal tax engine.** `calculateFederalTaxYear` stays the single source for projection and
@@ -49,6 +49,7 @@ orchestrator that composes pluggable functions, each living in its own module so
 **stable seam** instead of editing the loop repeatedly.
 
 Seams:
+
 - **Spending composition** — `spendingNeed()` becomes
   `nonHousingBase(smile) + housing + healthcare + lifestyleSteps + events`, each a composable
   sub-function.
@@ -61,18 +62,18 @@ Seams:
 
 ### 4.2 New engine modules (each a separate file → parallelizable)
 
-| Module | Owns | Plan ref |
-|---|---|---|
-| `finance/returns.js` | return presets, variability band, glidepath, blended-by-bucket return | B1, B2, v2 §1.2 |
-| `finance/spending/smile.js` | age-shaped real spending multiplier | C1 |
-| `finance/spending/lifestyle.js` | base lifestyle level + step changes | C2 |
-| `finance/housing.js` | amortization, payoff year, real-deflated P&I, property tax, tenure | v2 §2 |
-| `finance/buckets.js` | taxable/deferred/roth balances + withdrawal ordering + surplus reinvest | D1, D2 |
-| `finance/contributions.js` | per-vehicle streams, 2026 limits, catch-ups, employer match | A1, A2, v2 §1.1 |
-| `finance/stateTax.js` | typed `taxProfile` state layer (composes on federal) | v2 §3, v3 |
-| `finance/guardrails.js` | Guyton-Klinger dynamic spending | E2 |
-| `finance/headroom.js` | root-find max sustainable spending delta | E1 |
-| `finance/jurisdiction.js` | work-vs-retire location selection by `relocationYear` | v3 |
+| Module                          | Owns                                                                    | Plan ref        |
+| ------------------------------- | ----------------------------------------------------------------------- | --------------- |
+| `finance/returns.js`            | return presets, variability band, glidepath, blended-by-bucket return   | B1, B2, v2 §1.2 |
+| `finance/spending/smile.js`     | age-shaped real spending multiplier                                     | C1              |
+| `finance/spending/lifestyle.js` | base lifestyle level + step changes                                     | C2              |
+| `finance/housing.js`            | amortization, payoff year, real-deflated P&I, property tax, tenure      | v2 §2           |
+| `finance/buckets.js`            | taxable/deferred/roth balances + withdrawal ordering + surplus reinvest | D1, D2          |
+| `finance/contributions.js`      | per-vehicle streams, 2026 limits, catch-ups, employer match             | A1, A2, v2 §1.1 |
+| `finance/stateTax.js`           | typed `taxProfile` state layer (composes on federal)                    | v2 §3, v3       |
+| `finance/guardrails.js`         | Guyton-Klinger dynamic spending                                         | E2              |
+| `finance/headroom.js`           | root-find max sustainable spending delta                                | E1              |
+| `finance/jurisdiction.js`       | work-vs-retire location selection by `relocationYear`                   | v3              |
 
 `finance/breakdown.js` (month-by-month derivation) already exists from exploration; Wave 0 validates it.
 
@@ -94,7 +95,9 @@ root. Theme tokens stay centralized so all new UI matches the existing brass/vir
 ## 5. Wave plan (task DAG)
 
 ### Wave 0 — Foundation (serial, single-owner; unblocks everything) ✅ COMPLETE (2026-06-22)
+
 Ordered so we never extract components around code we might scrap:
+
 - `0c` **TDD due-diligence first** on the three uncommitted features (location-basis spend,
   year-by-year navigator + `breakdown.js`, recurring events) → decide keep / rework / scrap against
   full-roadmap scope. Lock the verdict with characterization tests before touching structure.
@@ -107,12 +110,14 @@ Parallel waves use `git worktree` isolation (confirmed acceptable) so concurrent
 collide on shared files.
 
 ### Wave 1 — Additive features (fully parallel; disjoint files)
+
 B1 returns/variability-by-default · B2 sequence stress toggle · C1 smile · C2 lifestyle steps ·
 C3 typed/emergent events · E1 headroom · A3 accumulation summary. Each: own engine module + own
 tests + own UI component. Shared touch limited to append-only constants in `retirementData.js` and
 the wiring of one seam interface.
 
 ### Wave 2 — Place & housing (parallel within; depends on Wave 0 seams)
+
 First land the shared `taxProfile` data shape (tiny sub-task), then parallelize: housing/mortgage
 module · typed state tax · property tax · work-vs-retire two-location split · month-by-month
 refinement (incl. housing-explicit need recomposition and inherited live-in → owned override).
@@ -120,11 +125,13 @@ _Floor policy required:_ when `housing > 0`, decide whether the 0.35 spending fl
 (incl. housing) or non-housing only, then update `_floorBase` in `seams.js` `composeNeed` accordingly.
 
 ### Wave 3 — Engine depth (most invasive; short serial chain at the end)
+
 A1/A2 multi-vehicle + limits → D1 buckets + withdrawal order → D2 surplus reinvest → v2 §1.2
 glidepath → E2 guardrails. Each still in its own module; sequenced because they depend on the
 three-bucket model.
 
 ### Parallelization mechanism
+
 Within a wave, dispatch one subagent per module (engine + tests + UI component), each in its own
 files, coordinated TDD (RED tests first, then GREEN). Cross-wave dependencies are the only
 serialization. Use `git worktree` isolation for any wave where agents would otherwise touch the seam

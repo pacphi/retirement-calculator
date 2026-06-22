@@ -316,6 +316,7 @@ taxableIncome = max(0, agi - deduction)
 **Logic.** Two opt‑in bases, selected by `spendBasis` in `spendingNeed()` (`src/finance/simulate.js`).
 
 *Income basis (default):*
+
 ```js
 base = incomeHH * targetPct
 perPersonHC = max(0, (hcPre - hcPost)) / 2          // monthly premium per person <65
@@ -325,12 +326,14 @@ need = max(0.35 * base, base + hcBump - liveSaving) // live-in reduces the need
 ```
 
 *Location basis (opt‑in):* derive the need from the selected place's cost‑of‑living basket instead.
+
 ```js
 living = sum(location.m) * 12 * scale * (lifestyle/100)   // scale = SINGLE_COST_FACTOR (0.64) if single/survivor, else 1
 hcPer  = (age) => (age < 65 ? hcPre : hcPost) / 2          // hcPre/hcPost are couple-level
 hc     = (single ? hcPer(soleAge) : hcPer(ageA) + hcPer(ageB)) * 12
 need   = max(0.35 * (living + hc), living + hc - liveSaving)
 ```
+
 Healthcare lives in `hcPre`/`hcPost`, **not** in the basket `m`, so summing them does not double‑count. `lifestyle` scales living costs only, not healthcare. Per‑year ages drive the pre‑/post‑65 healthcare step automatically.
 
 **Outputs.** The year‑specific spending `need`.
@@ -624,6 +627,7 @@ annualDifference = |totalsA - totalsB|
 **Outputs.** A mirrored bar (income/draw up, expenses down from zero), a composition donut of income sources, a surplus/net summary, milestone badges (including recurring events from UC‑4.2, e.g. a car purchase), and an annual-totals context line — all for one selected year, navigable via slider / prev-next / play. A **view toggle** switches between "Typical month" (÷12) and "Full year" (annual totals); the section is **collapsible**; and clicking a year on the Staircase (UC‑17) jumps the navigator to it.
 
 **Edge cases.**
+
 - Zero-value series are dropped from the bars, donut, and legend.
 - The selected year is clamped to the simulated range; it defaults to the first fully-retired year.
 - **Location.** Figures reflect location only to the extent the engine's `need` does: the selected healthcare basis (`retireLoc` → `hcPre`/`hcPost`, UC‑8) and any inherited-home live-in saving (`liveSav`). The per-location cost-of-living tables (UC‑15) are **not** the spend basis, and **mid-retirement relocation is not modeled** — one healthcare basis applies across the horizon, with the only location-driven year-to-year change being the pre‑65 → 65 healthcare step. *(A future enhancement to derive the spend from the Places cost tables is tracked separately.)*

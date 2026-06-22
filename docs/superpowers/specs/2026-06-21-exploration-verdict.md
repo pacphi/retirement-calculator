@@ -18,7 +18,7 @@ Tasks 1–3 added characterization tests that froze the current behavior of thre
 **Characterization Test Guard:** `describe("spendingNeed location basis (seam contract for 0D)", ...)` block in `src/calculatorCore.test.js`  
 **Test Count:** 3 test cases
 
-### Test cases
+### Test cases (location basis)
 
 1. **Couple pre-65:** Sums cost-of-living basket plus age-based healthcare for a married couple under 65.
 2. **Survivor + single factor:** Confirms `SINGLE_COST_FACTOR` applied and single healthcare calculation.
@@ -69,7 +69,7 @@ Task 12 will recompose `spendingNeed` into composable parts (nonHousingBase / he
 **Characterization Test Guard:** `describe("recurring events (seam contract for Wave 1 C3)", ...)` block in `src/calculatorCore.test.js`  
 **Test Count:** 3 test cases
 
-### Test cases
+### Test cases (recurring events)
 
 1. **Cadence firing within window + off-cadence silence:** Event fires on `year + (n × everyYears)` where `0 ≤ n`; no `untilYear` runs to horizon; outside window silenced.
 2. **No everyYears → one-time event:** Absence of `everyYears` triggers back-compat alias `oneTimeSpendForYear()` (fires once in specified year).
@@ -87,11 +87,11 @@ Wave 1 C3 (typed/emergent events) extends this module. Cadence + `untilYear` win
 
 ## Summary Table
 
-| Feature | Test File / Block | Test Count | Verdict  |
-| ------- | ----------------- | ---------- | -------- |
-| Location-cost spending basis | `src/calculatorCore.test.js` — "seam contract for 0D" | 3 | **KEEP** |
-| Year-by-year / month-by-month navigator | `src/finance/breakdown.test.js` | 5 | **KEEP** |
-| Recurring life events | `src/calculatorCore.test.js` — "Wave 1 C3" | 3 | **KEEP** |
+| Feature                                 | Test File / Block                                     | Test Count | Verdict  |
+| --------------------------------------- | ----------------------------------------------------- | ---------- | -------- |
+| Location-cost spending basis            | `src/calculatorCore.test.js` — "seam contract for 0D" | 3          | **KEEP** |
+| Year-by-year / month-by-month navigator | `src/finance/breakdown.test.js`                       | 5          | **KEEP** |
+| Recurring life events                   | `src/calculatorCore.test.js` — "Wave 1 C3"            | 3          | **KEEP** |
 
 ---
 

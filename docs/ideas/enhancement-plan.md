@@ -27,11 +27,11 @@ The good news: the engine's bones already support this. `simulate()` is a true y
 that already tracks two tax buckets, contributions, growth, RMDs, and reinvestment of forced
 distributions. The work is **less about rebuilding and more about three targeted upgrades**:
 
-| # | Upgrade | Where it lives today | What changes |
-|---|---------|----------------------|--------------|
-| **A** | Multi-vehicle accumulation | one flat `contrib` + one portfolio-wide `tradFrac` | a small set of contribution streams, each with its own tax bucket and limit |
+| #     | Upgrade                        | Where it lives today                                              | What changes                                                                                  |
+| ----- | ------------------------------ | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| **A** | Multi-vehicle accumulation     | one flat `contrib` + one portfolio-wide `tradFrac`                | a small set of contribution streams, each with its own tax bucket and limit                   |
 | **B** | Return-with-variability slider | single `realReturn` point + a separate, opt-in Monte Carlo button | a return assumption seeded from history with a variability band wired into the _default_ view |
-| **C** | Non-flat retirement spending | flat `base = incomeHH × targetPct` + a few overlays | a spending-smile curve, lifestyle-change controls, and guardrail reactivity |
+| **C** | Non-flat retirement spending   | flat `base = incomeHH × targetPct` + a few overlays               | a spending-smile curve, lifestyle-change controls, and guardrail reactivity                   |
 
 Everything below is specific to _this_ codebase: the actual functions, the actual state fields,
 and exactly how each new control threads `buildPlanInputs → simulate → row outputs → chart arrays
@@ -43,7 +43,7 @@ and exactly how each new control threads `buildPlanInputs → simulate → row o
 
 ### 2.1 The shape of the system
 
-```
+```text
 index.html → src/App.jsx → RetirementCalculator.jsx   (the only component; ~1,100 lines)
                                    │
                                    ├── useState(s)            one flat state object, ~40 fields
@@ -80,7 +80,7 @@ This is the heart. One loop, `y = 0 … endEff`, one row per year. Each iteratio
 5. **Growth**: `bal = bal × (1 + yearReturn) + sellLump`, with the deferred sub-bucket grown in
    parallel.
 6. **Contribution** (working years only): `contrib = min(plannedContrib, max(0, afterTaxIncome −
-   need))` — i.e. you save what's planned, capped by what's left after the year's spending.
+need))` — i.e. you save what's planned, capped by what's left after the year's spending.
 7. **Withdrawal**: `solveWithdrawal()` binary-searches the gross draw that, after tax, exactly
    meets the need.
 8. **RMD floor**: if the required minimum exceeds the need-based deferred draw, force the extra,
@@ -146,16 +146,16 @@ year-by-year need line) and **inside the portfolio** (contributions, growth, dra
 
 ### 2.7 Honest assessment against the new requirements
 
-| Requirement | Today | Gap |
-|---|---|---|
-| Working-years accumulation, year by year | Engine loops and charts contributions+growth | Visible, but driven by one flat number |
-| 401(k) / IRA / Roth / others as distinct vehicles | One portfolio, one `tradFrac` | **Not modeled** — biggest gap |
-| Return tied to historical gains + variability % | Single `realReturn` slider; MC is separate/opt-in | Variability exists but is walled off from the default view |
-| Retirement drawdown | `solveWithdrawal`, need-driven, tax-aware | **Strong already** |
-| Reinvestment in retirement | RMD surplus only | Needs a general surplus→reinvest path |
-| Expenses not flat / lifestyle increases | Healthcare bump, travel taper, events, LTC | No general spending-smile; no interactive lifestyle step-up |
-| Large purchases / planned + emergent events | One-time `events[]` exist | Good base; needs richer typing + "emergent" stress |
-| "How far does the money go if I spend more?" | Static depletion age recomputes on input | Needs a first-class, reactive **headroom** read-out + guardrails |
+| Requirement                                       | Today                                             | Gap                                                              |
+| ------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------- |
+| Working-years accumulation, year by year          | Engine loops and charts contributions+growth      | Visible, but driven by one flat number                           |
+| 401(k) / IRA / Roth / others as distinct vehicles | One portfolio, one `tradFrac`                     | **Not modeled** — biggest gap                                    |
+| Return tied to historical gains + variability %   | Single `realReturn` slider; MC is separate/opt-in | Variability exists but is walled off from the default view       |
+| Retirement drawdown                               | `solveWithdrawal`, need-driven, tax-aware         | **Strong already**                                               |
+| Reinvestment in retirement                        | RMD surplus only                                  | Needs a general surplus→reinvest path                            |
+| Expenses not flat / lifestyle increases           | Healthcare bump, travel taper, events, LTC        | No general spending-smile; no interactive lifestyle step-up      |
+| Large purchases / planned + emergent events       | One-time `events[]` exist                         | Good base; needs richer typing + "emergent" stress               |
+| "How far does the money go if I spend more?"      | Static depletion age recomputes on input          | Needs a first-class, reactive **headroom** read-out + guardrails |
 
 ---
 
@@ -206,15 +206,15 @@ impact**. Grouped A–E. Effort tags are rough: S (≤½ day), M (1–2 days), L
   hints per vehicle (e.g. IRS 401(k)/IRA limits, with the 50+ catch-up auto-applied from `ageA`/
   `ageB`).
 - **State.** Add `contribStreams: [{id, vehicle, owner:"A"|"B", amount}]` and `employerMatch:
-  {pct, capPct}`. Keep `contrib` as a derived sum for backward compatibility and existing tests.
+{pct, capPct}`. Keep `contrib` as a derived sum for backward compatibility and existing tests.
 - **Calculation.** Replace `plannedContribution()` so it returns both a total _and_ a per-bucket
   split, then in `simulate()`:
   - drop the contribution into the right sub-balances (introduce `rothBal`/`taxableBal` alongside
     today's `defBal`; see D1),
   - stop each stream when its owner stops working (`workA`/`workB` already computed),
   - apply the match as a function of the pre-tax 401(k) stream up to the cap.
-  This makes `tradFrac` an _output_ (the deferred share of the resulting balance) rather than an
-  input, which is more honest and removes a confusing control.
+    This makes `tradFrac` an _output_ (the deferred share of the resulting balance) rather than an
+    input, which is more honest and removes a confusing control.
 - **Visualization.** The "Inside the portfolio → Cash flow" chart's `contrib` bar becomes a small
   stack by vehicle; the "Tax buckets" view gains a third (Roth) band instead of folding Roth into
   "after-tax."
@@ -399,20 +399,20 @@ impact**. Grouped A–E. Effort tags are rough: S (≤½ day), M (1–2 days), L
 
 ## 5. Control → UI → calculation matrix (at a glance)
 
-| Control | New state | Engine touch point | Charts affected |
-|---|---|---|---|
-| A1 Contribution streams | `contribStreams`, `employerMatch` | `plannedContribution`, bucket seeding in `simulate` | Inside-the-portfolio (both views) |
-| A2 Salary growth | `realRaise` | salary/contrib scaling in loop | Cash-flow (accumulation) |
-| A3 Accumulation summary | — | sums over working rows | new stat card |
-| B1 Return + variability | `returnPreset`, `volatility` | `realReturn` (det.) + auto MC | Long-run ribbon, headline |
-| B2 Sequence stress | `showStress` | already `simStress` | Long-run |
-| C1 Spending smile | `spendingShape` | `spendingNeed` multiplier | Staircase need line |
-| C2 Lifestyle steps | `lifestyleSteps` | additive need in loop | Staircase risers, headroom |
-| C3 Events typed/emergent | `events[].type/emergent` | `oneTimeSpendForYear` | Staircase dots, stress overlay |
-| D1 Buckets + order | `withdrawalOrder`, 3 balances | `solveWithdrawal` tax mapping | Tax-buckets (3 bands) |
-| D2 Surplus reinvest | `reinvestSurplus` | post-solve reinvest | Cash-flow (retirement inflows) |
-| E1 Headroom | — | root-find over `simulate` | headline read-out |
-| E2 Guardrails | `spendingStrategy`, `guardrails` | loop spending branch + MC | MC spending distribution |
+| Control                  | New state                         | Engine touch point                                  | Charts affected                   |
+| ------------------------ | --------------------------------- | --------------------------------------------------- | --------------------------------- |
+| A1 Contribution streams  | `contribStreams`, `employerMatch` | `plannedContribution`, bucket seeding in `simulate` | Inside-the-portfolio (both views) |
+| A2 Salary growth         | `realRaise`                       | salary/contrib scaling in loop                      | Cash-flow (accumulation)          |
+| A3 Accumulation summary  | —                                 | sums over working rows                              | new stat card                     |
+| B1 Return + variability  | `returnPreset`, `volatility`      | `realReturn` (det.) + auto MC                       | Long-run ribbon, headline         |
+| B2 Sequence stress       | `showStress`                      | already `simStress`                                 | Long-run                          |
+| C1 Spending smile        | `spendingShape`                   | `spendingNeed` multiplier                           | Staircase need line               |
+| C2 Lifestyle steps       | `lifestyleSteps`                  | additive need in loop                               | Staircase risers, headroom        |
+| C3 Events typed/emergent | `events[].type/emergent`          | `oneTimeSpendForYear`                               | Staircase dots, stress overlay    |
+| D1 Buckets + order       | `withdrawalOrder`, 3 balances     | `solveWithdrawal` tax mapping                       | Tax-buckets (3 bands)             |
+| D2 Surplus reinvest      | `reinvestSurplus`                 | post-solve reinvest                                 | Cash-flow (retirement inflows)    |
+| E1 Headroom              | —                                 | root-find over `simulate`                           | headline read-out                 |
+| E2 Guardrails            | `spendingStrategy`, `guardrails`  | loop spending branch + MC                           | MC spending distribution          |
 
 ---
 
@@ -455,7 +455,7 @@ dynamic-withdrawal fidelity.
 - **Tests & docs move in lockstep.** Per the repo's own rule: each engine change updates
   `calculatorCore.test.js`; each new control gets a `RetirementCalculator.test.jsx` check via
   accessible labels; `docs/prd.md` (which already lists Monte Carlo and survivor modeling as "out of
-  scope" even though they now exist) should be reconciled so the FR-* list matches reality.
+  scope" even though they now exist) should be reconciled so the FR-\* list matches reality.
 
 ---
 

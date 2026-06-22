@@ -44,18 +44,19 @@ the IRS lets you put there, what the employer adds, and what it all earns.
 - **2026 limits to encode** (IRS Notice 2025-67 —
   [IRS](https://www.irs.gov/newsroom/401k-limit-increases-to-24500-for-2026-ira-limit-increases-to-7500)):
 
-  | Vehicle | Base (2026) | Catch-up 50+ | Super catch-up 60–63 | Tax bucket |
-  |---|---|---|---|---|
-  | 401(k)/403(b)/457(b) elective | $24,500 | +$8,000 → $32,500 | +$11,250 → $35,750 | deferred (or Roth) |
-  | 401(k) total (employee+employer, §415(c)) | $72,000 | — | — | deferred (+Roth) |
-  | Traditional / Roth IRA | $7,500 | +$1,100 → $8,600 | — | deferred / Roth |
-  | HSA | $4,400 self / $8,750 family | +$1,000 (age 55+) | — | triple-tax-advantaged |
-  | Roth IRA income phase-out | single $153k–$168k · MFJ $242k–$252k | — | — | Roth |
+  | Vehicle                                   | Base (2026)                          | Catch-up 50+      | Super catch-up 60–63 | Tax bucket            |
+  | ----------------------------------------- | ------------------------------------ | ----------------- | -------------------- | --------------------- |
+  | 401(k)/403(b)/457(b) elective             | $24,500                              | +$8,000 → $32,500 | +$11,250 → $35,750   | deferred (or Roth)    |
+  | 401(k) total (employee+employer, §415(c)) | $72,000                              | —                 | —                    | deferred (+Roth)      |
+  | Traditional / Roth IRA                    | $7,500                               | +$1,100 → $8,600  | —                    | deferred / Roth       |
+  | HSA                                       | $4,400 self / $8,750 family          | +$1,000 (age 55+) | —                    | triple-tax-advantaged |
+  | Roth IRA income phase-out                 | single $153k–$168k · MFJ $242k–$252k | —                 | —                    | Roth                  |
 
   Two 2026 rules worth encoding because they change the _bucket_, not just the amount: **high earners**
   (>$150k prior-year FICA wages) must make 401(k) **catch-ups as Roth**, and **Roth IRA eligibility
   phases out** at the ranges above. ([Fidelity](https://www.fidelity.com/learning-center/personal-finance/401k-catch-up-contributions-high-earners);
   [Schwab](https://www.schwab.com/learn/story/what-to-know-about-catch-up-contributions))
+
 - **UI.** The "Contributions" sub-panel from v1.A1, with a per-row limit meter (filled bar + "$X of
   $Y max") that recolors if over-limit. Catch-up tiers light up automatically from `ageA`/`ageB`.
   Keep "Simple / Detailed" so the one-slider default survives.
@@ -108,7 +109,7 @@ deserves to be first-class.
   (with the payoff calendar year), computed live from the amortization formula. A small note shows
   the real-terms decline ("$2,100/mo today ≈ $1,500/mo real by payoff at 2.5% inflation").
 - **State.** `housing:{tenure, rent?, mortgage:{principal, ratePct, termYears, startYear}, homeValue,
-  insuranceAnnual, maintenancePctOrAnnual}`.
+insuranceAnnual, maintenancePctOrAnnual}`.
 - **Calculation — the math, made explicit:**
   - Monthly P&I (standard amortization): `M = P · r(1+r)^n / ((1+r)^n − 1)`, with `r` = monthly rate,
     `n` = term in months. Remaining balance and the **payoff year** fall straight out; expose payoff
@@ -128,7 +129,7 @@ deserves to be first-class.
 ### 2.2 Reconcile with inherited real estate — **S**
 
 - **What.** The inherited-home **live-in** strategy already credits a housing saving (`live =
-  rentMo·12 − value·ownRate`). With an explicit housing module, "inherit and live in the Klagenfurt
+rentMo·12 − value·ownRate`). With an explicit housing module, "inherit and live in the Klagenfurt
   home" should _switch the primary housing tenure to owned_ (no rent/P&I, just that home's carrying
   cost) rather than applying a generic saving on top.
 - **Calculation.** When an inherited "live" event is active, override `housing.tenure → own` from its
@@ -144,7 +145,7 @@ deserves to be first-class.
 - **UI.** Relabel the slider "Retire on this share of income" → "Non-housing lifestyle (% of income)"
   with a hint that housing is set separately below.
 - **Calculation.** `spendingNeed()` becomes `nonHousingBase (smile-shaped) + housing + healthcare
-  bump + events`. Everything downstream already reads `need`, so charts/withdrawal/depletion update
+bump + events`. Everything downstream already reads `need`, so charts/withdrawal/depletion update
   for free.
 - **Risk.** This shifts a headline definition; gate it behind the housing feature and update the
   affected tests and `docs/use-cases.md` in the same change.
@@ -178,7 +179,7 @@ mean a $3,000–$10,000+/yr difference in after-tax income."_
   power users and the qualitative note for non-US locations.
 - **State / data.** Add `taxProfile` to each jurisdiction in `retirementData.js`:
   `{ taxesSS:bool, pensionExclusion:number|"full", taxesTradWithdrawal:bool, flatRate?:number,
-  brackets?:[...] }`. Roth is implicitly exempt. Add a `US_STATE_TAX` table for the state case, each
+brackets?:[...] }`. Roth is implicitly exempt. Add a `US_STATE_TAX` table for the state case, each
   row source-linked.
 - **Calculation.** Extend `calculateFederalTaxYear` (or wrap it) so the state layer taxes its **own
   base**: include SS only if `taxesSS`, apply the pension exclusion, include the deferred share of
@@ -257,17 +258,17 @@ mean a $3,000–$10,000+/yr difference in after-tax income."_
 
 ## 5. Updated control → UI → calculation → visualization matrix (new & changed)
 
-| Control | New state | Engine touch point | Charts affected |
-|---|---|---|---|
-| Per-vehicle contributions + limits | `contribStreams`, `employerMatch`, `CONTRIB_LIMITS_2026` | `plannedContribution`, bucket seeding | Accumulation cash-flow (per-vehicle stack) |
-| Return detail / glidepath | `returnModel` | blended `yearReturn` in loop; MC mean | Accumulation summary, long-run band |
-| Housing tenure (rent/mortgage/own) | `housing{…}` | new housing component in `spendingNeed`; amortization + payoff; **inflation deflator** | Staircase housing band + payoff cliff |
-| Inherited live-in → owned | (reuse `inher`) | tenure override from inheritance year | Staircase housing-band drop |
-| Housing-explicit need | relabel `targetPct` | `spendingNeed` recomposition | Staircase (no double-count) |
-| Typed state tax profile | `taxProfile`, `US_STATE_TAX`, US-state picker | state layer composed on `calculateFederalTaxYear` | Places, compare, headline net |
-| Location property tax | `propertyTaxRate` | `propertyTax = rate × homeValue` into housing | Housing band, Places location-tax |
-| Month-by-month view | `detailYear` (UI) | derivation over annual row (no engine change) | New monthly income/expense chart |
-| Lifestyle play + headroom | `lifestyleSteps` (v1) | `need` delta; root-find headroom | Staircase, month view, headroom card |
+| Control                            | New state                                                | Engine touch point                                                                     | Charts affected                            |
+| ---------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------ |
+| Per-vehicle contributions + limits | `contribStreams`, `employerMatch`, `CONTRIB_LIMITS_2026` | `plannedContribution`, bucket seeding                                                  | Accumulation cash-flow (per-vehicle stack) |
+| Return detail / glidepath          | `returnModel`                                            | blended `yearReturn` in loop; MC mean                                                  | Accumulation summary, long-run band        |
+| Housing tenure (rent/mortgage/own) | `housing{…}`                                             | new housing component in `spendingNeed`; amortization + payoff; **inflation deflator** | Staircase housing band + payoff cliff      |
+| Inherited live-in → owned          | (reuse `inher`)                                          | tenure override from inheritance year                                                  | Staircase housing-band drop                |
+| Housing-explicit need              | relabel `targetPct`                                      | `spendingNeed` recomposition                                                           | Staircase (no double-count)                |
+| Typed state tax profile            | `taxProfile`, `US_STATE_TAX`, US-state picker            | state layer composed on `calculateFederalTaxYear`                                      | Places, compare, headline net              |
+| Location property tax              | `propertyTaxRate`                                        | `propertyTax = rate × homeValue` into housing                                          | Housing band, Places location-tax          |
+| Month-by-month view                | `detailYear` (UI)                                        | derivation over annual row (no engine change)                                          | New monthly income/expense chart           |
+| Lifestyle play + headroom          | `lifestyleSteps` (v1)                                    | `need` delta; root-find headroom                                                       | Staircase, month view, headroom card       |
 
 ---
 

@@ -66,7 +66,7 @@ work state. That's both correct and simpler than a blended rate.
 Small, surgical, and it removes a bug rather than adding mass:
 
 - **Pick the active jurisdiction by year.** In the loop, `activeLoc = cal < relocationYear ? workLoc
-  : retireLoc`. (Years are already iterated; this is a per-year selector.)
+: retireLoc`. (Years are already iterated; this is a per-year selector.)
 - **Apply the right _face_ of the tax profile.** The v2 typed `taxProfile` already carries both a
   wage aspect and a retirement-income aspect. In working years the state layer taxes **wages** (and
   any incidental income) under the work-state's wage rules; in retirement years it taxes
@@ -114,11 +114,11 @@ work-vs-retire toggle it was already shaped to support.
 
 ## 7. Updated control → engine → viz (new/changed rows)
 
-| Control | New state | Engine touch point | Charts |
-|---|---|---|---|
-| Where you earn now | `workLoc` | per-year jurisdiction selector; wage-tax face | staircase (working-years net) |
-| Where you retire | `retireLoc` (exists) | retirement-income tax face; property tax; healthcare bridge | Places, staircase |
-| Relocation year | `relocationYear` | jurisdiction + cost-basis switch boundary | staircase boundary rule |
+| Control            | New state            | Engine touch point                                          | Charts                        |
+| ------------------ | -------------------- | ----------------------------------------------------------- | ----------------------------- |
+| Where you earn now | `workLoc`            | per-year jurisdiction selector; wage-tax face               | staircase (working-years net) |
+| Where you retire   | `retireLoc` (exists) | retirement-income tax face; property tax; healthcare bridge | Places, staircase             |
+| Relocation year    | `relocationYear`     | jurisdiction + cost-basis switch boundary                   | staircase boundary rule       |
 
 **Sequencing:** fold this into **v1.3 (housing + place)** right alongside the typed state-tax work —
 they share the `taxProfile` plumbing, and doing them together avoids building the single-location
