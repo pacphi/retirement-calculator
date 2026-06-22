@@ -265,13 +265,13 @@ export default function RetirementCalculator() {
           {/* INPUTS */}
           <div>
             <div style={{ background:C.panel, border:`1px solid ${C.line}`, borderRadius:14, padding:"20px 20px 6px", marginBottom:18 }}>
-              <Household s={s} set={set} setProp={setProp} deferredMode={deferredMode} onDeferredModeChange={setDeferredMode} incomeHH={incomeHH} />
+              <Household s={s} set={set} deferredMode={deferredMode} onDeferredModeChange={setDeferredMode} incomeHH={incomeHH} />
               <Timing s={s} set={set} sFull={sFull} />
-              <Pension s={s} set={set} setProp={setProp} afcAuto={afcAuto} afcEff={afcEff} steady={steady} />
+              <Pension s={s} set={set} afcAuto={afcAuto} afcEff={afcEff} steady={steady} />
               <InheritanceStep s={s} set={set} setProp={setProp} />
               <Milestones s={s} set={set} addEvent={addEvent} removeEvent={removeEvent} />
               <TravelLongevity s={s} set={set} />
-              <Advanced s={s} set={set} setProp={setProp} adv={adv} onAdvToggle={() => setAdv(a => !a)} />
+              <Advanced s={s} set={set} adv={adv} onAdvToggle={() => setAdv(a => !a)} />
             </div>
           </div>
 
@@ -279,7 +279,7 @@ export default function RetirementCalculator() {
           <div>
             <Headline steady={steady} s={s} mc={mc} onTrack={onTrack} effHaircut={effHaircut} effCutYear={effCutYear} />
             <Stats steady={steady} simSS={simSS} simNo={simNo} horizon={horizon} swr={s.swr} />
-            <RiskTable sFull={sFull} sTrust={sTrust} sNone={sNone} simFull={simFull} simTrust={simTrust} simNone={simNone} s={s} effHaircut={effHaircut} effCutYear={effCutYear} horizon={horizon} />
+            <RiskTable sFull={sFull} sTrust={sTrust} sNone={sNone} simFull={simFull} simTrust={simTrust} simNone={simNone} s={s} effHaircut={effHaircut} horizon={horizon} />
             <InheritanceResult s={s} setProp={setProp} />
 
             {/* Staircase (healthcare-aware) */}

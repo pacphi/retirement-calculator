@@ -6,7 +6,7 @@ import { PROP } from "../../retirementData.js";
  *
  * @param {{ s: object, set: function, setProp: function }} props
  */
-export function Inheritance({ s, _set, setProp }) {
+export function Inheritance({ s, setProp }) {
   return (
     <Section eyebrow="Step four" title="Inherited real estate">
       <div style={{ fontSize:12, color:"#5E6B67", lineHeight:1.5, marginBottom:14 }}>Two homes you may inherit. Set the value, the year, and what you'd do with each — the tax math and the impact on your plan update live.</div>

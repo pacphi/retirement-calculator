@@ -11,7 +11,7 @@ const locByName = (n) => LOCATIONS.find(l => l.name === n);
  *
  * @param {{ s: object, set: function, setProp: function, adv: boolean, onAdvToggle: function }} props
  */
-export function Advanced({ s, set, _setProp, adv, onAdvToggle }) {
+export function Advanced({ s, set, adv, onAdvToggle }) {
   return (
     <>
       <button onClick={onAdvToggle} style={{ width:"100%", background:"none", border:`1px dashed ${C.line}`, borderRadius:9, padding:"10px", color:C.slate, fontSize:12.5, fontWeight:600, cursor:"pointer", marginBottom:adv?16:8, fontFamily:"inherit" }}>{adv?"Hide assumptions ▲":"Long-term care & assumptions (return, inflation, withdrawal, tax) ▾"}</button>

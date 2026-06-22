@@ -7,7 +7,7 @@ const usd0 = (x) => (x<0?"-$":"$") + Math.abs(Math.round(x)).toLocaleString();
  *
  * @param {{ sFull: object, sTrust: object, sNone: object, simFull: object, simTrust: object, simNone: object, s: object, effHaircut: number, effCutYear: number, horizon: number }} props
  */
-export function RiskTable({ sFull, sTrust, sNone, simFull, simTrust, simNone, s, effHaircut, _effCutYear, horizon }) {
+export function RiskTable({ sFull, sTrust, sNone, simFull, simTrust, simNone, s, effHaircut, horizon }) {
   const rows = [
     { key:"full", lab:"Congress acts — 100%", st:sFull, on:s.ssMode==="full" },
     { key:"trustees", lab:`Trustees' 81% from ${Number(s.ssCutYear)||2034}`, st:sTrust, on:s.ssMode==="trustees" },

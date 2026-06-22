@@ -9,7 +9,7 @@ const usd0 = (x) => (x<0?"-$":"$") + Math.abs(Math.round(x)).toLocaleString();
  *
  * @param {{ s: object, set: function, setProp: function, deferredMode: string, onDeferredModeChange: function, incomeHH: number }} props
  */
-export function Household({ s, set, _setProp, deferredMode, onDeferredModeChange, incomeHH }) {
+export function Household({ s, set, deferredMode, onDeferredModeChange, incomeHH }) {
   return (
     <Section eyebrow="Step one" title="Your household, today">
       <div className="rc-inputs">

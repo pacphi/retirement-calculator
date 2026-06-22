@@ -8,7 +8,7 @@ const usd0 = (x) => (x<0?"-$":"$") + Math.abs(Math.round(x)).toLocaleString();
  *
  * @param {{ s: object, set: function, setProp: function, afcAuto: boolean, afcEff: number, steady: object }} props
  */
-export function Pension({ s, set, _setProp, afcAuto, afcEff, steady }) {
+export function Pension({ s, set, afcAuto, afcEff, steady }) {
   return (
     <Section eyebrow="Step three" title="Spouse's Washington State pension">
       <Field label="Include the DRS pension"><Segmented value={s.pensionOn} onChange={set("pensionOn")} options={[{label:"Include",value:true},{label:"Skip",value:false}]} /></Field>
