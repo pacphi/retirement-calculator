@@ -98,6 +98,12 @@ describe("dynamic life events", () => {
     const after = screen.getAllByRole("button", { name: /remove event/i }).length;
     expect(after).toBe(before - 1);
   });
+
+  it("exposes event type and emergent controls", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getAllByLabelText(/event type/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByLabelText(/emergent/i).length).toBeGreaterThan(0);
+  });
 });
 
 describe("Monte Carlo trigger", () => {

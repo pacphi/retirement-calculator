@@ -90,6 +90,7 @@ export function calculatePlan(s) {
   const simTrust = simulate(inp, { haircut: 0.81, cutYear: trustCut });
   const simNone = simulate(inp, { haircut: 0, cutYear: TAX_YEAR });
   const simStress = simulate(inp, { haircut: effHaircut, cutYear: effCutYear, stress: true });
+  const simShock = simulate(inp, { haircut: effHaircut, cutYear: effCutYear, includeEmergent: true });
   return {
     incomeHH,
     retLocObj,
@@ -102,6 +103,7 @@ export function calculatePlan(s) {
     simTrust,
     simNone,
     simStress,
+    simShock,
     steady: steadyState(inp, simChosen),
     sFull: steadyState(inp, simFull),
     sTrust: steadyState(inp, simTrust),

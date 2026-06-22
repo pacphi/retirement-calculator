@@ -136,7 +136,7 @@ export function simulate(i, ssOpt) {
     }
     const extraSpend =
       travelSpendForYear(i.travel, cal)
-      + oneTimeSpendForYear(i.events, cal)
+      + oneTimeSpendForYear(i.events, cal, { includeEmergent: ssOpt.includeEmergent ?? false })
       + ltcSpendForYear(i.ltc, aA, i.ltcAnnual);
     const survAge = lifeOn && isSurvivor ? (survivorIsA ? aA : aB) : null;
     const need = spendingNeed(i, aA, aB, liveSav, isSurvivor, survAge, { retireAgeA, cal }) + extraSpend;

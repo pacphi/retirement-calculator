@@ -30,6 +30,19 @@ describe("buildPlanInputs Wave 1 defaults", () => {
   });
 });
 
+describe("simShock scenario (C3)", () => {
+  it("emergent events hit the shock scenario but not the baseline (C3)", () => {
+    const withEmergent = {
+      ...bareState,
+      events: [{ id: "boom", on: true, year: 2030, amount: 80000, type: "purchase", emergent: true }],
+    };
+    const plan = calculatePlan(withEmergent);
+    const baseRow = plan.simChosen.rows.find((r) => r.cal === 2030);
+    const shockRow = plan.simShock.rows.find((r) => r.cal === 2030);
+    expect(shockRow.need).toBeGreaterThan(baseRow.need);
+  });
+});
+
 describe("returnPreset wiring", () => {
   it("returnPreset overrides realReturn deterministically", () => {
     const grow = calculatePlan({ ...bareState, returnPreset: "growth", realReturn: 0.01 });

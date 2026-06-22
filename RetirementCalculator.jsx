@@ -119,7 +119,7 @@ export default function RetirementCalculator() {
   const eventSeq = useRef(0);
   const addEvent = () => {
     const id = `evt-${eventSeq.current++}`;
-    set("events")([...s.events, { id, label: "New milestone", on: true, year: 2040, amount: 10000 }]);
+    set("events")([...s.events, { id, label: "New milestone", on: true, year: 2040, amount: 10000, type: "gift", emergent: false }]);
   };
   const removeEvent = (idx) => set("events")(s.events.filter((_, i) => i !== idx));
 

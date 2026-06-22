@@ -33,13 +33,17 @@ const eventFiresInYear = (e, cal) => {
   return cal === start;
 };
 
-export const scheduledSpendForYear = (events, cal) =>
-  (events || []).reduce(
-    (sum, e) => (eventFiresInYear(e, cal) ? sum + (Number(e.amount) || 0) : sum),
-    0,
-  );
+export const scheduledSpendForYear = (events, cal, opts = {}) => {
+  const includeEmergent = opts.includeEmergent ?? true;
+  return (events || []).reduce((sum, e) => {
+    if (!eventFiresInYear(e, cal)) return sum;
+    if (e.emergent && !includeEmergent) return sum;
+    const amt = Number(e.amount) || 0;
+    return sum + (e.type === "windfall" ? -amt : amt);
+  }, 0);
+};
 
-// Backwards-compatible alias: one-time events (no `everyYears`) behave exactly as before.
+// Backwards-compatible alias: one-time events (no `everyYears`, no type) behave as before.
 export const oneTimeSpendForYear = scheduledSpendForYear;
 
 // One long-term-care episode keyed to the older spouse (ageA) reaching startAge,
