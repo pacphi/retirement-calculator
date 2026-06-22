@@ -94,11 +94,17 @@ root. Theme tokens stay centralized so all new UI matches the existing brass/vir
 ## 5. Wave plan (task DAG)
 
 ### Wave 0 — Foundation (serial, single-owner; unblocks everything)
+Ordered so we never extract components around code we might scrap:
+- `0c` **TDD due-diligence first** on the three uncommitted features (location-basis spend,
+  year-by-year navigator + `breakdown.js`, recurring events) → decide keep / rework / scrap against
+  full-roadmap scope. Lock the verdict with characterization tests before touching structure.
 - `0a` Extract `theme.js` + atoms.
 - `0b` Extract charts/results/steps into components; shrink composition root.
-- `0c` TDD due-diligence on the three uncommitted features → keep / rework / scrap.
 - `0d` Define engine seams in `simulate.js` + `plan.js`.
 - Gate: `pnpm check` green; behavior unchanged (characterization tests).
+
+Parallel waves use `git worktree` isolation (confirmed acceptable) so concurrent subagents don't
+collide on shared files.
 
 ### Wave 1 — Additive features (fully parallel; disjoint files)
 B1 returns/variability-by-default · B2 sequence stress toggle · C1 smile · C2 lifestyle steps ·
