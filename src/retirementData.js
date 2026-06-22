@@ -8,15 +8,24 @@ export const DEFAULT_TRAVEL = { on: true, amount: 15000, startYear: TAX_YEAR + 8
 // percentage the pension continues at once the pension-holder (spouse B) dies.
 export const DEFAULT_LIFE = { on: true, deathAgeA: 95, deathAgeB: 92, pensionPct: 0 };
 
+// One-time events have no `everyYears`; recurring ones repeat on that cadence from `year`
+// through `untilYear` (or the horizon if unset). All default off; amounts in today's dollars.
 export const DEFAULT_LIFE_EVENTS = [
   { id: "wed1",  label: "Child 1 wedding",     on: false, year: 2032, amount: 15000 },
   { id: "wed2",  label: "Child 2 wedding",     on: false, year: 2035, amount: 15000 },
   { id: "home1", label: "Home help -- child 1", on: false, year: 2034, amount: 25000 },
   { id: "home2", label: "Home help -- child 2", on: false, year: 2037, amount: 25000 },
   { id: "gk",    label: "Grandchild 529 seed",  on: false, year: 2040, amount: 5000  },
+  { id: "car",   label: "Vehicle replacement",  on: false, year: TAX_YEAR, amount: 45000, everyYears: 10, untilYear: TAX_YEAR + 30 },
+  { id: "upkeep", label: "Home upkeep (owners only)", on: false, year: TAX_YEAR, amount: 6000, everyYears: 1 },
 ];
 
 export const STRESS_EARLY_DROP = -0.10;
+
+// Single-person cost scaling: a one-person household runs at ~64% of a couple's cost-of-living
+// (shared fixed costs don't halve). Used by the Places affordability view and, when the
+// location spending basis is on, by the simulation in survivor/single years.
+export const SINGLE_COST_FACTOR = 0.64;
 
 export const MC_DEFAULTS = { paths: 1000, seed: 12345, volatility: 0.12 };
 

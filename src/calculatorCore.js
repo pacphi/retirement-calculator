@@ -6,3 +6,4 @@ export * from "./finance/rmd.js";
 export * from "./finance/simulate.js";
 export * from "./finance/plan.js";
 export * from "./finance/monteCarlo.js";
+export * from "./finance/breakdown.js";

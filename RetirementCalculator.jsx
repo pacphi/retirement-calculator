@@ -1,15 +1,17 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import {
   ComposedChart, Area, Line, LineChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ReferenceDot, ReferenceLine,
+  ResponsiveContainer, ReferenceDot, ReferenceLine, PieChart, Pie, Cell,
 } from "recharts";
-import { DEFAULT_LIFE, DEFAULT_LIFE_EVENTS, DEFAULT_TRAVEL, LOCATIONS, MC_DEFAULTS, PROP, SOURCES } from "./src/retirementData.js";
+import { DEFAULT_LIFE, DEFAULT_LIFE_EVENTS, DEFAULT_TRAVEL, LOCATIONS, MC_DEFAULTS, PROP, SINGLE_COST_FACTOR, SOURCES } from "./src/retirementData.js";
 import {
   afcIsAuto,
   resolveAfc,
   calculatePlan,
   lineItems,
+  monthlyBreakdown,
   monthlyTotal,
+  yearMilestones,
   ownBenefitAtClaimMonthly,
   proratedFraEstimate,
   propEcon,
@@ -97,7 +99,7 @@ function AssumptionIcon({ title }) {
   );
 }
 const inputStyle = { width:"100%", boxSizing:"border-box", padding:"9px 11px", border:`1px solid ${C.line}`, borderRadius:8, fontSize:15, fontFamily:"'JetBrains Mono', monospace", color:C.ink, background:C.panel, outline:"none" };
-function NumberInput({ value, onChange, prefix, suffix, min }) {
+function NumberInput({ value, onChange, prefix, suffix, min, ...rest }) {
   // While focused, show exactly what the user is typing (draft). Applying `min`
   // on every keystroke fights the user: a leading digit below the floor gets
   // bumped up mid-edit, and the rest of their typing appends to it. Floor on blur.
@@ -112,7 +114,7 @@ function NumberInput({ value, onChange, prefix, suffix, min }) {
   const display = draft != null ? draft : (value === "" || value == null ? "" : value);
   return (<div style={{ position:"relative", display:"flex", alignItems:"center" }}>
     {prefix && <span style={{ position:"absolute", left:11, fontFamily:"'JetBrains Mono',monospace", color:C.slate, fontSize:14 }}>{prefix}</span>}
-    <input type="number" value={display} min={min}
+    <input type="number" value={display} min={min} {...rest}
       onChange={(e)=>{ setDraft(e.target.value); onChange(e.target.value===""?"":Number(e.target.value)); }}
       onBlur={commit}
       style={{ ...inputStyle, paddingLeft: prefix?22:11, paddingRight: suffix?34:11 }} />
@@ -148,7 +150,7 @@ export default function RetirementCalculator() {
     pensionOn:true, system:"TRS", plan:3, pYears:22, afc:170000,
     realReturn:0.05, swr:0.04, tradFrac:0.7, inflation:0.025,
     ssMode:"trustees", ssHaircut:81, ssCutYear:2034,
-    retireLoc:"Austria",
+    retireLoc:"Austria", spendBasis:"income", lifestyle:100,
     tx:{ on:false, value:790000, year:2038, strategy:"rent" },
     at:{ on:true, value:324000, year:2040, strategy:"live" },
     travel: { ...DEFAULT_TRAVEL },
@@ -164,6 +166,10 @@ export default function RetirementCalculator() {
   const [adv, setAdv] = useState(false);
   const [deferredMode, setDeferredMode] = useState("pct"); // "pct" | "amt" -- view for the pre-tax share
   const [invView, setInvView] = useState("flow"); // "flow" | "buckets" | "bucketsRmd" -- investments chart view
+  const [selYear, setSelYear] = useState(null); // selected calendar year for the year-by-year navigator (null -> default)
+  const [playing, setPlaying] = useState(false); // auto-advance the year navigator
+  const [ybyView, setYbyView] = useState("month"); // "month" (annual ÷ 12) | "year" (annual totals)
+  const [ybyOpen, setYbyOpen] = useState(true); // collapse the year-by-year section
   const [openLoc, setOpenLoc] = useState("Portugal");
   const [cmpA, setCmpA] = useState("Austria");
   const [cmpB, setCmpB] = useState("US -- Texas / Florida");
@@ -206,6 +212,23 @@ export default function RetirementCalculator() {
     workerRef.current.postMessage({ state: s, mcOpt: MC_DEFAULTS });
   };
 
+  // Auto-advance the year-by-year navigator while "play" is on; stop at the last year.
+  // The play button seeds selYear to a concrete year on start, so `y` is never null here.
+  useEffect(() => {
+    if (!playing) return;
+    // The simulation runs to the horizon for the younger spouse (the life-expectancy
+    // model may end sooner; render clamps to the real last row regardless).
+    const stopCal = 2026 + Math.max(0, (Number(s.horizonAge) || 95) - Math.min(s.ageA, s.ageB));
+    const id = setInterval(() => {
+      setSelYear((y) => {
+        const cur = y == null ? stopCal : y;
+        if (cur >= stopCal) { setPlaying(false); return cur; }
+        return cur + 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [playing, s.horizonAge, s.ageA, s.ageB]);
+
   const eventSeq = useRef(0);
   const addEvent = () => {
     const id = `evt-${eventSeq.current++}`;
@@ -223,7 +246,7 @@ export default function RetirementCalculator() {
   const onTrack = steady.net >= steady.targetNeed;
   const horizon = Number(s.horizonAge) || 95;
   const lastsTxt = (d) => d ? `age ${d}` : `beyond ${horizon}`;
-  const sFactor = couple ? 1 : 0.64;
+  const sFactor = couple ? 1 : SINGLE_COST_FACTOR;
   const yearsToRet = Math.max(0, steady.startAgeA - s.ageA);
   const retYear = 2026 + yearsToRet;
   const inflFactor = Math.pow(1 + s.inflation, yearsToRet);
@@ -271,6 +294,36 @@ export default function RetirementCalculator() {
   const depRow = depAge != null ? simSS.rows.find(r => r.aA === depAge) : null;
   const floorAtDep = depRow ? Math.round(depRow.ssA + depRow.ssB + depRow.pens + depRow.rent) : 0;
   const needAtDep = depRow ? Math.round(depRow.need) : 0;
+
+  // Year-by-year navigator: pick a year, see a "typical month" (annual ÷ 12) of income vs
+  // expenses, with the portfolio draw bridging the gap, plus that year's flagged milestones.
+  const yrMin = simSS.rows[0]?.cal ?? 2026;
+  const yrMax = simSS.rows[simSS.rows.length - 1]?.cal ?? yrMin;
+  const defaultYear = (simSS.rows.find(r => r.salA === 0 && r.salB === 0) ?? simSS.rows[0] ?? {}).cal ?? yrMin;
+  const activeYear = Math.min(yrMax, Math.max(yrMin, selYear ?? defaultYear));
+  const selIdx = simSS.rows.findIndex(r => r.cal === activeYear);
+  const selRow = simSS.rows[selIdx] || simSS.rows[0];
+  const mb = selRow ? monthlyBreakdown(selRow) : null;
+  const milestones = selRow ? yearMilestones(selRow, simSS.rows[selIdx - 1], s, depAge) : [];
+  const ybyScale = ybyView === "year" ? 12 : 1; // "typical month" (÷12) vs "full year" (annual totals)
+  const ybyUnit = ybyView === "year" ? "/yr" : "/mo";
+  const sc = (v) => v * ybyScale;
+  const mbInc = mb ? [
+    ["Salary (you)", sc(mb.income.salA), SRC.salA], ["Salary (spouse)", sc(mb.income.salB), SRC.salB],
+    ["Rental", sc(mb.income.rent), SRC.rent], ["Pension", sc(mb.income.pens), SRC.pension],
+    ["SS (you)", sc(mb.income.ssA), SRC.ssA], ["SS (spouse)", sc(mb.income.ssB), SRC.ssB],
+    ["Portfolio draw", sc(mb.draw), SRC.wd],
+  ].filter(([, v]) => v > 0) : [];
+  const mbExp = mb ? [
+    ["Living", sc(mb.expenses.living), C.slate], ["Travel / one-time", sc(mb.expenses.extra), "#A98B5A"],
+    ["Taxes", sc(mb.expenses.tax), C.clay],
+  ].filter(([, v]) => v > 0) : [];
+  // One mirrored bar: income (+ draw) stacks up, expenses stack down from zero.
+  const monthBar = mb ? [{ name:"mo",
+    ...Object.fromEntries(mbInc.map(([n, v]) => [n, v])),
+    ...Object.fromEntries(mbExp.map(([n, v]) => [n, -v])),
+  }] : [];
+  const milestoneColor = { income:SRC.ssA, life:C.brassDeep, tax:C.clay, spend:"#A98B5A" };
 
   const incomeStack = [
     { name:"Savings draw", value: Math.round(steady.wd), color:C.brass },
@@ -347,6 +400,8 @@ export default function RetirementCalculator() {
         .rc-grid { display:grid; grid-template-columns:1fr; gap:0; }
         @media (min-width:980px){ .rc-grid { grid-template-columns:430px 1fr; column-gap:28px; } }
         .rc-inputs { display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
+        .rc-yby-grid { grid-template-columns:1fr; }
+        @media (min-width:620px){ .rc-yby-grid { grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); } }
         .rc-stat { animation:rise .5s ease both; }
         @keyframes rise { from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;} }
         @media (prefers-reduced-motion:reduce){ .rc-stat,.rc-exp{ animation:none; transition:none; } }
@@ -411,9 +466,32 @@ export default function RetirementCalculator() {
                         onChange={(v)=>{ const sav=Number(s.savings)||0; const amt=Number(v)||0; set("tradFrac")(sav>0 ? Math.min(1, Math.max(0, amt/sav)) : 0); }} />}
                 </Field>
                 <Field label="Filing status"><Segmented value={s.status} onChange={set("status")} options={[{label:"Married",value:"married"},{label:"Single",value:"single"}]} /></Field>
-                <Field label={`Retire on this share of income — ${Math.round(s.targetPct*100)}%`} hint={`Base spending goal: ${usd0(incomeHH*s.targetPct)}/yr. The timeline adds the pre-65 healthcare gap on top.`}>
-                  <input type="range" min={20} max={80} step={5} value={s.targetPct*100} onChange={(e)=>set("targetPct")(Number(e.target.value)/100)} style={{ width:"100%", accentColor:C.brass }} />
-                </Field>
+                <div style={{ marginBottom:14 }}>
+                  <span style={{ display:"block", fontSize:12.5, fontWeight:600, color:C.ink, marginBottom:5 }}>Spending basis</span>
+                  <Segmented value={s.spendBasis} onChange={set("spendBasis")} options={[{label:"% of income",value:"income"},{label:"Location cost",value:"location"}]} />
+                  <span style={{ display:"block", fontSize:11, color:C.mut, marginTop:4, lineHeight:1.4 }}>Estimate retirement spending as a share of income, or from the cost of living where you'll retire.</span>
+                </div>
+                {s.spendBasis === "income" ? (
+                  <Field label={`Retire on this share of income — ${Math.round(s.targetPct*100)}%`} hint={`Base spending goal: ${usd0(incomeHH*s.targetPct)}/yr. The timeline adds the pre-65 healthcare gap on top.`}>
+                    <input type="range" min={20} max={80} step={5} value={s.targetPct*100} onChange={(e)=>set("targetPct")(Number(e.target.value)/100)} style={{ width:"100%", accentColor:C.brass }} />
+                  </Field>
+                ) : (() => {
+                  const l = LOCATIONS.find(x => x.name === s.retireLoc) || LOCATIONS[0];
+                  const life = (Number(s.lifestyle) || 100) / 100;
+                  const livingMo = Object.values(l.m).reduce((a, b) => a + b, 0) * life;
+                  const yr65 = Math.round((livingMo + l.hcPost) * 12);
+                  const yrPre = Math.round((livingMo + l.hcPre) * 12);
+                  return (
+                    <>
+                      <Field label="Cost-of-living basis" hint="Where you'll retire — sets the spending baseline and healthcare. (Same selector as on the timeline.)">
+                        <Select value={s.retireLoc} onChange={set("retireLoc")} options={LOCATIONS.map(x => x.name)} />
+                      </Field>
+                      <Field label={`Lifestyle — ${s.lifestyle}% of ${s.retireLoc} cost of living`} hint={`Spending here: about ${usd0(yr65)}/yr at 65+ (${usd0(yrPre)}/yr before Medicare, full-price healthcare). Lifestyle scales living costs; healthcare is applied by age.`}>
+                        <input type="range" min={70} max={150} step={5} value={s.lifestyle} onChange={(e)=>set("lifestyle")(Number(e.target.value))} style={{ width:"100%", accentColor:C.brass }} />
+                      </Field>
+                    </>
+                  );
+                })()}
               </Section>
 
               <Section eyebrow="Step two" title="When work stops & benefits begin">
@@ -522,7 +600,7 @@ export default function RetirementCalculator() {
               </Section>
 
               <Section eyebrow="Step five" title="Family milestones">
-                <p style={{ margin:"0 0 10px", fontSize:12.5, color:C.slate, lineHeight:1.5 }}>One-time gifts you may make — weddings, home help, a savings seed per grandchild. Add as many as you need.</p>
+                <p style={{ margin:"0 0 10px", fontSize:12.5, color:C.slate, lineHeight:1.5 }}>One-time gifts (weddings, home help, a grandchild's seed) and recurring costs (a new car every ~10 years, home upkeep). Set <b>Every</b> to repeat; leave it blank for a one-time event. Amounts are in today's dollars.</p>
                 {s.events.map((ev, idx) => (
                   <div key={ev.id} style={{ border:`1px solid ${C.line}`, borderRadius:9, padding:"10px 12px 12px", marginBottom:10, background:C.panel }}>
                     <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:10 }}>
@@ -539,7 +617,7 @@ export default function RetirementCalculator() {
                           options={[{label:"On",value:true},{label:"Off",value:false}]} />
                       </div>
                       <div>
-                        <div style={{ fontSize:10.5, letterSpacing:.5, textTransform:"uppercase", color:C.slate, fontWeight:700, marginBottom:4 }}>Year</div>
+                        <div style={{ fontSize:10.5, letterSpacing:.5, textTransform:"uppercase", color:C.slate, fontWeight:700, marginBottom:4 }}>{ev.everyYears ? "Start year" : "Year"}</div>
                         <NumberInput value={ev.year} aria-label={`Event ${idx + 1} year`}
                           onChange={(v)=>{ const next=s.events.map((x,i)=> i===idx ? { ...x, year:Number(v)||0 } : x); set("events")(next); }} />
                       </div>
@@ -547,6 +625,18 @@ export default function RetirementCalculator() {
                         <div style={{ fontSize:10.5, letterSpacing:.5, textTransform:"uppercase", color:C.slate, fontWeight:700, marginBottom:4 }}>Amount</div>
                         <NumberInput value={ev.amount} aria-label={`Event ${idx + 1} amount`} prefix="$"
                           onChange={(v)=>{ const next=s.events.map((x,i)=> i===idx ? { ...x, amount:Number(v)||0 } : x); set("events")(next); }} />
+                      </div>
+                    </div>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, alignItems:"end", marginTop:10 }}>
+                      <div>
+                        <div style={{ fontSize:10.5, letterSpacing:.5, textTransform:"uppercase", color:C.slate, fontWeight:700, marginBottom:4 }}>Every (yrs)</div>
+                        <NumberInput value={ev.everyYears ?? ""} aria-label={`Event ${idx + 1} repeat every years`} suffix="yrs"
+                          onChange={(v)=>{ const ev2 = v===""? undefined : (Number(v)||0); const next=s.events.map((x,i)=> i===idx ? { ...x, everyYears:ev2 } : x); set("events")(next); }} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize:10.5, letterSpacing:.5, textTransform:"uppercase", color:C.slate, fontWeight:700, marginBottom:4 }}>Until year</div>
+                        <NumberInput value={ev.untilYear ?? ""} aria-label={`Event ${idx + 1} until year`}
+                          onChange={(v)=>{ const u = v===""? undefined : (Number(v)||0); const next=s.events.map((x,i)=> i===idx ? { ...x, untilYear:u } : x); set("events")(next); }} />
                       </div>
                     </div>
                   </div>
@@ -755,8 +845,9 @@ export default function RetirementCalculator() {
                 <h3 style={{ margin:"2px 0 2px", fontFamily:"'Newsreader',serif", fontWeight:500, fontSize:19 }}>Income by source, year by year</h3>
                 <p style={{ margin:"2px 0 8px", fontSize:12.5, color:C.slate, lineHeight:1.5 }}>The dashed line is your spending need — it rises in the pre-65 years to cover full-price healthcare, then drops when Medicare/local cover kicks in. The portfolio (gold) fills whatever the other sources don't.{depAge!=null ? <> At the dotted line (<b style={{ color:C.clay }}>age {depAge}</b>) the gold runs out — savings are spent and you live on the guaranteed floor (SS{s.pensionOn?" + pension":""}{hasRental?" + rental":""}) of about <b style={{ color:C.clay }}>{usd0(floorAtDep)}/yr</b>{floorAtDep < needAtDep ? <>, roughly <b style={{ color:C.clay }}>{usd0(needAtDep - floorAtDep)}/yr short</b> of the need</> : <>, which still covers the need</>}.</> : <> The savings are never fully drawn down in this plan.</>}</p>
                 <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:4 }}>
-                  <span style={{ fontSize:11.5, color:C.slate, fontWeight:600 }}>Healthcare basis:</span>
+                  <span style={{ fontSize:11.5, color:C.slate, fontWeight:600 }}>{s.spendBasis==="location" ? "Cost-of-living basis:" : "Healthcare basis:"}</span>
                   <div style={{ minWidth:200, flex:"1 1 200px" }}><Select value={s.retireLoc} onChange={set("retireLoc")} options={LOCATIONS.map(l=>l.name)} /></div>
+                  {s.spendBasis==="location" && <span style={{ fontSize:11, color:C.brassDeep, fontWeight:600 }}>drives the whole spend</span>}
                 </div>
                 {locByName(s.retireLoc)?.region !== "US" && (() => {
                   const here = locByName(s.retireLoc);
@@ -770,7 +861,8 @@ export default function RetirementCalculator() {
                 })()}
               </div>
               <ResponsiveContainer width="100%" height={252}>
-                <ComposedChart data={compRows} margin={{ top:6, right:12, left:4, bottom:0 }}>
+                <ComposedChart data={compRows} margin={{ top:6, right:12, left:4, bottom:0 }} style={{ cursor:"pointer" }}
+                  onClick={(e)=>{ const a = e && e.activeLabel; if (a != null) { setYbyOpen(true); setSelYear(2026 + (Number(a) - s.ageA)); } }}>
                   <CartesianGrid stroke={C.line} strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="age" tick={{ fontSize:11, fill:C.slate }} tickLine={false} axisLine={{ stroke:C.line }} />
                   <YAxis tickFormatter={usdK} tick={{ fontSize:11, fill:C.slate }} tickLine={false} axisLine={false} width={42} />
@@ -796,6 +888,106 @@ export default function RetirementCalculator() {
                 ))}
                 <span style={{ display:"flex", alignItems:"center", gap:5, fontSize:11.5, color:C.slate }}><span style={{ width:14, height:0, borderTop:`2px dashed ${C.clay}` }} />spending need</span>
               </div>
+            </div>
+
+            {/* Year by year — a typical month (or full year) for the selected year */}
+            <div style={{ background:C.panel, border:`1px solid ${C.line}`, borderRadius:14, padding:"16px 14px 14px", marginBottom:16 }}>
+              <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:10, padding:"0 4px 6px" }}>
+                <div>
+                  <div style={{ fontSize:11, letterSpacing:1.5, textTransform:"uppercase", color:C.brassDeep, fontWeight:700 }}>Year by year</div>
+                  <h3 style={{ margin:"2px 0 2px", fontFamily:"'Newsreader',serif", fontWeight:500, fontSize:19 }}>{ybyView==="year" ? `The year ${activeYear}` : `A month in the life of ${activeYear}`}</h3>
+                  {ybyOpen && <p style={{ margin:"2px 0 10px", fontSize:12.5, color:C.slate, lineHeight:1.5 }}>Advance through the plan one year at a time. Bars show a {ybyView==="year" ? <b style={{ color:C.ink }}>full year</b> : <b style={{ color:C.ink }}>typical month</b>} {ybyView==="year" ? "(the year's totals)" : "(the year's totals ÷ 12)"}: income rises above the line, spending drops below it, and the <b style={{ color:C.brassDeep }}>gold</b> portfolio draw bridges whatever the other income doesn't cover. One-time events are flagged below — they land in the year, not a specific month. Tip: click a year on the staircase above to jump here.</p>}
+                </div>
+                <button type="button" aria-label={ybyOpen?"collapse year by year":"expand year by year"} aria-expanded={ybyOpen} onClick={()=>setYbyOpen(o=>!o)}
+                  style={{ flex:"0 0 auto", border:`1px solid ${C.line}`, background:C.panel, borderRadius:8, width:32, height:32, cursor:"pointer", color:C.slate, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <Chevron up={ybyOpen} />
+                </button>
+              </div>
+
+              {ybyOpen && <>
+              {/* View toggle */}
+              <div style={{ display:"flex", padding:"2px 4px 8px", maxWidth:280 }}>
+                <Segmented value={ybyView} onChange={setYbyView} options={[{label:"Typical month",value:"month"},{label:"Full year",value:"year"}]} />
+              </div>
+
+              {/* Navigator */}
+              <div style={{ display:"flex", alignItems:"center", gap:10, padding:"2px 4px 6px", flexWrap:"wrap" }}>
+                <button type="button" aria-label="previous year" onClick={()=>setSelYear(Math.max(yrMin, activeYear-1))} disabled={activeYear<=yrMin}
+                  style={{ border:`1px solid ${C.line}`, background:C.panel, borderRadius:8, width:32, height:32, cursor:activeYear<=yrMin?"default":"pointer", color:C.ink, fontSize:15, opacity:activeYear<=yrMin?0.4:1 }}>◀</button>
+                <input type="range" aria-label="select year" min={yrMin} max={yrMax} step={1} value={activeYear}
+                  onChange={(e)=>setSelYear(Number(e.target.value))}
+                  style={{ flex:"1 1 180px", minWidth:140, accentColor:C.brass, cursor:"pointer" }} />
+                <button type="button" aria-label="next year" onClick={()=>setSelYear(Math.min(yrMax, activeYear+1))} disabled={activeYear>=yrMax}
+                  style={{ border:`1px solid ${C.line}`, background:C.panel, borderRadius:8, width:32, height:32, cursor:activeYear>=yrMax?"default":"pointer", color:C.ink, fontSize:15, opacity:activeYear>=yrMax?0.4:1 }}>▶</button>
+                <button type="button" aria-label={playing?"pause":"play"} aria-pressed={playing} onClick={()=>{ if(playing){ setPlaying(false); } else { setSelYear(activeYear>=yrMax ? yrMin : activeYear); setPlaying(true); } }}
+                  style={{ border:`1px solid ${C.line}`, background:playing?C.ink:C.panel, color:playing?"#fff":C.ink, borderRadius:8, padding:"0 12px", height:32, cursor:"pointer", fontSize:12.5, fontWeight:600 }}>{playing?"❚❚ Pause":"▶ Play"}</button>
+                <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:13, fontWeight:600, color:C.ink, minWidth:150 }}>{activeYear} · You {selRow?.aA} · Spouse {selRow?.aB}</span>
+              </div>
+
+              {/* Milestone badges */}
+              <div style={{ display:"flex", gap:6, flexWrap:"wrap", padding:"2px 4px 10px", minHeight:8 }}>
+                {milestones.length===0
+                  ? <span style={{ fontSize:11.5, color:C.mut }}>No notable events this year — a steady year.</span>
+                  : milestones.map(ev=>(
+                    <span key={ev.key} style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:11, fontWeight:600, color:milestoneColor[ev.kind]||C.slate, background:(milestoneColor[ev.kind]||C.slate)+"18", border:`1px solid ${(milestoneColor[ev.kind]||C.slate)}40`, borderRadius:999, padding:"3px 9px" }}>
+                      {ev.label}{ev.amount ? ` · ${usd0(ev.amount)}` : ""}
+                    </span>
+                  ))}
+              </div>
+
+              {/* Chart + donut + summary */}
+              <div style={{ display:"grid", gap:14, alignItems:"center" }} className="rc-yby-grid">
+                <ResponsiveContainer width="100%" height={250}>
+                  <ComposedChart data={monthBar} margin={{ top:6, right:8, left:4, bottom:0 }} stackOffset="sign">
+                    <CartesianGrid stroke={C.line} strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="name" tick={false} axisLine={{ stroke:C.line }} height={1} />
+                    <YAxis tickFormatter={usdK} tick={{ fontSize:11, fill:C.slate }} tickLine={false} axisLine={false} width={46} />
+                    <Tooltip formatter={(v,n)=>[usd0(Math.abs(v))+ybyUnit, n]} labelFormatter={()=>ybyView==="year"?`Full year ${activeYear}`:`A typical month in ${activeYear}`} contentStyle={{ borderRadius:8, border:`1px solid ${C.line}`, fontSize:12, fontFamily:"'JetBrains Mono',monospace" }} />
+                    <ReferenceLine y={0} stroke={C.slate} strokeWidth={1} />
+                    {mbInc.map(([n,,c])=>(<Bar key={n} dataKey={n} stackId="mo" fill={c} />))}
+                    {mbExp.map(([n,,c])=>(<Bar key={n} dataKey={n} stackId="mo" fill={c} />))}
+                  </ComposedChart>
+                </ResponsiveContainer>
+                <div>
+                  <div style={{ height:150 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={mbInc.map(([n,v,c])=>({name:n,value:Math.round(v),color:c}))} dataKey="value" nameKey="name" innerRadius={40} outerRadius={62} paddingAngle={2} stroke="none">
+                          {mbInc.map(([n,,c])=>(<Cell key={n} fill={c} />))}
+                        </Pie>
+                        <Tooltip formatter={(v,n)=>[usd0(v)+ybyUnit, n]} contentStyle={{ borderRadius:8, border:`1px solid ${C.line}`, fontSize:12, fontFamily:"'JetBrains Mono',monospace" }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div style={{ textAlign:"center", fontSize:10.5, color:C.mut, marginTop:-2 }}>where the money comes from</div>
+                  </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:10 }}>
+                    {[[`Income${ybyUnit}`, mb? (mb.incomeTotalMo + mb.draw)*ybyScale : 0, C.viridian],
+                      [`Expenses${ybyUnit}`, mb? mb.expenseTotalMo*ybyScale : 0, C.clay]].map(([k,v,col])=>(
+                      <div key={k} style={{ background:"#FCFAF4", border:`1px solid ${C.line}`, borderRadius:9, padding:"8px 10px" }}>
+                        <div style={{ fontSize:10.5, color:C.slate, fontWeight:600 }}>{k}</div>
+                        <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:16, fontWeight:600, color:col }}>{usd0(v)}</div>
+                      </div>
+                    ))}
+                    <div style={{ gridColumn:"1 / -1", background:(mb&&mb.netMo>=-1?C.viridian:C.clay)+"12", border:`1px solid ${(mb&&mb.netMo>=-1?C.viridian:C.clay)}40`, borderRadius:9, padding:"8px 10px" }}>
+                      <div style={{ fontSize:10.5, color:C.slate, fontWeight:600 }}>{selRow && (selRow.salA>0||selRow.salB>0) ? `Surplus${ybyUnit} (to savings)` : "Net after the savings draw"}</div>
+                      <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:16, fontWeight:600, color:mb&&mb.netMo>=-1?C.viridian:C.clay }}>{mb? (mb.netMo>=0?"+":"")+usd0(mb.netMo*ybyScale) : "$0"}{mb && Math.abs(mb.netMo*ybyScale)<1 ? "  ·  balanced" : ""}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Annual context line */}
+              {selRow && <div style={{ fontSize:11.5, color:C.slate, padding:"10px 6px 0", lineHeight:1.5 }}>
+                <b style={{ color:C.ink }}>{activeYear} in full:</b> income {usd0((selRow.salA+selRow.salB+selRow.rent+selRow.pens+selRow.ssA+selRow.ssB) + (selRow.wdSpend ?? selRow.wd))}/yr · spending {usd0(selRow.need)}/yr · taxes {usd0(selRow.tax)}/yr · savings draw {usd0(selRow.wdSpend ?? selRow.wd)}/yr · portfolio left {usd0(selRow.bal)}.
+              </div>}
+
+              {/* Legend */}
+              <div style={{ display:"flex", gap:"6px 14px", flexWrap:"wrap", padding:"10px 6px 2px" }}>
+                {[...mbInc, ...mbExp].map(([n,,c])=>(
+                  <span key={n} style={{ display:"flex", alignItems:"center", gap:5, fontSize:11.5, color:C.slate }}><span style={{ width:11, height:11, borderRadius:3, background:c }} />{n}</span>
+                ))}
+              </div>
+              </>}
             </div>
 
             {/* Inside the portfolio — flows + tax buckets */}
