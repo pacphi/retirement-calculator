@@ -1,8 +1,7 @@
 import { C } from "../theme.js";
 import { propEcon } from "../../calculatorCore.js";
 import { PROP } from "../../retirementData.js";
-
-const usd0 = (x) => (x<0?"-$":"$") + Math.abs(Math.round(x)).toLocaleString();
+import { usd0 } from "../format.js";
 
 function PropCard({ keyName, s, setProp }) {
   const p = s[keyName], meta = PROP[keyName], e = propEcon(keyName, Number(p.value)||0);

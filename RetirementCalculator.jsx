@@ -30,9 +30,9 @@ import { TravelLongevity } from "./src/components/steps/TravelLongevity.jsx";
 import { Advanced } from "./src/components/steps/Advanced.jsx";
 import { usePlan } from "./src/hooks/usePlan.js";
 import { useMonteCarlo } from "./src/hooks/useMonteCarlo.js";
+import { usd0 } from "./src/components/format.js";
 
 /* ------------------------ Format + tiers ------------------------ */
-const usd0 = (x) => (x<0?"-$":"$") + Math.abs(Math.round(x)).toLocaleString();
 
 export const mcSummaryLines = (mc, horizon = 95) => mc ? [
   `Success probability: ${Math.round(mc.successProb * 100)}%`,

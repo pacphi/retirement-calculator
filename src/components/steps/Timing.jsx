@@ -1,9 +1,9 @@
 import { C } from "../theme.js";
 import { Field, NumberInput, Segmented, Section } from "../atoms/index.jsx";
 import { ownBenefitAtClaimMonthly, proratedFraEstimate } from "../../calculatorCore.js";
+import { usd0 } from "../format.js";
 
 const SSA_FRA_URL = "https://secure.ssa.gov/myssa/bec-plan-prep-ui/bec-home";
-const usd0 = (x) => (x<0?"-$":"$") + Math.abs(Math.round(x)).toLocaleString();
 
 /**
  * Step two — When work stops & benefits begin.

@@ -1,9 +1,7 @@
 import { C } from "../theme.js";
 import { Segmented } from "../atoms/index.jsx";
 import { lineItems, monthlyTotal } from "../../calculatorCore.js";
-
-const usd0 = (x) => (x < 0 ? "-$" : "$") + Math.abs(Math.round(x)).toLocaleString();
-const usdK = (x) => Math.abs(x) >= 1000 ? "$" + Math.round(x / 1000) + "k" : "$" + Math.round(x);
+import { usd0, usdK } from "../format.js";
 
 const phaseNote = (l, f) => {
   const pre = `$${Math.round(l.hcPre*f).toLocaleString()}`, post = `$${Math.round(l.hcPost*f).toLocaleString()}`;

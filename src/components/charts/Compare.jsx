@@ -2,9 +2,7 @@ import { C } from "../theme.js";
 import { Select } from "../atoms/index.jsx";
 import { LOCATIONS } from "../../retirementData.js";
 import { lineItems, monthlyTotal, tierFor } from "../../calculatorCore.js";
-
-const usd0 = (x) => (x < 0 ? "-$" : "$") + Math.abs(Math.round(x)).toLocaleString();
-const usdK = (x) => Math.abs(x) >= 1000 ? "$" + Math.round(x / 1000) + "k" : "$" + Math.round(x);
+import { usd0, usdK } from "../format.js";
 
 /**
  * Compare panel — side-by-side two-location cost comparison table.

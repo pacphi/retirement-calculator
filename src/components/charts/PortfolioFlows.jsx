@@ -4,9 +4,7 @@ import {
 } from "recharts";
 import { C, SRC } from "../theme.js";
 import { Segmented } from "../atoms/index.jsx";
-
-const usd0 = (x) => (x < 0 ? "-$" : "$") + Math.abs(Math.round(x)).toLocaleString();
-const usdK = (x) => Math.abs(x) >= 1000 ? "$" + Math.round(x / 1000) + "k" : "$" + Math.round(x);
+import { usd0, usdK } from "../format.js";
 
 const invName = {
   growth: "Growth",

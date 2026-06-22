@@ -3,9 +3,7 @@ import {
   ResponsiveContainer, ReferenceDot,
 } from "recharts";
 import { C } from "../theme.js";
-
-const usd0 = (x) => (x < 0 ? "-$" : "$") + Math.abs(Math.round(x)).toLocaleString();
-const usdK = (x) => Math.abs(x) >= 1000 ? "$" + Math.round(x / 1000) + "k" : "$" + Math.round(x);
+import { usd0, usdK } from "../format.js";
 
 /**
  * LongRun chart panel — portfolio balance over time with/without SS and stress test,

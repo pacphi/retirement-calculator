@@ -1,6 +1,5 @@
 import { C } from "../theme.js";
-
-const usd0 = (x) => (x<0?"-$":"$") + Math.abs(Math.round(x)).toLocaleString();
+import { usd0 } from "../format.js";
 
 /**
  * RiskTable — Social Security risk assessment panel.
