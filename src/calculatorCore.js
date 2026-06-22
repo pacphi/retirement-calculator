@@ -14,3 +14,4 @@ export * from "./finance/monteCarlo.js";
 export * from "./finance/breakdown.js";
 export { spendingHeadroom } from "./finance/headroom.js";
 export { accumulationSummary } from "./finance/accumulation.js";
+export * from "./finance/housing.js";
