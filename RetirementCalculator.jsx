@@ -65,6 +65,8 @@ export default function RetirementCalculator() {
     returnPreset: "balanced", volatility: 0.12, showStress: false,
     spendingShape: { mode: "flat", earlyDecline: 0.01, upturnAge: 85, lateUpturn: 0.01 },
     lifestyleSteps: [],
+    workLoc: "WA", relocationYear: 2046, stateCode: null,
+    housing: { tenure: "rent", rent: null, mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: 2026 }, homeValue: 0, insuranceAnnual: 0, maintenancePct: 0.01 },
   });
   const [couple, setCouple] = useState(true);
   const [stage, setStage] = useState("post");

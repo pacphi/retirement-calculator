@@ -77,6 +77,10 @@ export function buildPlanInputs(s) {
     volatility: (s.volatility != null && s.volatility !== "") ? Number(s.volatility) : 0.12,
     spendingShape: s.spendingShape ?? { mode: "flat" },
     lifestyleSteps: s.lifestyleSteps ?? [],
+    workLoc: s.workLoc ?? "WA",
+    relocationYear: Number(s.relocationYear) || (TAX_YEAR + 20),
+    stateCode: s.stateCode ?? null,
+    housing: s.housing ?? { tenure: "rent", rent: null, mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: TAX_YEAR }, homeValue: 0, insuranceAnnual: 0, maintenancePct: 0.01 },
   };
 }
 
