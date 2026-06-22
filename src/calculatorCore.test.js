@@ -28,6 +28,7 @@ import {
   stressReturnForYear,
   taxableSS,
   travelSpendForYear,
+  yearReturn,
 } from "./calculatorCore.js";
 import { LOCATIONS, SINGLE_COST_FACTOR } from "./retirementData.js";
 
@@ -1003,5 +1004,18 @@ describe("recurring events (seam contract for Wave 1 C3)", () => {
   });
   it("skips disabled events", () => {
     expect(scheduledSpendForYear([{ ...ev[0], on: false }], 2030)).toBe(0);
+  });
+});
+
+describe("yearReturn seam", () => {
+  const i = { realReturn: 0.05 };
+  it("prefers an injected return path", () => {
+    expect(yearReturn(i, 2, { returns: [0.1, 0.2, 0.3] })).toBeCloseTo(0.3, 6);
+  });
+  it("applies the stress schedule when stress is set", () => {
+    expect(yearReturn(i, 0, { stress: true })).toBeCloseTo(-0.10, 6); // STRESS_EARLY_DROP
+  });
+  it("falls back to the central real return", () => {
+    expect(yearReturn(i, 10, {})).toBeCloseTo(0.05, 6);
   });
 });

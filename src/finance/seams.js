@@ -26,7 +26,7 @@
  * @module seams
  */
 
-import { SINGLE_COST_FACTOR } from "../retirementData.js";
+import { SINGLE_COST_FACTOR, STRESS_EARLY_DROP } from "../retirementData.js";
 
 /**
  * ctx shape accepted by spendingComponents:
@@ -113,4 +113,36 @@ export function composeNeed(parts, liveSav = 0) {
   const floorBase = parts._floorBase != null ? parts._floorBase : total;
 
   return Math.max(0.35 * floorBase, total - liveSav);
+}
+
+/**
+ * Resolve the per-year portfolio return for a simulation step.
+ *
+ * Resolution order (mirrors the inline expression previously in simulate.js):
+ *   1. If ssOpt.returns is provided, use ssOpt.returns[y] (falling back to
+ *      i.realReturn if the array has no entry at y).
+ *   2. Else if ssOpt.stress is set, apply the stress schedule:
+ *        y <= 2 → STRESS_EARLY_DROP (-0.10)
+ *        y <= 5 → realReturn - 0.02
+ *        y >  5 → realReturn
+ *   3. Else return i.realReturn.
+ *
+ * Wave 1 (B1: return presets / variability / glidepath) swaps the body of
+ * this function without touching simulate.js.
+ *
+ * @param {{ realReturn: number }} i   - Inputs object
+ * @param {number} y                   - Year index (0-based) within the simulation
+ * @param {{ returns?: number[], stress?: boolean }} ssOpt - Scenario options
+ * @returns {number}
+ */
+export function yearReturn(i, y, ssOpt) {
+  if (ssOpt.returns) {
+    return ssOpt.returns[y] ?? i.realReturn;
+  }
+  if (ssOpt.stress) {
+    if (y <= 2) return STRESS_EARLY_DROP;
+    if (y <= 5) return i.realReturn - 0.02;
+    return i.realReturn;
+  }
+  return i.realReturn;
 }

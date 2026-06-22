@@ -1,5 +1,5 @@
 import { STRESS_EARLY_DROP, TAX_YEAR } from "../retirementData.js";
-import { composeNeed, spendingComponents } from "./seams.js";
+import { composeNeed, spendingComponents, yearReturn } from "./seams.js";
 import { calculateFederalTaxYear } from "./tax.js";
 import { ownBenefitAtClaimMonthly, piaFromIncome, spousalBenefitAtClaimMonthly } from "./socialSecurity.js";
 import { drsEligibilityNote, pensionERF, resolveAfc } from "./pension.js";
@@ -144,16 +144,12 @@ export function simulate(i, ssOpt) {
       + ltcSpendForYear(i.ltc, aA, i.ltcAnnual);
     const survAge = lifeOn && isSurvivor ? (survivorIsA ? aA : aB) : null;
     const need = spendingNeed(i, aA, aB, liveSav, isSurvivor, survAge) + extraSpend;
-    const yearReturn = ssOpt.returns
-      ? (ssOpt.returns[y] ?? i.realReturn)
-      : ssOpt.stress
-        ? stressReturnForYear(i.realReturn, y)
-        : i.realReturn;
+    const yr = yearReturn(i, y, ssOpt);
     // The deferred pool's prior year-end value is the IRS base for this year's RMD.
     const defBalStart = defBal;
-    const growth = bal * yearReturn; // investment growth this year (excludes the sale lump)
-    bal = bal * (1 + yearReturn) + sellLump;
-    defBal = defBal * (1 + yearReturn); // sale proceeds are taxable savings, not deferred
+    const growth = bal * yr; // investment growth this year (excludes the sale lump)
+    bal = bal * (1 + yr) + sellLump;
+    defBal = defBal * (1 + yr); // sale proceeds are taxable savings, not deferred
 
     const plannedContrib = plannedContribution(i, workA, workB);
     const taxBeforeWithdrawal = taxForYear(i, aA, aB, wages, pensEff, rent, ssAyEff + ssByEff, 0, yearStatus, cal);
