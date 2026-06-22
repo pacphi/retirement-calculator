@@ -737,20 +737,26 @@ git add -A
 git commit -m "feat(wave2): typed income-type-aware state tax composing on the federal engine + US-state picker"
 ```
 
-### Task 8: Work-vs-retire two-location jurisdiction split
+### Task 8: Work-vs-retire two-location jurisdiction split + relocation home transition
+
+> Includes the **relocation home transition** (user-confirmed: explicit, default sell). When the retirement location differs from the work location and the primary home is owned/mortgaged, at `relocationYear` the work home is sold (or kept as a rental) and housing switches to the retirement-location config — so an unpaid work-home mortgage doesn't keep charging after the move.
 
 **Files:**
 
+- Modify: `src/finance/housing.js` + `housing.test.js` (add `remainingBalance(mortgage, cal)`)
 - Create: `src/finance/jurisdiction.js` + `src/finance/jurisdiction.test.js`
-- Modify: `src/finance/simulate.js` (per-year jurisdiction + cost basis + healthcare-bridge gating)
-- Modify: `src/finance/plan.js` (resolve work/retire profiles + active property rate by year)
-- Create/Modify: `src/components/steps/LocationTax.jsx` (work-state picker + relocation year)
+- Modify: `src/finance/simulate.js` (per-year jurisdiction + cost basis + healthcare-bridge gating + active-housing-by-year + relocation sell-lump)
+- Modify: `src/finance/plan.js` (resolve work/retire profiles + active property rate by year; default `retireHousing`)
+- Create/Modify: `src/components/steps/LocationTax.jsx` (work-state picker + relocation year), `src/components/steps/Housing.jsx` (retire-housing config + work-home disposition + estimated sale value)
 - Modify: `src/components/charts/Staircase.jsx` (relocation boundary marker)
-- Modify: `RetirementCalculator.test.jsx`
+- Modify: `RetirementCalculator.jsx` (state: `retireHousing`, `housing.relocation`), `RetirementCalculator.test.jsx`
 
 **Interfaces:**
 
 - Produces: `activeJurisdiction(i, cal) -> { profile, propertyTaxRate, isRetirement }` where `isRetirement = cal >= i.relocationYear`. In retirement, `profile = i.stateCode ? US_STATE_TAX[i.stateCode] : (INTL_TAX[i.retireLoc] ?? null)` (null ⇒ flat `addlTaxRate`/override path); in working years `profile = US_STATE_TAX[i.workLoc] ?? null`. `propertyTaxRate` from the active US-state profile (or 0 / the inherited home's jurisdiction abroad). The cost-of-living basis selector returns the active location for the need.
+- Produces: `remainingBalance(mortgage, cal) -> number` — outstanding principal at the start of calendar year `cal` via the standard amortization remaining-balance formula `P·[(1+r)^n − (1+r)^p] / ((1+r)^n − 1)` (r monthly rate, n term months, p = months elapsed = `(cal − startYear)·12`, clamped to `[0,n]`); 0 before `startYear` payments begin only if `cal < startYear`, and 0 from payoff on.
+- Produces: **active-housing-by-year** — `cal < relocationYear ? i.housing : (inheritedOwnOverride ?? i.retireHousing ?? defaultRetireRent)`. New state: `retireHousing` (a DEFAULT_HOUSING-shaped config for the retirement residence; defaults to rent seeded from `retLocObj.m.rent`), and `i.housing.relocation = { action: "sell" | "keep" | "none", saleValue }`.
+- Produces: **relocation sell-lump** — when `cal === relocationYear`, `i.housing.tenure ∈ {mortgage, own}`, retire location differs, and `relocation.action === "sell"`: a portfolio lump `sellNet × saleValue − remainingBalance(i.housing.mortgage, relocationYear)` is added (reusing the existing `sellLump` path; `sellNet` from a planning-grade selling-cost factor, default ~0.93), and the work-home P&I is zeroed from `relocationYear`. `action === "keep"` ⇒ the work mortgage continues and its imputed rent becomes rental income (reuse the rental path); `none` ⇒ no transition (same-location assumption).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -775,9 +781,40 @@ it("uses the work state before relocation and the retire state after", () => {
 
 Replace the single `i.taxRate` application with: each year resolve `activeJurisdiction(i, cal)`; pass its `profile`/`isRetirement` to the composed state layer (Task 6); use its `propertyTaxRate` for the housing component; select the cost-of-living basis (work vs retire location) for `nonHousingBase`; and gate the **pre-65 healthcare bridge** to post-relocation (retirement) years at the retire location, per v3 §4. The wage face taxes `wages` in working years; the retirement face taxes the typed mix after relocation. Federal engine still unforked.
 
-- [ ] **Step 5: UI — work-state picker + relocation year + boundary marker**
+- [ ] **Step 4b: `remainingBalance` + relocation home transition (test-first)**
 
-In `LocationTax.jsx` add a work-location `Select` ("Where you live & earn now", default WA) and a `relocationYear` `NumberInput` with a note ("when the tax/cost basis switches; transition year simplified — see disclaimer"). In `Staircase.jsx`, draw a thin vertical relocation-boundary rule (like the depletion line). Accessible labels: "Where you live and earn now", "Relocation year".
+```js
+// housing.test.js
+import { remainingBalance } from "./housing.js";
+it("computes the outstanding mortgage balance partway through the term", () => {
+  const m = { principal: 300000, ratePct: 6, termYears: 30, startYear: 2026 };
+  expect(remainingBalance(m, 2026)).toBeCloseTo(300000, 0);     // start
+  expect(remainingBalance(m, 2056)).toBe(0);                    // paid off
+  expect(remainingBalance(m, 2041)).toBeGreaterThan(0);         // mid-term, still owed
+  expect(remainingBalance(m, 2041)).toBeLessThan(300000);
+});
+```
+
+```js
+// in calculatorCore.test.js — relocation sell transition
+it("selling the work home at relocation adds net proceeds to the portfolio and zeros work P&I (Task 8)", () => {
+  // work mortgage in a US work state, retire to a different state, action "sell", saleValue estimated
+  const sell = calculatePlan({ /* persona with housing.tenure "mortgage", relocationYear 2046,
+     stateCode "TX", workLoc "CA", housing.relocation { action:"sell", saleValue: 600000 }, retireHousing rent */ });
+  const keep = calculatePlan({ /* same but relocation.action "keep" */ });
+  const sRow = sell.simChosen.rows.find(r => r.cal === 2046);
+  expect(sRow.sellLump).toBeGreaterThan(0);                     // net proceeds realized at relocation
+  const after = sell.simChosen.rows.find(r => r.cal === 2048);
+  // post-relocation the work P&I is gone (housing switched to retire rent), so housing < the mortgage years
+  expect(after.housing).toBeLessThan(sell.simChosen.rows.find(r => r.cal === 2044).housing);
+});
+```
+
+Implement: add `remainingBalance(mortgage, cal)` to `housing.js` (amortization remaining-balance formula, clamped). In `simulate.js`, select the active housing config per year (`cal < relocationYear ? i.housing : (inheritedOwnOverride ?? i.retireHousing ?? defaultRetireRent)`); when `cal === relocationYear` and the work home is owned/mortgaged and the retire location differs and `relocation.action === "sell"`, push a `sellLump = sellNet × saleValue − remainingBalance(...)` (reuse the existing sale-lump bucket so the portfolio/`bal` and the steady-state discounting both already handle it) and stop charging the work P&I. `action === "keep"` routes the work-home imputed rent to the rental path; `none` keeps the current single-config behavior. Run the tests; re-baseline as needed.
+
+- [ ] **Step 5: UI — work-state picker + relocation year + relocation home disposition + boundary marker**
+
+In `LocationTax.jsx` add a work-location `Select` ("Where you live & earn now", default WA) and a `relocationYear` `NumberInput` with a note ("when the tax/cost basis switches; transition year simplified — see disclaimer"). In `Housing.jsx`, when `workLoc !== retire location` and the work home is owned/mortgaged, surface a **work-home disposition** `Segmented` (Sell at move / Keep as rental) and, for sell, an **estimated sale value** `NumberInput` (captioned: you estimate the market value; selling costs ~7%; primary-residence cap-gains exclusion ~$500k MFJ usually covers the gain — consult a specialist) plus a **retirement-home** config (rent default / mortgage / own). In `Staircase.jsx`, draw a thin vertical relocation-boundary rule (like the depletion line). Accessible labels: "Where you live and earn now", "Relocation year", "Work home at relocation", "Estimated sale value", "Retirement home". Default state: `housing.relocation = { action: "sell", saleValue: 0 }`, `retireHousing = { tenure: "rent", rent: null, ... }` (rent seeded from `retLocObj.m.rent`).
 
 - [ ] **Step 6: Re-baseline + caption + commit**
 
@@ -852,7 +889,8 @@ git commit -m "feat(wave2): month view itemizes housing (P&I + property tax) and
 3. **Floor policy** — `composeNeed` floors non-housing only; housing added outside the max; `_floorBase` never includes housing. The Wave-0 floor note in `seams.js` is updated to record the Wave-2 decision.
 4. **No double-count** — rent removed from the location basket when housing is active; inherited live-in is a tenure override, not a stacked credit; targetPct reframed to non-housing.
 5. **Re-baseline integrity** — every changed default assertion has a comment explaining the Wave-2 reshape; Task 4's report records the default headline before/after.
-6. **Type consistency** — `monthlyPI`, `payoffYear`, `housingCostForYear`, `residenceTaxForYear(profile, base)`, `activeJurisdiction(i, cal)` referenced with identical signatures across tasks and re-exported in `calculatorCore.js`.
+6. **Type consistency** — `monthlyPI`, `payoffYear`, `housingCostForYear`, `remainingBalance`, `residenceTaxForYear(profile, base)`, `activeJurisdiction(i, cal)` referenced with identical signatures across tasks and re-exported in `calculatorCore.js`.
+7. **Relocation home transition** — same-location mortgage spans the work→retire boundary unchanged; when the retire location differs and the work home is owned/mortgaged, the default-sell path adds `sellNet×saleValue − remainingBalance` to the portfolio at `relocationYear`, zeroes the work P&I, and switches to the retire-location housing; `keep` routes to the rental path; the default persona (rent → inherited-own) is unaffected. Sale value is user-estimated and captioned planning-grade.
 
 ---
 
