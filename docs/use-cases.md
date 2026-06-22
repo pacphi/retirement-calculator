@@ -4,7 +4,7 @@
 >
 > **Tagline:** This is about your money, your home, and what comes next.
 
-**Version:** 1.0 · **Reference year:** 2026 · **Companion docs:** PRD; Sources & References
+**Version:** 1.1 (Wave 1) · **Reference year:** 2026 · **Companion docs:** PRD; Sources & References
 
 ---
 
@@ -40,6 +40,14 @@
   - [4.6 Long-Term Care](#46-long-term-care)
 - [5. Worked Example: The Default Scenario](#5-worked-example-the-default-scenario)
 - [6. Known Simplifications and Rationale](#6-known-simplifications-and-rationale)
+- [7. Wave 1 Use Cases (B1, B2, C1, C2, C3, A3, E1)](#7-wave-1-use-cases-b1-b2-c1-c2-c3-a3-e1)
+  - [UC-19 Return Presets and Monte Carlo Band (B1)](#uc-19-return-presets-and-monte-carlo-band-b1)
+  - [UC-20 Sequence-of-Returns Stress Toggle (B2)](#uc-20-sequence-of-returns-stress-toggle-b2)
+  - [UC-21 Retirement Spending Smile (C1)](#uc-21-retirement-spending-smile-c1)
+  - [UC-22 Lifestyle Level and Permanent Step-Changes (C2)](#uc-22-lifestyle-level-and-permanent-step-changes-c2)
+  - [UC-23 Typed Life Events with Emergent Flag (C3)](#uc-23-typed-life-events-with-emergent-flag-c3)
+  - [UC-24 Accumulation Summary Card (A3)](#uc-24-accumulation-summary-card-a3)
+  - [UC-25 Live Headroom Read-Out (E1)](#uc-25-live-headroom-read-out-e1)
 
 ---
 
@@ -798,3 +806,224 @@ This illustrates the interaction the tool is designed to expose: the pre‑65 cl
 | Unsubsidized pre‑65 ACA figures | Conservative planning floor | Managing taxable income can unlock subsidies that lower the real cost |
 | Qualitative state tax (except WA) | Avoids a 50‑state engine | High‑tax states (CA/NY) can materially change the resident outcome |
 | Live‑in saving applied to the generic need | Captures the housing economics | For full fidelity, set the healthcare basis to the live‑in country |
+| Monte Carlo uses lognormal paths | Standard model for equity-like returns; matches CFA research | Fat tails and autocorrelation are not captured; treat bands as planning ranges |
+| Blanchett smile uses a smooth polynomial | Calibrated to published research; sufficient for planning | Individual spending trajectories vary; healthcare spikes are modeled separately |
+| Lifestyle steps applied outside floor base | Keeps discretionary shifts separate from the core need | A very large negative step could produce a need below the 35% floor (clamped) |
+| Emergent events excluded from baseline | Allows clean baseline vs. shock comparison | Users must actively flag events as emergent; the model does not auto-classify |
+| Accumulation IRR uses a single portfolio | Reasonable for a combined household savings view | Commingled accounts obscure per-spouse contribution timing |
+| Headroom solved by bisection on annual spend | Consistent with the main simulation engine; deterministic | Headroom ignores Monte Carlo variability — use the p10 band for a stress floor |
+
+---
+
+## 7. Wave 1 Use Cases (B1, B2, C1, C2, C3, A3, E1)
+
+The following use cases document the seven planning-grade features added in Wave 1. Each follows the same template as Section 3.
+
+---
+
+### UC-19 Return Presets and Monte Carlo Band (B1)
+
+**Purpose.** Let users choose a named return assumption and see the range of portfolio outcomes as an auto-rendered probability band rather than a single line.
+
+**Implements.** FR‑MC‑01, FR‑MC‑02, FR‑MC‑03, FR‑MC‑04.
+
+**Inputs.** `returnPreset` (`"conservative"` | `"balanced"` | `"growth"` | `"custom"`); `customReturn` (used when preset is `"custom"`); `variability` (annual std dev, default 0.07); all existing simulation inputs.
+
+**Logic** (`src/finance/monteCarlo.js`).
+
+```js
+resolveReturn(preset, custom):
+  { conservative: 0.035, balanced: 0.05, growth: 0.065, custom }[preset]
+
+// Run N=200 lognormal paths; per-year return for path k:
+r_k_y ~ lognormal( ln(1+mu) - 0.5*sigma^2, sigma )
+  where mu = resolveReturn(preset, custom), sigma = variability
+
+// Collect terminal or per-year balances; derive p10, p50, p90 across paths.
+```
+
+The debounced runner fires on any input change. Chart renders the p50 line as the primary balance trace; a shaded region fills between p10 and p90.
+
+**Outputs.** Per-year `{ p10, p50, p90 }` balance arrays; headline median terminal balance plus the p10–p90 range label.
+
+**Scenario.** *"The couple wants to know whether the Balanced preset changes their outlook vs. the Growth assumption they have been using, and how wide the uncertainty band is."* They switch from Growth (6.5%) to Balanced (5.0%): the median line drops and the p10 floor falls noticeably, revealing a tighter buffer. Increasing variability from 7% to 12% widens the band further. Returning variability to 0% collapses the band to the deterministic line — confirming the Monte Carlo is additive, not replacing the base model.
+
+**Edge cases.** With `returnPreset = "custom"` and `variability = 0`, the result matches the pre-Wave-1 deterministic output exactly. Paths where the balance hits zero are counted toward the depletion-probability stat but do not error.
+
+---
+
+### UC-20 Sequence-of-Returns Stress Toggle (B2)
+
+**Purpose.** Overlay a single illustrative "bad first decade" path on the balance chart to show the directional impact of sequence-of-returns risk.
+
+**Implements.** FR‑STRESS‑01, FR‑STRESS‑02, FR‑STRESS‑03, FR‑STRESS‑04.
+
+**Inputs.** `stress` boolean toggle (Advanced step); `realReturn`; all simulation inputs.
+
+**Logic.** `stressReturnForYear(realReturn, yearIndex)` — see Section 4.4. The stress simulation is run in parallel with the base; only the balance array differs.
+
+**Outputs.** A brass dotted line on the long-run balance chart; the stress-path depletion age (if earlier than base).
+
+**Scenario.** *"The couple worries about retiring into a downturn like 2000–02. They enable the stress toggle to see how much earlier their savings might deplete."* With defaults, the stress path depletes roughly 3–5 years earlier than the deterministic base. They note the disclaimer that −10% is milder than the actual 2000–02 sequence and use the Monte Carlo p10 band for a broader distribution. They leave the toggle on as a persistent sanity check while adjusting other inputs.
+
+**Edge cases.** The stress path applies only from the first retirement year (`yearIndex = 0`); pre-retirement years use the base return. With both the stress toggle and the Monte Carlo band active, the chart shows three distinct traces: p10/p50/p90 band, base deterministic line, and stress line — each visually distinct.
+
+---
+
+### UC-21 Retirement Spending Smile (C1)
+
+**Purpose.** Shape the non-housing spending base to follow the Blanchett curve — declining in real terms through the go-go and slow-go phases, then upticking in the late-life no-go phase — with healthcare added on top.
+
+**Implements.** FR‑SMILE‑01, FR‑SMILE‑02, FR‑SMILE‑03, FR‑SMILE‑04.
+
+**Inputs.** `spendingShape` (`"flat"` | `"smile"` | `"custom"`); `retireAge` (the age the smile anchors to); per-year ages; all existing `need` inputs.
+
+**Logic** (`src/finance/spendingShape.js`).
+
+```js
+smileMultiplier(age, retireAge, shape):
+  if shape === "flat"   -> 1.0
+  if shape === "smile"  -> polynomial calibrated to Blanchett (2014)
+                           // ~1.0 at retireAge, declining to ~0.85 at retireAge+15,
+                           // rising to ~0.95 at retireAge+30
+  if shape === "custom" -> user-supplied multiplier table (linear interpolation)
+
+need_y = smileMultiplier(age_y, retireAge, shape) * _floorBase + hcBump_y + extraSpend_y
+```
+
+Healthcare (`hcBump_y`) and discretionary extras (`extraSpend_y`) are **not** scaled by the multiplier.
+
+**Outputs.** A year-specific `need` that follows the smile curve; the staircase chart spending-need dashed line visibly bows down then up.
+
+**Scenario.** *"The couple reads about the Blanchett spending smile and wants to model lower real spending in their 70s (fewer travel impulses, less entertainment) with a healthcare uptick in their late 80s."* They switch from Flat to Smile: the staircase need-line dips from ages 72–82 and then curves back up. The headroom figure (UC‑25) increases in the middle years, reflecting the lower draw. They confirm the late-life uptick is captured separately by enabling the LTC episode (Section 4.6) on top.
+
+**Edge cases.** `spendingShape = "flat"` (default) leaves all outputs numerically identical to the pre-Wave-1 baseline. The smile multiplier is floored at a minimum so the need never drops below the 35% floor base. Custom shape requires at least two anchor points; the engine interpolates linearly between them.
+
+---
+
+### UC-22 Lifestyle Level and Permanent Step-Changes (C2)
+
+**Purpose.** Scale the overall spending level and schedule permanent up- or down-shifts in annual spending from chosen years.
+
+**Implements.** FR‑LSTEP‑01, FR‑LSTEP‑02, FR‑LSTEP‑03, FR‑LSTEP‑04.
+
+**Inputs.** `lifestyleLevel` (percentage, default 100%); `lifestyleSteps[]` — array of `{ fromYear, deltaAnnual }` objects; all existing `need` inputs.
+
+**Logic** (`src/finance/lifestyleSteps.js`).
+
+```js
+lifestyleStepDelta(steps, cal):
+  steps
+    .filter(s => cal >= s.fromYear)
+    .reduce((sum, s) => sum + s.deltaAnnual, 0)
+
+need_y = smileMultiplier * (_floorBase * lifestyleLevel/100)
+       + lifestyleStepDelta(lifestyleSteps, cal_y)
+       + hcBump_y + extraSpend_y
+```
+
+Step deltas are cumulative: each active row's `deltaAnnual` is summed. Steps are applied after the smile multiplier and outside `_floorBase`, so they do not affect the 35% floor.
+
+**Outputs.** A per-year `need` that reflects the lifestyle scale and any permanent shifts; changes are visible on the staircase need-line from the chosen `fromYear`.
+
+**Scenario.** *"The couple plans to downsize from their primary home in 2035, cutting housing-related spending by $8,000/yr permanently. They also set lifestyle to 90% to reflect a leaner retirement than their current income suggests."* They add a step `{ fromYear: 2035, deltaAnnual: -8000 }` and set `lifestyleLevel = 90`. The staircase shows the need-line stepping down sharply in 2035; the headroom figure improves. They later add a second step `{ fromYear: 2045, deltaAnnual: +4000 }` for anticipated higher maintenance costs — the model stacks both.
+
+**Edge cases.** An empty `lifestyleSteps` array (default `[]`) with `lifestyleLevel = 100` produces identical output to the pre-Wave-1 baseline. A delta large enough to push `need` below the 35% floor is clamped silently; the UI warns if the floor is binding.
+
+---
+
+### UC-23 Typed Life Events with Emergent Flag (C3)
+
+**Purpose.** Classify life events by type (gift, purchase, windfall) and separate planned from unplanned spending using an "emergent" flag, enabling a Baseline vs. Shock comparison.
+
+**Implements.** FR‑EVT‑01, FR‑EVT‑02, FR‑EVT‑03, FR‑EVT‑04.
+
+**Inputs.** `events[]` — extended with `type` (`"gift"` | `"purchase"` | `"windfall"`) and `emergent` (boolean); `ssOpt` and all simulation inputs.
+
+**Logic** (`src/finance/events.js`).
+
+```js
+// Baseline simulation: exclude emergent events
+baselineEvents = events.filter(e => !e.emergent)
+
+// Shock simulation: include all events
+shockEvents = events
+
+// Windfall events net negative (reduce need):
+effectiveAmount(e) = e.type === "windfall" ? -Math.abs(e.amount) : Math.abs(e.amount)
+```
+
+The UI renders a **Baseline vs. Shock** overlay on the long-run balance chart: when at least one emergent event is active, a dashed clay line shows the shock-scenario portfolio balance alongside the baseline, so the user can see the buffer their plan must carry for surprises.
+
+**Outputs.** Two simulation runs: `simBaseline` (no emergent events) and `simShock` (all events); the shock balance is overlaid as a dashed line on the long-run chart when any emergent event is enabled.
+
+**Scenario.** *"The couple knows they'll need a roof replacement (~$25,000) and a furnace (~$12,000) sometime in their early 70s but can't be sure of the year. They flag both as emergent purchases."* The baseline shows their plan without these shocks; the shock scenario subtracts both in the flagged year. The depletion age in the shock scenario shifts 18 months earlier, confirming the plan has enough buffer to absorb both — but only just. They decide to raise their contribution by $1,000/yr and re-check the shock delta.
+
+**Edge cases.** A windfall event (e.g. an unexpected inheritance of $50,000) reduces the shock-scenario need in its year, potentially making the shock balance *better* than baseline. Non-emergent events are included in both simulations unchanged; the emergent flag is purely additive. An event with `emergent = false` and `type` set behaves identically to the pre-Wave-1 life events.
+
+---
+
+### UC-24 Accumulation Summary Card (A3)
+
+**Purpose.** Show a read-out of working-phase portfolio growth — projected retirement balance, total contributed vs. total growth, and effective blended real return — while at least one spouse is still working.
+
+**Implements.** FR‑ACC‑01, FR‑ACC‑02, FR‑ACC‑03.
+
+**Inputs.** The simulation rows from today through the last working year; `stopA`, `stopB`, `ageA`, `ageB`, `savings`, `contrib`, `realReturn`.
+
+**Logic** (`src/finance/accumulation.js`).
+
+```js
+accumulationSummary(rows, stopAgeA, ageA, stopAgeB, ageB):
+  workingRows = rows.filter(r => r.aA < stopAgeA || r.aB < stopAgeB)
+  balAtRetirement = workingRows.at(-1).bal
+  totalContributed = workingRows.reduce((s, r) => s + r.contrib, 0)
+  totalGrowth = balAtRetirement - savings - totalContributed
+  effectiveReturn = IRR([-savings, ...workingRows.map(r => r.contrib), balAtRetirement])
+```
+
+The card is visible only while `workingRows` is non-empty (i.e. at least one spouse has not yet reached their stop-working age).
+
+**Outputs.** Card with four tiles: projected balance at retirement, total contributed, total growth, effective blended real return.
+
+**Scenario.** *"The younger spouse is considering whether to increase their 401(k) contribution from $10,000 to $15,000 per year. They want to see how much the extra $5,000/yr compounds over their remaining 17 working years."* With contributions raised, the accumulation card shows the projected retirement balance rising by ~$130,000 (reflecting both the extra principal and compound growth), while the effective blended return stays the same — isolating the contribution effect from the return assumption.
+
+**Edge cases.** Once both spouses have retired, the card is hidden. If `stopA == stopB` (simultaneous retirement), the card disappears in the same year. With `savings = 0` and `contrib = 0`, all tiles show $0 / 0%.
+
+---
+
+### UC-25 Live Headroom Read-Out (E1)
+
+**Purpose.** Show the maximum additional annual spending the plan can absorb to the horizon — or the annual shortfall and depletion age if the plan is already short — recomputed live on every input change.
+
+**Implements.** FR‑HEAD‑01, FR‑HEAD‑02, FR‑HEAD‑03, FR‑HEAD‑04.
+
+**Inputs.** All simulation inputs; `horizonAge` (default 95); `ssOpt`.
+
+**Logic** (`src/finance/headroom.js`).
+
+```js
+spendingHeadroom(inp, simulate, horizonAge, ssOpt):
+  // Binary-search for the largest delta such that the portfolio survives to horizonAge
+  lo = 0; hi = 500_000
+  while hi - lo > 100:
+    mid = (lo + hi) / 2
+    sim = simulate({ ...inp, extraAnnualSpend: mid }, ssOpt)
+    if sim.depAge == null || sim.depAge >= horizonAge: lo = mid
+    else: hi = mid
+  headroom = lo
+
+  // If the base plan already depletes before horizonAge, show shortfall instead:
+  baseSim = simulate(inp, ssOpt)
+  if baseSim.depAge != null && baseSim.depAge < horizonAge:
+    return { mode: "shortfall", depAge: baseSim.depAge, annualShortfall: -headroom }
+  return { mode: "headroom", value: headroom }
+```
+
+The read-out is debounced (~300ms) to avoid re-running on every keystroke.
+
+**Outputs.** Either `{ mode: "headroom", value }` (plan solvent to horizon) or `{ mode: "shortfall", depAge, annualShortfall }` (plan depletes early); rendered prominently near the headline.
+
+**Scenario.** *"After enabling the spending smile (UC‑21) and a −$8,000 lifestyle step (UC‑22), the couple wants to know how much annual spending they could still add — perhaps a more generous travel budget — before their plan breaks."* The headroom read-out shows $14,200/yr of additional capacity. They add a travel event of $10,000/yr and watch the headroom drop to $4,200, confirming there is still a buffer. They then enable a $25,000 emergent roof replacement (UC‑23) in the shock scenario: the headroom panel updates automatically, showing how the buffer shrinks under the shock.
+
+**Edge cases.** If the base plan has no depletion age (balance positive at 95 with zero extra spend), headroom is the maximum spend increase before the first depletion. If the plan already depletes at or before the current year, `annualShortfall` is the amount by which guaranteed income falls short of the modeled need. Headroom ignores Monte Carlo variability — users should cross-check against the p10 band (UC‑19) for a stress-adjusted floor.

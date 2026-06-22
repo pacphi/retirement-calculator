@@ -58,8 +58,8 @@ const solveWithdrawal = (i, aA, aB, wages, pens, rent, ss, need, bal, statusOver
   return { withdrawal: hi, tax: taxForYear(i, aA, aB, wages, pens, rent, ss, hi, statusOverride, year) };
 };
 
-export function spendingNeed(i, ageA, ageB, liveSav = 0, isSurvivor = false, survivorAge = null) {
-  const parts = spendingComponents(i, ageA, ageB, { isSurvivor, survivorAge });
+export function spendingNeed(i, ageA, ageB, liveSav = 0, isSurvivor = false, survivorAge = null, ctx = {}) {
+  const parts = spendingComponents(i, ageA, ageB, { isSurvivor, survivorAge, ...ctx });
   return composeNeed(parts, liveSav);
 }
 
@@ -92,6 +92,8 @@ export function simulate(i, ssOpt) {
   const endEff = lifeOn
     ? Math.min(end, Math.max(0, Math.max(dYearA, dYearB) - TAX_YEAR))
     : end;
+
+  const retireAgeA = Math.max(i.stopA, i.stopB + (i.ageA - i.ageB));
 
   for (let y = 0; y <= endEff; y++) {
     const aA = i.ageA + y;
@@ -134,10 +136,10 @@ export function simulate(i, ssOpt) {
     }
     const extraSpend =
       travelSpendForYear(i.travel, cal)
-      + oneTimeSpendForYear(i.events, cal)
+      + oneTimeSpendForYear(i.events, cal, { includeEmergent: ssOpt.includeEmergent ?? false })
       + ltcSpendForYear(i.ltc, aA, i.ltcAnnual);
     const survAge = lifeOn && isSurvivor ? (survivorIsA ? aA : aB) : null;
-    const need = spendingNeed(i, aA, aB, liveSav, isSurvivor, survAge) + extraSpend;
+    const need = spendingNeed(i, aA, aB, liveSav, isSurvivor, survAge, { retireAgeA, cal }) + extraSpend;
     const yr = yearReturn(i, y, ssOpt);
     // The deferred pool's prior year-end value is the IRS base for this year's RMD.
     const defBalStart = defBal;

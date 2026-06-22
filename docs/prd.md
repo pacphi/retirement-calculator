@@ -4,7 +4,7 @@
 >
 > **Tagline:** This is about your money, your home, and what comes next.
 
-**Version:** 1.0 (current build) · **Status:** Delivered · **Document type:** Product Requirements Document (capabilities)
+**Version:** 1.1 (Wave 1) · **Status:** Delivered · **Document type:** Product Requirements Document (capabilities)
 
 ---
 
@@ -31,7 +31,14 @@
   - [6.11 Two-Location Side-by-Side Comparison](#611-two-location-side-by-side-comparison)
   - [6.12 Steady-State Income Synthesis and Verdict](#612-steady-state-income-synthesis-and-verdict)
   - [6.13 Visualizations and Charts](#613-visualizations-and-charts)
-  - [6.14 Guidance, Notes and Disclaimers](#614-guidance-notes-and-disclaimers)
+  - [6.14 Return Assumptions and Monte Carlo Bands (Wave 1 — B1)](#614-return-assumptions-and-monte-carlo-bands-wave-1--b1)
+  - [6.15 Sequence-of-Returns Stress Toggle (Wave 1 — B2)](#615-sequence-of-returns-stress-toggle-wave-1--b2)
+  - [6.16 Retirement Spending Smile (Wave 1 — C1)](#616-retirement-spending-smile-wave-1--c1)
+  - [6.17 Lifestyle Level and Permanent Step-Changes (Wave 1 — C2)](#617-lifestyle-level-and-permanent-step-changes-wave-1--c2)
+  - [6.18 Typed Life Events with Emergent Flag (Wave 1 — C3)](#618-typed-life-events-with-emergent-flag-wave-1--c3)
+  - [6.19 Accumulation Summary Card (Wave 1 — A3)](#619-accumulation-summary-card-wave-1--a3)
+  - [6.20 Live Headroom Read-Out (Wave 1 — E1)](#620-live-headroom-read-out-wave-1--e1)
+  - [6.21 Guidance, Notes and Disclaimers](#621-guidance-notes-and-disclaimers)
 - [7. Reference Data and Assumptions](#7-reference-data-and-assumptions)
 - [8. UX and Design Requirements](#8-ux-and-design-requirements)
 - [9. Non-Functional Requirements](#9-non-functional-requirements)
@@ -85,7 +92,7 @@ The product is intentionally **planning‑grade, not advice‑grade**: it is tra
 ### 3.2 Non-Goals
 
 - **NG1** — Not a tax return, filing tool, or a substitute for a CPA, attorney, or financial advisor.
-- **NG2** — Not a Monte‑Carlo / sequence‑of‑returns simulator; it uses a steady real‑return assumption.
+- **NG2** — ~~Not a Monte‑Carlo / sequence‑of‑returns simulator~~ — Monte Carlo with p10–p90 bands is now built (B1); sequence-of-returns stress is also built (B2). A single deterministic steady-state path remains the default entry point.
 - **NG3** — Not a multi‑household or multi‑scenario saver; it models one household at a time and holds no persistent storage.
 - **NG4** — Not a state‑income‑tax engine for all 50 states; state tax is summarized qualitatively per location, with Washington (no income tax) handled precisely for the resident case.
 - **NG5** — Not an estate‑planning or probate tool; it covers the tax economics of inherited real estate, not the legal mechanics of transfer.
@@ -260,12 +267,82 @@ Each capability area below lists functional requirements (FR‑*) and, where use
 - **FR‑VIZ‑05** — Tooltips reveal per‑year composition and the spending need.
 - **FR‑VIZ‑06** — **Year-by-year navigator**: an advanceable single-year detail (slider + prev/next + play). For the selected year it shows a *typical month* (the year's totals ÷ 12) as a mirrored bar — non‑portfolio income and the portfolio draw stack upward, expenses (core living, travel/one‑time, taxes) stack downward from a zero baseline, so the portfolio draw visibly bridges the gap — plus a composition donut of income sources and a surplus/net summary. Because the engine is annual, the view is an honest per‑month *rate*: genuinely one‑time items (home sale, first RMD year, Medicare at 65, SS/pension start, work‑stop, survivor transition, depletion) are surfaced as flagged milestone badges for the year rather than placed in a specific month. See UC‑18.
 
-### 6.14 Guidance, Notes and Disclaimers
+### 6.14 Return Assumptions and Monte Carlo Bands (Wave 1 — B1)
+
+**Description.** Let users choose a named real-return preset and see a probability distribution band on the long-run chart rather than a single deterministic line.
+
+- **FR‑MC‑01** — Provide four return presets selectable in the Advanced step: **Conservative** (~3.5% real), **Balanced** (~5.0% real), **Growth** (~6.5% real), and **Custom** (user-entered value). Source: CFA Institute / Carson Group 60-40 historical-return research.
+- **FR‑MC‑02** — Provide a **variability ±%** slider (default ±7%) representing annualised standard deviation applied to the lognormal Monte Carlo paths.
+- **FR‑MC‑03** — Run a debounced Monte Carlo simulation (≥200 lognormal paths) automatically whenever inputs change; display the **median** portfolio balance as the primary line, with a shaded **p10–p90** band on the long-run balance chart. The band renders by default without requiring an explicit user action.
+- **FR‑MC‑04** — Show the median terminal balance plus the 10th- and 90th-percentile values in the chart headline so the range of outcomes is immediately legible.
+- **AC** — Switching from Balanced to Conservative visibly narrows and lowers the band; increasing variability widens it. With variability = 0 the band collapses to the deterministic line, matching the prior single-path output exactly.
+
+### 6.15 Sequence-of-Returns Stress Toggle (Wave 1 — B2)
+
+**Description.** Let users stress-test their plan against a bad first-decade return sequence.
+
+- **FR‑STRESS‑01** — Provide an opt-in **"Bad first decade"** toggle in the Advanced step that overlays a sequence-of-returns stress path on the long-run balance chart.
+- **FR‑STRESS‑02** — The stress path applies −10% real returns in retirement years 1–3, `realReturn − 2%` in years 4–6, and the base assumption from year 7 onward (deterministic, illustrative — not a Monte Carlo draw).
+- **FR‑STRESS‑03** — Render the stress path as a distinct line (brass/dotted) so it is visually separate from the median Monte Carlo line and the p10–p90 band.
+- **FR‑STRESS‑04** — Include a caption noting the stress path is illustrative and milder than historical bear markets; direct users to the Monte Carlo band for a probabilistic range.
+- **AC** — Toggling the stress path on shifts the balance line downward in early retirement years and may move the depletion age earlier; toggling it off restores the base projection.
+
+### 6.16 Retirement Spending Smile (Wave 1 — C1)
+
+**Description.** Allow the non-housing spending base to follow an age-shaped trajectory (Blanchett "smile") instead of being held flat in real terms.
+
+- **FR‑SMILE‑01** — Provide a **Retirement spending** step with three shape options: **Flat** (default, existing behavior), **Smile** (Blanchett curve), and **Custom** (user-defined multiplier table).
+- **FR‑SMILE‑02** — In Smile mode, scale the non-housing base spending by an age-shaped multiplier: real spending declines through the "go-go" and "slow-go" phases, then upticks in the late-life "no-go" phase. Healthcare costs are added on top of the scaled base (not scaled themselves).
+- **FR‑SMILE‑03** — Source the Blanchett curve to peer-reviewed research (Blanchett 2014, *Journal of Financial Planning*). Surface a source caption in the UI near the control.
+- **FR‑SMILE‑04** — The Flat default leaves all existing plans numerically unchanged (backward-compatible).
+- **AC** — Selecting Smile with default inputs produces lower spending in ages 70–80 and a visible late-life upturn; the staircase chart spending-need line reflects the shape year-by-year.
+
+### 6.17 Lifestyle Level and Permanent Step-Changes (Wave 1 — C2)
+
+**Description.** Let users set an overall lifestyle scaling factor and schedule permanent up- or down-shifts in annual spending.
+
+- **FR‑LSTEP‑01** — Surface a **lifestyle level** percentage dial (default 100%) in the Retirement spending step that scales the non-housing spending base. Range: 50%–150%.
+- **FR‑LSTEP‑02** — Allow the user to add **permanent step-change rows** `{ fromYear, deltaAnnual }` that shift the annual spending base up or down from a calendar year onward (e.g. downsizing savings from a chosen year).
+- **FR‑LSTEP‑03** — Step-changes are cumulative and permanent: each `fromYear` shifts the running base, and later rows stack on top of earlier ones.
+- **FR‑LSTEP‑04** — Step-changes are discretionary and excluded from the floor base (`_floorBase`); they do not affect the 35% spending floor.
+- **AC** — Adding a −$6,000/yr step from a chosen year reduces the spending-need line from that year onward on the staircase chart; removing the row restores the prior trajectory.
+
+### 6.18 Typed Life Events with Emergent Flag (Wave 1 — C3)
+
+**Description.** Extend life events with explicit types (gift, purchase, windfall) and an "emergent" flag that separates planned from unplanned spending for scenario comparison.
+
+- **FR‑EVT‑01** — Extend event objects with a **type** field: `gift` (outflow), `purchase` (outflow), or `windfall` (inflow — nets negative against spending need).
+- **FR‑EVT‑02** — Add an **emergent** boolean flag per event. Emergent events (e.g. a roof replacement, unexpected medical cost) are excluded from the baseline simulation but included in a parallel **simShock** scenario.
+- **FR‑EVT‑03** — Display a **Baseline vs. Shock** comparison that shows the plan with and without emergent events, so the user can see the buffer their plan must carry for surprises.
+- **FR‑EVT‑04** — Non-emergent events behave identically to the existing `FR‑SIM‑08` life events; the emergent flag is additive and does not break backward compatibility.
+- **AC** — Flagging a $25,000 roof replacement as emergent removes it from the baseline balance but includes it in the shock scenario; the depletion age in the shock scenario may differ from the baseline.
+
+### 6.19 Accumulation Summary Card (Wave 1 — A3)
+
+**Description.** Show a read-out card summarising portfolio growth during the working years, visible while at least one spouse is still working.
+
+- **FR‑ACC‑01** — Display an **accumulation summary** card while the household is in the working phase (i.e. at least one spouse's stop-working age has not yet been reached).
+- **FR‑ACC‑02** — The card shows: **projected balance at retirement** (the portfolio value when the last spouse stops working), **total contributed** (sum of all contributions during working years), **total growth** (balance minus contributions minus starting savings), and **effective blended real return** (the IRR of the contribution stream to the retirement balance).
+- **FR‑ACC‑03** — "Working years" is defined as years where at least one spouse is still working (OR condition); the card disappears once both have retired.
+- **AC** — Increasing the annual contribution visibly raises "total contributed" and "projected balance at retirement"; increasing the real return raises "total growth" and the effective blended return.
+
+### 6.20 Live Headroom Read-Out (Wave 1 — E1)
+
+**Description.** Show, in real time, the maximum sustainable annual spending increase to the plan horizon — or, if the plan is short, the annual shortfall and the depletion age.
+
+- **FR‑HEAD‑01** — Compute and display a **headroom** figure: the maximum additional annual spending the plan can absorb while keeping the portfolio solvent to the horizon age (default 95), given all active inputs.
+- **FR‑HEAD‑02** — If the plan is already short (depletion age < horizon), display the **annual shortfall** (how much more guaranteed income or less spending is needed each year) and the **depletion age** instead of headroom.
+- **FR‑HEAD‑03** — Recompute headroom live (debounced) whenever any input changes, using the same simulation engine as the main projection.
+- **FR‑HEAD‑04** — Surface the headroom read-out prominently near the headline result so it is immediately visible without scrolling.
+- **AC** — Increasing the spending target reduces headroom; decreasing it increases headroom. A plan with a depletion age of 88 shows a shortfall figure, not a headroom figure.
+
+### 6.21 Guidance, Notes and Disclaimers
 
 **Description.** Translate the numbers into action and bound their authority.
 
 - **FR‑NOTE‑01** — Provide a "Planner's notes" section with contextual guidance (Texas sell/rent vs. hold; Klagenfurt live‑in advantage; pre‑65 healthcare cliff; Social Security as a sizable but bounded risk; foreign‑inheritance paperwork; treaty/foreign‑tax‑credit caution; sticky high‑tax states).
 - **FR‑NOTE‑02** — Provide a persistent disclaimer that outputs are planning estimates, not financial/tax/legal advice, and direct the user to SSA, DRS, and a cross‑border specialist for binding figures.
+- **FR‑NOTE‑03** — All Wave 1 controls (Monte Carlo bands, spending smile, lifestyle steps, emergent events, accumulation summary, headroom) are **planning-grade** additions; their source citations appear in the UI near each control and in `docs/sources.md`.
 
 ---
 
@@ -330,7 +407,7 @@ All constants are 2026 values. The companion Sources document links each to its 
 - Filing or transmitting any tax return; generating legal documents.
 - Long‑term‑care insurance modeling, annuities, or insurance products.
 - Detailed Roth‑conversion‑window optimization (offered as a possible future addition, not built).
-- A spending "smile" (age‑declining real spending) — not modeled.
+- ~~A spending "smile" (age‑declining real spending) — not modeled~~ — now implemented (C1).
 - Survivor‑only scenarios (income if one spouse dies) — not modeled in this version.
 - Currency‑risk modeling for foreign income/assets beyond a fixed conversion assumption.
 

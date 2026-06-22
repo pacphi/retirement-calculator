@@ -39,6 +39,7 @@ export function Staircase({
   onYbyOpen,
   onSelectYear,
   compTip,
+  spendingShape,
 }) {
   const locByName = (n) => LOCATIONS.find(l => l.name === n);
 
@@ -92,6 +93,13 @@ export function Staircase({
         ))}
         <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, color: C.slate }}><span style={{ width: 14, height: 0, borderTop: `2px dashed ${C.clay}` }} />spending need</span>
       </div>
+      {spendingShape?.mode !== "flat" && (
+        <p style={{ margin: "6px 6px 0", fontSize: 11, color: C.mut, lineHeight: 1.5 }}>
+          Need line follows a retirement spending smile (
+          <a href="https://retirementresearcher.com/retirement-spending-smile/" target="_blank" rel="noreferrer" style={{ color: C.brassDeep }}>Blanchett</a>
+          ) — real spending eases through the active years, then rises late.
+        </p>
+      )}
     </div>
   );
 }

@@ -27,6 +27,8 @@
  */
 
 import { SINGLE_COST_FACTOR, STRESS_EARLY_DROP } from "../retirementData.js";
+import { smileMultiplier } from "./spending/smile.js";
+import { lifestyleStepDelta } from "./spending/lifestyle.js";
 
 /**
  * ctx shape accepted by spendingComponents:
@@ -53,7 +55,7 @@ import { SINGLE_COST_FACTOR, STRESS_EARLY_DROP } from "../retirementData.js";
  * }}
  */
 export function spendingComponents(i, ageA, ageB, ctx = {}) {
-  const { isSurvivor = false, survivorAge = null } = ctx;
+  const { isSurvivor = false, survivorAge = null, retireAgeA = Infinity, cal = null } = ctx;
 
   // Preserve the survivor-age fallback from the original spendingNeed.
   const survAge = survivorAge != null ? survivorAge : Math.min(ageA, ageB);
@@ -65,7 +67,8 @@ export function spendingComponents(i, ageA, ageB, ctx = {}) {
     const single = isSurvivor || i.status === "single";
     const scale = single ? SINGLE_COST_FACTOR : 1;
     const lifestyle = (Number(i.lifestyle) || 100) / 100;
-    const nonHousingBase = livingMo * 12 * scale * lifestyle;
+    const smile = smileMultiplier(ageA, retireAgeA, i.spendingShape);
+    const nonHousingBase = livingMo * 12 * scale * lifestyle * smile;
 
     const hcPer = (age) => (age < 65 ? L.hcPre : L.hcPost) / 2; // couple figures ÷ 2
     const healthcare = (isSurvivor
@@ -75,11 +78,12 @@ export function spendingComponents(i, ageA, ageB, ctx = {}) {
     // Location basis: floor applies to living + healthcare together.
     const _floorBase = nonHousingBase + healthcare;
 
-    return { nonHousingBase, healthcare, housing: 0, lifestyleSteps: 0, events: 0, _floorBase };
+    return { nonHousingBase, healthcare, housing: 0, lifestyleSteps: cal != null ? lifestyleStepDelta(i.lifestyleSteps, cal) : 0, events: 0, _floorBase };
   }
 
   // ── INCOME basis (default) ──────────────────────────────────────────────────
-  const nonHousingBase = i.incomeHH * i.targetPct;
+  const smile = smileMultiplier(ageA, retireAgeA, i.spendingShape);
+  const nonHousingBase = i.incomeHH * i.targetPct * smile;
   const perPersonHC = Math.max(0, (i.hcPre - i.hcPost)) / 2;
   const under65 = isSurvivor
     ? (survAge < 65 ? 1 : 0)
@@ -89,7 +93,7 @@ export function spendingComponents(i, ageA, ageB, ctx = {}) {
   // Income basis: floor applies to income*targetPct ONLY (not healthcare).
   const _floorBase = nonHousingBase;
 
-  return { nonHousingBase, healthcare, housing: 0, lifestyleSteps: 0, events: 0, _floorBase };
+  return { nonHousingBase, healthcare, housing: 0, lifestyleSteps: cal != null ? lifestyleStepDelta(i.lifestyleSteps, cal) : 0, events: 0, _floorBase };
 }
 
 /**

@@ -989,6 +989,18 @@ describe("spendingNeed location basis (seam contract for 0D)", () => {
   });
 });
 
+describe("spending smile (seam contract for Wave 1 C1)", () => {
+  it("spending smile scales the income base in retirement but not healthcare (C1)", () => {
+    const base = {
+      incomeHH: 200000, targetPct: 0.4, hcPre: 24000, hcPost: 12000,
+      status: "married", spendBasis: "income",
+    };
+    const flat = spendingNeed({ ...base, spendingShape: { mode: "flat" } }, 75, 70, 0, false, null, { retireAgeA: 65 });
+    const smiled = spendingNeed({ ...base, spendingShape: { mode: "smile", earlyDecline: 0.01, upturnAge: 85 } }, 75, 70, 0, false, null, { retireAgeA: 65 });
+    expect(smiled).toBeLessThan(flat); // 10 years past retirement => ~10% lower base
+  });
+});
+
 describe("recurring events (seam contract for Wave 1 C3)", () => {
   const ev = [{ on: true, year: 2030, amount: 45000, everyYears: 10, untilYear: 2050 }];
   it("fires on cadence within the window and is silent off-cadence", () => {
@@ -1017,5 +1029,79 @@ describe("yearReturn seam", () => {
   });
   it("falls back to the central real return", () => {
     expect(yearReturn(i, 10, {})).toBeCloseTo(0.05, 6);
+  });
+});
+
+describe("lifestyle step need-composition guard (C2)", () => {
+  it("a lifestyle step raises the need once its year arrives (C2)", () => {
+    const i = { incomeHH: 200000, targetPct: 0.4, hcPre: 24000, hcPost: 12000, status: "married",
+      spendBasis: "income", spendingShape: { mode: "flat" },
+      lifestyleSteps: [{ id: "x", fromYear: 2040, deltaAnnual: 12000 }] };
+    const before = spendingNeed(i, 78, 70, 0, false, null, { retireAgeA: 65, cal: 2039 });
+    const after = spendingNeed(i, 79, 71, 0, false, null, { retireAgeA: 65, cal: 2040 });
+    expect(after - before).toBeCloseTo(12000, 6);
+  });
+});
+
+describe("emergent-shock overlay derivation (C3 / Task 10)", () => {
+  it("shock balance in later years is lower than baseline when a large emergent event is active", () => {
+    // Arrange: baseState extended with a large emergent event in a post-retirement
+    // year (2055, age 74) so the spend is met from the portfolio (a withdrawal
+    // regime, not a working-year surplus) and therefore compounds the balance down.
+    const s = {
+      ...baseState,
+      events: [
+        { id: "evt-shock", label: "Roof replacement", on: true, year: 2055, amount: 200000, type: "purchase", emergent: true },
+      ],
+      travel: { on: false, amount: 0, years: 0 },
+      ltc: { on: false, startAge: 80, years: 3, annual: null },
+      survivor: { on: false, year: 9999, pensionPct: 0 },
+      life: { on: false, deathAgeA: 95, deathAgeB: 95, pensionPct: 0 },
+      returnPreset: "custom",
+      horizonAge: 95,
+      spendingShape: { mode: "flat" },
+      lifestyleSteps: [],
+    };
+
+    // Act: run calculatePlan which produces both simChosen (baseline) and simShock
+    const { simChosen, simShock } = calculatePlan(s);
+
+    // Pick a late row (after the event year) where the portfolio is in a withdrawal regime
+    const laterRows = simChosen.rows.filter(r => r.aA >= 75);
+    expect(laterRows.length).toBeGreaterThan(0);
+
+    const lastAge = laterRows[laterRows.length - 1].aA;
+    const baselineBal = laterRows[laterRows.length - 1].bal;
+    const shockBal = simShock.rows.find(r => r.aA === lastAge)?.bal ?? 0;
+
+    // Assert: shock scenario has a strictly lower balance in late years — a large
+    // emergent expenditure in a withdrawal year compounds to a strictly lower balance.
+    expect(shockBal).toBeLessThan(baselineBal);
+  });
+
+  it("shock balance equals baseline when no emergent events are enabled", () => {
+    // Arrange: events present but none marked emergent
+    const s = {
+      ...baseState,
+      events: [
+        { id: "evt-plan", label: "Wedding gift", on: true, year: 2035, amount: 20000, type: "gift", emergent: false },
+      ],
+      travel: { on: false, amount: 0, years: 0 },
+      ltc: { on: false, startAge: 80, years: 3, annual: null },
+      survivor: { on: false, year: 9999, pensionPct: 0 },
+      life: { on: false, deathAgeA: 95, deathAgeB: 95, pensionPct: 0 },
+      returnPreset: "custom",
+      horizonAge: 95,
+      spendingShape: { mode: "flat" },
+      lifestyleSteps: [],
+    };
+
+    // Act
+    const { simChosen, simShock } = calculatePlan(s);
+
+    // Assert: with no emergent events, simShock rows should match simChosen rows
+    const lastBaseline = simChosen.rows[simChosen.rows.length - 1];
+    const lastShock = simShock.rows[simShock.rows.length - 1];
+    expect(lastShock.bal).toBeCloseTo(lastBaseline.bal, 0);
   });
 });

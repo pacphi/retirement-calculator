@@ -5,12 +5,14 @@ import { MC_DEFAULTS } from "../retirementData.js";
  * useMonteCarlo(s)
  *
  * MC web-worker lifecycle hook. Moves the worker useState + useEffect +
- * runMc handler out of RetirementCalculator.jsx. Worker creation, teardown,
- * and the message handler are byte-identical to the originals so off-thread
- * behavior and determinism are unchanged.
+ * runMc handler out of RetirementCalculator.jsx.
  *
- * MC is intentionally NOT triggered automatically — it only runs when the
- * caller invokes runMc() (button-driven, same as before).
+ * Variability-by-default: MC auto-runs (debounced ~400ms) whenever inputs
+ * settle so the p10–p90 band shows without a manual click. The deterministic
+ * projection is independent of this; `runMc` is still exposed for the button.
+ *
+ * In jsdom (RTL tests) `Worker` is undefined, so the debounce effect returns
+ * early and `mc` stays null — existing tests see the pre-MC UI unchanged.
  *
  * @param {object} s - Full plan state (forwarded to the worker on each run)
  * @returns {{ mc: object|null, mcRunning: boolean, runMc: () => void }}
@@ -21,6 +23,7 @@ export function useMonteCarlo(s) {
   const workerRef = useRef(null);
 
   useEffect(() => {
+    if (typeof Worker === "undefined") return;
     workerRef.current = new Worker(
       new URL("../finance/mcWorker.js", import.meta.url),
       { type: "module" }
@@ -34,11 +37,24 @@ export function useMonteCarlo(s) {
     return () => workerRef.current && workerRef.current.terminate();
   }, []);
 
-  const runMc = () => {
+  const post = () => {
+    if (!workerRef.current) return;
     setMcRunning(true);
-    setMc(null);
-    workerRef.current.postMessage({ state: s, mcOpt: MC_DEFAULTS });
+    const volatility = (s.volatility != null && s.volatility !== "")
+      ? Number(s.volatility) : MC_DEFAULTS.volatility;
+    workerRef.current.postMessage({ state: s, mcOpt: { ...MC_DEFAULTS, volatility } });
   };
+
+  const runMc = () => { setMc(null); post(); };
+
+  // Variability-by-default: re-run MC on a debounce whenever inputs settle.
+  // The deterministic projection is independent of this; MC stays seeded.
+  // Guard: if Worker is unavailable (jsdom), do nothing so RTL tests stay green.
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof Worker === "undefined") return;
+    const id = setTimeout(post, 400);
+    return () => clearTimeout(id);
+  }, [s]); // intentionally omits `post` to avoid infinite re-trigger
 
   return { mc, mcRunning, runMc };
 }

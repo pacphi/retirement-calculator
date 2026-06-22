@@ -29,6 +29,27 @@ export const SINGLE_COST_FACTOR = 0.64;
 
 export const MC_DEFAULTS = { paths: 1000, seed: 12345, volatility: 0.12 };
 
+// --- Wave 1 constants ---------------------------------------------------------
+
+// Return presets: central real return anchored to long-run 60/40-style history.
+// A diversified 60/40 portfolio has historically delivered ~5% real over long
+// horizons, with meaningful dispersion (Japan ~3% real; US higher). The presets
+// bracket that empirical range. Sources: SOURCES.cfa6040, SOURCES.carson6040.
+export const RETURN_PRESETS = {
+  conservative: { label: "Conservative", realReturn: 0.035 },
+  balanced: { label: "Balanced", realReturn: 0.05 },
+  growth: { label: "Growth", realReturn: 0.065 },
+};
+export const DEFAULT_RETURN_PRESET = "balanced";
+export const DEFAULT_VOLATILITY = MC_DEFAULTS.volatility; // 0.12
+
+// Retirement spending smile (Blanchett). Real discretionary spending declines
+// through the go-go/slow-go years — roughly a 25% real decline by the mid-80s —
+// then drifts back up late as healthcare rises. Defaults: ~1%/yr early real
+// decline, a 0.75 floor (≈ the 25% trough), late-life upturn from age 85.
+// Sources: SOURCES.smileRR, SOURCES.smileKitces, SOURCES.blanchett2026.
+export const SMILE_DEFAULTS = { earlyDecline: 0.01, upturnAge: 85, lateUpturn: 0.01, floor: 0.75 };
+
 export const SOURCES = {
   irs2026: "https://www.irs.gov/newsroom/irs-releases-tax-inflation-adjustments-for-tax-year-2026-including-amendments-from-the-one-big-beautiful-bill",
   ssaPia: "https://www.ssa.gov/oact/progdata/retirebenefit2.html",
@@ -39,6 +60,11 @@ export const SOURCES = {
   kffAca: "https://www.kff.org/interactive/subsidy-calculator/",
   cmsMedicare: "https://www.cms.gov/newsroom/fact-sheets/2026-medicare-parts-b-premiums-and-deductibles",
   irsRmd: "https://www.irs.gov/retirement-plans/retirement-plan-and-ira-required-minimum-distributions-faqs",
+  cfa6040: "https://rpc.cfainstitute.org/research/reports/2025/performance-of-the-60-40-portfolio",
+  carson6040: "https://www.carsongroup.com/insights/blog/the-60-40-portfolio-a-historical-powerhouse-or-a-rate-dependent-misinterpretation/",
+  smileRR: "https://retirementresearcher.com/retirement-spending-smile/",
+  smileKitces: "https://www.kitces.com/blog/estimating-changes-in-retirement-expenditures-and-the-retirement-spending-smile/",
+  blanchett2026: "https://onlinelibrary.wiley.com/doi/full/10.1002/cfp2.70032",
 };
 
 /* 2026 reference data. Tax constants are from the IRS 2026 inflation release.

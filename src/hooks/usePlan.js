@@ -1,5 +1,8 @@
 import { useMemo } from "react";
 import { calculatePlan, monthlyTotal, tierFor } from "../calculatorCore.js";
+import { accumulationSummary } from "../finance/accumulation.js";
+import { spendingHeadroom } from "../finance/headroom.js";
+import { simulate } from "../finance/simulate.js";
 import { LOCATIONS, SINGLE_COST_FACTOR } from "../retirementData.js";
 import { C, SRC } from "../components/theme.js";
 
@@ -20,7 +23,7 @@ export function usePlan(s, couple, stage) {
   const calc = useMemo(() => calculatePlan(s), [s]);
 
   const {
-    incomeHH, inher, simChosen, simFull, simTrust, simNone, simStress,
+    incomeHH, inher, simChosen, simFull, simTrust, simNone, simStress, simShock,
     steady, sFull, sTrust, sNone, effHaircut, effCutYear,
   } = calc;
 
@@ -51,12 +54,15 @@ export function usePlan(s, couple, stage) {
       "Portfolio": (r.wdSpend ?? r.wd), need: r.need, extraSpend: r.extraSpend || 0,
     })), [simSS, firstEvent]);
 
+  const hasEmergent = (s.events || []).some(e => e.on && e.emergent);
+
   const balRows = useMemo(() => simSS.rows.map((r, idx) => ({
     age: r.aA,
     withSS: r.bal,
     withoutSS: simNo.rows[idx] ? simNo.rows[idx].bal : 0,
     stress: simStress.rows[idx] ? simStress.rows[idx].bal : 0,
-  })), [simSS, simNo, simStress]);
+    shock: simShock.rows[idx] ? simShock.rows[idx].bal : 0,
+  })), [simSS, simNo, simStress, simShock]);
 
   const invRows = useMemo(() => simSS.rows.map(r => ({
     age: r.aA,
@@ -76,6 +82,16 @@ export function usePlan(s, couple, stage) {
     ...(s.pensionOn ? [{ name: "WA pension", value: Math.round(steady.pension), color: C.ink }] : []),
   ], [steady.wd, steady.rentInc, steady.ssHouse, steady.pension, s.pensionOn]);
 
+  const headroom = useMemo(
+    () => spendingHeadroom(calc.inp, simulate, Number(s.horizonAge) || 95, { haircut: effHaircut, cutYear: effCutYear }),
+    [calc.inp, effHaircut, effCutYear, s.horizonAge],
+  );
+
+  const accumulation = useMemo(
+    () => accumulationSummary(simSS.rows, s.stopA, s.ageA, s.stopB, s.ageB),
+    [simSS, s.stopA, s.ageA, s.stopB, s.ageB],
+  );
+
   return {
     calc,
     // calc destructure — exposed with identical names
@@ -87,7 +103,10 @@ export function usePlan(s, couple, stage) {
     simSS, simNo,
     // derived arrays
     locRows, compRows, balRows, invRows, incomeStack,
+    hasEmergent,
     // pass-through used by caller
     sFactor,
+    headroom,
+    accumulation,
   };
 }

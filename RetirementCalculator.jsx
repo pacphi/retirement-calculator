@@ -18,6 +18,8 @@ import { Places } from "./src/components/charts/Places.jsx";
 import { Compare } from "./src/components/charts/Compare.jsx";
 import { IncomeMix } from "./src/components/charts/IncomeMix.jsx";
 import { Headline } from "./src/components/results/Headline.jsx";
+import { HeadroomCard } from "./src/components/results/HeadroomCard.jsx";
+import { AccumulationSummary } from "./src/components/results/AccumulationSummary.jsx";
 import { Stats } from "./src/components/results/Stats.jsx";
 import { RiskTable } from "./src/components/results/RiskTable.jsx";
 import { Inheritance as InheritanceResult } from "./src/components/results/Inheritance.jsx";
@@ -26,6 +28,7 @@ import { Timing } from "./src/components/steps/Timing.jsx";
 import { Pension } from "./src/components/steps/Pension.jsx";
 import { Inheritance as InheritanceStep } from "./src/components/steps/Inheritance.jsx";
 import { Milestones } from "./src/components/steps/Milestones.jsx";
+import { SpendingStrategy } from "./src/components/steps/SpendingStrategy.jsx";
 import { TravelLongevity } from "./src/components/steps/TravelLongevity.jsx";
 import { Advanced } from "./src/components/steps/Advanced.jsx";
 import { usePlan } from "./src/hooks/usePlan.js";
@@ -59,6 +62,9 @@ export default function RetirementCalculator() {
     ltc: { on:false, startAge:80, years:3, annual:null },
     horizonAge: 95,
     stateRate: null,
+    returnPreset: "balanced", volatility: 0.12, showStress: false,
+    spendingShape: { mode: "flat", earlyDecline: 0.01, upturnAge: 85, lateUpturn: 0.01 },
+    lifestyleSteps: [],
   });
   const [couple, setCouple] = useState(true);
   const [stage, setStage] = useState("post");
@@ -114,9 +120,16 @@ export default function RetirementCalculator() {
   const eventSeq = useRef(0);
   const addEvent = () => {
     const id = `evt-${eventSeq.current++}`;
-    set("events")([...s.events, { id, label: "New milestone", on: true, year: 2040, amount: 10000 }]);
+    set("events")([...s.events, { id, label: "New milestone", on: true, year: 2040, amount: 10000, type: "gift", emergent: false }]);
   };
   const removeEvent = (idx) => set("events")(s.events.filter((_, i) => i !== idx));
+
+  const lifeSeq = useRef(0);
+  const addLifestyleStep = () =>
+    set("lifestyleSteps")([...(s.lifestyleSteps || []), { id: `ls-${lifeSeq.current++}`, fromYear: 2040, deltaAnnual: 12000, on: true }]);
+  const removeLifestyleStep = (idx) => set("lifestyleSteps")((s.lifestyleSteps || []).filter((_, i) => i !== idx));
+  const setLifestyleStep = (idx, field) => (v) =>
+    set("lifestyleSteps")((s.lifestyleSteps || []).map((st, i) => (i === idx ? { ...st, [field]: v } : st)));
 
   // Plan derivation (calc + all downstream memos)
   const {
@@ -127,6 +140,9 @@ export default function RetirementCalculator() {
     simSS, simNo,
     locRows, compRows, balRows, invRows, incomeStack,
     sFactor,
+    headroom,
+    accumulation,
+    hasEmergent,
   } = usePlan(s, couple, stage);
 
   // Monte Carlo worker lifecycle
@@ -223,6 +239,7 @@ export default function RetirementCalculator() {
               <Pension s={s} set={set} afcAuto={afcAuto} afcEff={afcEff} steady={steady} />
               <InheritanceStep s={s} set={set} setProp={setProp} />
               <Milestones s={s} set={set} addEvent={addEvent} removeEvent={removeEvent} />
+              <SpendingStrategy s={s} set={set} setProp={setProp} addLifestyleStep={addLifestyleStep} removeLifestyleStep={removeLifestyleStep} setLifestyleStep={setLifestyleStep} />
               <TravelLongevity s={s} set={set} />
               <Advanced s={s} set={set} adv={adv} onAdvToggle={() => setAdv(a => !a)} />
             </div>
@@ -231,9 +248,12 @@ export default function RetirementCalculator() {
           {/* RESULTS */}
           <div>
             <Headline steady={steady} s={s} mc={mc} onTrack={onTrack} effHaircut={effHaircut} effCutYear={effCutYear} />
+            <HeadroomCard headroom={headroom} horizon={horizon} />
             <Stats steady={steady} simSS={simSS} simNo={simNo} horizon={horizon} swr={s.swr} />
             <RiskTable sFull={sFull} sTrust={sTrust} sNone={sNone} simFull={simFull} simTrust={simTrust} simNone={simNone} s={s} effHaircut={effHaircut} horizon={horizon} />
             <InheritanceResult s={s} setProp={setProp} />
+
+            {yearsToRet > 0 && <AccumulationSummary accumulation={accumulation} retYear={retYear} />}
 
             {/* Staircase (healthcare-aware) */}
             <Staircase
@@ -250,6 +270,7 @@ export default function RetirementCalculator() {
               onYbyOpen={setYbyOpen}
               onSelectYear={setSelYear}
               compTip={compTip}
+              spendingShape={s.spendingShape}
             />
 
             {/* Year by year — a typical month (or full year) for the selected year */}
@@ -286,6 +307,8 @@ export default function RetirementCalculator() {
               ssMode={s.ssMode}
               effHaircut={effHaircut}
               mcSummaryLines={mcSummaryLines}
+              showStress={s.showStress}
+              hasShock={hasEmergent}
             />
 
             {/* Places */}

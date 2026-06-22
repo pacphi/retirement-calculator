@@ -5,12 +5,16 @@ import {
 import { C } from "../theme.js";
 import { usd0, usdK } from "../format.js";
 
+// Distinct hue for the emergent-shock overlay so it does not collide with the
+// clay "Without SS" line (both lines are dashed). TIERS purple.
+const SHOCK_COLOR = "#7A4FA0";
+
 /**
  * LongRun chart panel — portfolio balance over time with/without SS and stress test,
- * plus optional Monte Carlo fan.
+ * plus optional Monte Carlo fan and optional emergent-shock overlay.
  *
  * Props:
- *   balRows        — array { age, withSS, withoutSS, stress }; root: balRows
+ *   balRows        — array { age, withSS, withoutSS, stress, shock }; root: balRows
  *   sellDots       — array { age, bal } for home-sale reference dots; root: sellDots
  *   mc             — Monte Carlo result object or null; root: mc
  *   mcRunning      — boolean, true while MC is computing; root: mcRunning
@@ -19,6 +23,7 @@ import { usd0, usdK } from "../format.js";
  *   ssMode         — "full" | "trustees" | "none" etc; root: s.ssMode
  *   effHaircut     — effective SS haircut fraction (0–1); root: effHaircut
  *   mcSummaryLines — (mc, horizon) => string[]; root: mcSummaryLines (imported from root)
+ *   hasShock       — boolean; when true renders the emergent-shock overlay line
  */
 export function LongRun({
   balRows,
@@ -30,30 +35,35 @@ export function LongRun({
   ssMode,
   effHaircut,
   mcSummaryLines,
+  showStress = false,
+  hasShock = false,
 }) {
   return (
     <div style={{ background:C.panel, border:`1px solid ${C.line}`, borderRadius:14, padding:"16px 14px 12px", marginBottom:16 }}>
       <div style={{ padding:"0 4px 6px" }}>
         <div style={{ fontSize:11, letterSpacing:1.5, textTransform:"uppercase", color:C.brassDeep, fontWeight:700 }}>The long run</div>
         <h3 style={{ margin:"2px 0 2px", fontFamily:"'Newsreader',serif", fontWeight:500, fontSize:19 }}>How far the savings stretch</h3>
-        <p style={{ margin:"2px 0 8px", fontSize:12.5, color:C.slate, lineHeight:1.5 }}>The green line is your plan as modeled ({ssMode==="full"?"full SS":`${Math.round(effHaircut*100)}% SS`}). The clay dashed line drops Social Security entirely. The brass dotted line is a sequence-risk stress test — a market crash in your first retirement years (illustrative and milder than 2008; for the full downside range run Monte Carlo below).{sellDots.length>0?" The step up is an inherited home being sold.":""}</p>
+        <p style={{ margin:"2px 0 8px", fontSize:12.5, color:C.slate, lineHeight:1.5 }}>The green line is your plan as modeled ({ssMode==="full"?"full SS":`${Math.round(effHaircut*100)}% SS`}). The clay dashed line drops Social Security entirely.{showStress ? " The brass dotted line is a sequence-risk stress test — a market crash in your first retirement years (illustrative and milder than 2008; for the full downside range run Monte Carlo below)." : <> Enable &ldquo;Bad first decade&rdquo; in Advanced &rarr; Sequence stress to overlay a sequence-of-returns stress path.</>}{sellDots.length>0?" The step up is an inherited home being sold.":""}</p>
+        {hasShock && <p style={{ margin:"0 0 6px", fontSize:11.5, color:SHOCK_COLOR, lineHeight:1.4 }}>Dashed purple = balance if the events you flagged &ldquo;emergent&rdquo; actually happen.</p>}
       </div>
       <ResponsiveContainer width="100%" height={220}>
         <LineChart data={balRows} margin={{ top:6, right:14, left:4, bottom:0 }}>
           <CartesianGrid stroke={C.line} strokeDasharray="3 3" vertical={false} />
           <XAxis dataKey="age" tick={{ fontSize:11, fill:C.slate }} tickLine={false} axisLine={{ stroke:C.line }} />
           <YAxis tickFormatter={usdK} tick={{ fontSize:11, fill:C.slate }} tickLine={false} axisLine={false} width={42} />
-          <Tooltip formatter={(v,n)=>[usd0(v), ({withSS:"With SS",withoutSS:"Without SS",stress:"Sequence-risk stress"}[n]??n)]} labelFormatter={(a)=>`Age ${a}`} contentStyle={{ borderRadius:8, border:`1px solid ${C.line}`, fontSize:12, fontFamily:"'JetBrains Mono',monospace" }} />
+          <Tooltip formatter={(v,n)=>[usd0(v), ({withSS:"With SS",withoutSS:"Without SS",stress:"Bad first decade (−10% early)",shock:"With emergent shocks"}[n]??n)]} labelFormatter={(a)=>`Age ${a}`} contentStyle={{ borderRadius:8, border:`1px solid ${C.line}`, fontSize:12, fontFamily:"'JetBrains Mono',monospace" }} />
           <Line type="monotone" dataKey="withSS" stroke={C.viridian} strokeWidth={2.6} dot={false} name="withSS" />
           <Line type="monotone" dataKey="withoutSS" stroke={C.clay} strokeWidth={2} strokeDasharray="5 4" dot={false} name="withoutSS" />
-          <Line type="monotone" dataKey="stress" stroke={C.brassDeep} strokeWidth={2} strokeDasharray="2 3" dot={false} name="stress" />
+          {showStress && <Line type="monotone" dataKey="stress" stroke={C.brassDeep} strokeWidth={2} strokeDasharray="2 3" dot={false} name="stress" />}
+          {hasShock && <Line type="monotone" dataKey="shock" stroke={SHOCK_COLOR} strokeWidth={2} strokeDasharray="8 3" dot={false} name="shock" />}
           {sellDots.map((d,i)=><ReferenceDot key={i} x={d.age} y={d.bal} r={4} fill={C.brass} stroke="#fff" strokeWidth={1.5} />)}
         </LineChart>
       </ResponsiveContainer>
       <div style={{ display:"flex", gap:16, flexWrap:"wrap", padding:"6px 6px 2px" }}>
         <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:C.slate }}><span style={{ width:16, height:3, background:C.viridian, borderRadius:2 }} />With Social Security</span>
         <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:C.slate }}><span style={{ width:16, height:3, background:C.clay, borderRadius:2, borderTop:`2px dashed ${C.clay}` }} />Without SS</span>
-        <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:C.slate }}><span style={{ width:16, height:3, background:C.brassDeep, borderRadius:2 }} />Sequence-risk stress</span>
+        {showStress && <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:C.slate }}><span style={{ width:16, height:0, borderTop:`2px dotted ${C.brassDeep}` }} />Bad first decade (−10% early)</span>}
+        {hasShock && <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:C.slate }}><span style={{ width:16, height:0, borderTop:`2px dashed ${SHOCK_COLOR}` }} />With emergent shocks</span>}
       </div>
       <button onClick={onRunMc} disabled={mcRunning}
         style={{ marginTop:8, padding:"7px 14px", fontSize:12.5, fontWeight:600, cursor: mcRunning?"default":"pointer",

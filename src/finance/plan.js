@@ -1,4 +1,5 @@
 import { LOCATIONS, PROP, TAX_YEAR, TIERS } from "../retirementData.js";
+import { resolveReturn } from "./returns.js";
 import { simulate, steadyState } from "./simulate.js";
 
 export const lineItems = (l, stage) => [
@@ -71,6 +72,11 @@ export function buildPlanInputs(s) {
     events: s.events ?? [],
     survivor: s.survivor ?? { on: false, year: 9999, pensionPct: 0 },
     life: s.life ?? { on: false, deathAgeA: 95, deathAgeB: 95, pensionPct: 0 },
+    returnPreset: s.returnPreset ?? "custom",
+    realReturn: resolveReturn(s.returnPreset ?? "custom", s.realReturn),
+    volatility: (s.volatility != null && s.volatility !== "") ? Number(s.volatility) : 0.12,
+    spendingShape: s.spendingShape ?? { mode: "flat" },
+    lifestyleSteps: s.lifestyleSteps ?? [],
   };
 }
 
@@ -84,6 +90,7 @@ export function calculatePlan(s) {
   const simTrust = simulate(inp, { haircut: 0.81, cutYear: trustCut });
   const simNone = simulate(inp, { haircut: 0, cutYear: TAX_YEAR });
   const simStress = simulate(inp, { haircut: effHaircut, cutYear: effCutYear, stress: true });
+  const simShock = simulate(inp, { haircut: effHaircut, cutYear: effCutYear, includeEmergent: true });
   return {
     incomeHH,
     retLocObj,
@@ -96,6 +103,7 @@ export function calculatePlan(s) {
     simTrust,
     simNone,
     simStress,
+    simShock,
     steady: steadyState(inp, simChosen),
     sFull: steadyState(inp, simFull),
     sTrust: steadyState(inp, simTrust),

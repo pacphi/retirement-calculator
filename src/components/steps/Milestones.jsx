@@ -1,5 +1,7 @@
-import { C } from "../theme.js";
+import { C, inputStyle } from "../theme.js";
 import { NumberInput, Segmented, Section } from "../atoms/index.jsx";
+
+const EVENT_TYPES = ["gift", "purchase", "windfall"];
 
 /**
  * Step five — Family milestones.
@@ -46,6 +48,21 @@ export function Milestones({ s, set, addEvent, removeEvent }) {
               <div style={{ fontSize:10.5, letterSpacing:.5, textTransform:"uppercase", color:C.slate, fontWeight:700, marginBottom:4 }}>Until year</div>
               <NumberInput value={ev.untilYear ?? ""} aria-label={`Event ${idx + 1} until year`}
                 onChange={(v)=>{ const u = v===""? undefined : (Number(v)||0); const next=s.events.map((x,i)=> i===idx ? { ...x, untilYear:u } : x); set("events")(next); }} />
+            </div>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr auto", gap:10, alignItems:"center", marginTop:10 }}>
+            <div>
+              <div style={{ fontSize:10.5, letterSpacing:.5, textTransform:"uppercase", color:C.slate, fontWeight:700, marginBottom:4 }}>Event type</div>
+              <select aria-label="Event type" value={ev.type ?? "gift"}
+                onChange={(e)=>{ const next=s.events.map((x,i)=> i===idx ? { ...x, type:e.target.value } : x); set("events")(next); }}
+                style={{ ...inputStyle, fontFamily:"'Inter',sans-serif", fontWeight:600, fontSize:13.5, cursor:"pointer" }}>
+                {EVENT_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+              </select>
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:6, paddingTop:18 }}>
+              <input type="checkbox" id={`event-emergent-${idx}`} checked={ev.emergent ?? false}
+                onChange={(e)=>{ const next=s.events.map((x,i)=> i===idx ? { ...x, emergent:e.target.checked } : x); set("events")(next); }} />
+              <label htmlFor={`event-emergent-${idx}`} style={{ fontSize:12.5, color:C.slate, cursor:"pointer" }}>Emergent (unplanned)</label>
             </div>
           </div>
         </div>

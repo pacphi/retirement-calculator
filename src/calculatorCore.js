@@ -1,3 +1,6 @@
+export * from "./finance/returns.js";
+export { smileMultiplier } from "./finance/spending/smile.js";
+export { lifestyleStepDelta } from "./finance/spending/lifestyle.js";
 export * from "./finance/seams.js";
 export * from "./finance/tax.js";
 export * from "./finance/socialSecurity.js";
@@ -8,3 +11,5 @@ export * from "./finance/simulate.js";
 export * from "./finance/plan.js";
 export * from "./finance/monteCarlo.js";
 export * from "./finance/breakdown.js";
+export { spendingHeadroom } from "./finance/headroom.js";
+export { accumulationSummary } from "./finance/accumulation.js";
