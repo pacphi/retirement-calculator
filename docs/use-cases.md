@@ -30,9 +30,10 @@
   - [3.15 UC-15 Places Affordability and Sorting](#315-uc-15-places-affordability-and-sorting)
   - [3.16 UC-16 Two-Location Comparison](#316-uc-16-two-location-comparison)
   - [3.17 UC-17 Chart Data Derivation](#317-uc-17-chart-data-derivation)
+  - [3.18 UC-18 Year-by-Year Monthly Breakdown](#318-uc-18-year-by-year-monthly-breakdown)
 - [4. Life Events & Downside Modeling](#4-life-events--downside-modeling)
   - [4.1 Discretionary Travel Spending](#41-discretionary-travel-spending)
-  - [4.2 One-Time Life Events](#42-one-time-life-events)
+  - [4.2 One-Time and Recurring Life Events](#42-one-time-and-recurring-life-events)
   - [4.3 Survivor Transition](#43-survivor-transition)
   - [4.4 Sequence-of-Returns Stress Path](#44-sequence-of-returns-stress-path)
   - [4.5 Headline Reconciliation: Modeled Spend, Capacity, and Surplus](#45-headline-reconciliation-modeled-spend-capacity-and-surplus)
@@ -310,9 +311,11 @@ taxableIncome = max(0, agi - deduction)
 
 **Implements.** FR‑HC‑01..04.
 
-**Inputs.** `incomeHH`, `targetPct`, the chosen retirement location's `hcPre`/`hcPost` (monthly couple healthcare), each spouse's age in the year, and any active live‑in housing saving.
+**Inputs.** `spendBasis` (`"income"` default, or `"location"`); for income: `incomeHH`, `targetPct`; for location: the chosen location's cost basket `m` and `lifestyle` %. Both bases use the location's `hcPre`/`hcPost` (monthly couple healthcare), each spouse's age in the year, filing status, and any active live‑in housing saving.
 
-**Logic.**
+**Logic.** Two opt‑in bases, selected by `spendBasis` in `spendingNeed()` (`src/finance/simulate.js`).
+
+*Income basis (default):*
 
 ```js
 base = incomeHH * targetPct
@@ -322,9 +325,20 @@ hcBump = perPersonHC * under65 * 12                 // annual bridge premium
 need = max(0.35 * base, base + hcBump - liveSaving) // live-in reduces the need
 ```
 
+*Location basis (opt‑in):* derive the need from the selected place's cost‑of‑living basket instead.
+
+```js
+living = sum(location.m) * 12 * scale * (lifestyle/100)   // scale = SINGLE_COST_FACTOR (0.64) if single/survivor, else 1
+hcPer  = (age) => (age < 65 ? hcPre : hcPost) / 2          // hcPre/hcPost are couple-level
+hc     = (single ? hcPer(soleAge) : hcPer(ageA) + hcPer(ageB)) * 12
+need   = max(0.35 * (living + hc), living + hc - liveSaving)
+```
+
+Healthcare lives in `hcPre`/`hcPost`, **not** in the basket `m`, so summing them does not double‑count. `lifestyle` scales living costs only, not healthcare. Per‑year ages drive the pre‑/post‑65 healthcare step automatically.
+
 **Outputs.** The year‑specific spending `need`.
 
-**Edge cases.** The `max(0, …)` floors the bump at zero where post‑65 cost exceeds pre‑65 (e.g., the Bahamas), so no negative bump is applied. The whole need is floored at 35% of the base so live‑in savings cannot drive it implausibly low. The bump uses the **healthcare‑basis** location selected for the timeline, which the user should set to where they actually expect to live.
+**Edge cases.** The `max(0, …)` floors the income‑basis bump at zero where post‑65 cost exceeds pre‑65 (e.g., the Bahamas). Both bases floor the whole need at 35% of base so live‑in savings can't drive it implausibly low. The location basis uses one location for the **whole horizon** — **mid‑retirement relocation is not modeled**; the only location‑driven year‑to‑year change is the age‑65 healthcare step. Single‑person scaling is a flat factor (`SINGLE_COST_FACTOR`), not a per‑line‑item adjustment.
 
 ---
 
@@ -593,6 +607,33 @@ annualDifference = |totalsA - totalsB|
 
 ---
 
+### 3.18 UC-18 Year-by-Year Monthly Breakdown
+
+**Purpose.** Let the user advance through the plan one year at a time and see a "typical month" of income vs. expenses for the selected year, building intuition the whole-life charts can't.
+
+**Implements.** FR‑VIZ‑06.
+
+**Inputs.** A simulation row (`simChosen.rows[selected]`), the prior row (for milestone detection), the plan inputs (`stopA`/`stopB`), and the depletion age.
+
+**Logic.** Implemented in `src/finance/breakdown.js`.
+
+- `monthlyBreakdown(row)` — the engine is **annual-only**, so each figure is an honest per-month *rate* = the row's annual value ÷ 12:
+  - **Income (non-portfolio):** `salA`, `salB`, `rent`, `pens`, `ssA`, `ssB`.
+  - **Portfolio draw (reconciler):** `wdSpend ?? wd` — the gap-filler between income and expenses.
+  - **Expenses:** core living = `need − extraSpend`; extra = `extraSpend` (travel/events/LTC); taxes = `tax`.
+  - **Net:** `(incomeTotal + draw) − expenseTotal`. ≈ $0 in a binding retirement year (the draw is solved to meet the need); a positive surplus in working years (which the engine routes to contributions).
+- `yearMilestones(row, prevRow, inputs, depAge)` — flags transitions by comparing to the prior row: SS start (you/spouse), pension start, RMDs begin, Medicare at 65, work-stop, home sale (with amount), survivor-year onset, depletion. These are **flagged for the year, not placed in a month**, because the model has no intra-year timing.
+
+**Outputs.** A mirrored bar (income/draw up, expenses down from zero), a composition donut of income sources, a surplus/net summary, milestone badges (including recurring events from UC‑4.2, e.g. a car purchase), and an annual-totals context line — all for one selected year, navigable via slider / prev-next / play. A **view toggle** switches between "Typical month" (÷12) and "Full year" (annual totals); the section is **collapsible**; and clicking a year on the Staircase (UC‑17) jumps the navigator to it.
+
+**Edge cases.**
+
+- Zero-value series are dropped from the bars, donut, and legend.
+- The selected year is clamped to the simulated range; it defaults to the first fully-retired year.
+- **Location.** Figures reflect location only to the extent the engine's `need` does: the selected healthcare basis (`retireLoc` → `hcPre`/`hcPost`, UC‑8) and any inherited-home live-in saving (`liveSav`). The per-location cost-of-living tables (UC‑15) are **not** the spend basis, and **mid-retirement relocation is not modeled** — one healthcare basis applies across the horizon, with the only location-driven year-to-year change being the pre‑65 → 65 healthcare step. *(A future enhancement to derive the spend from the Places cost tables is tracked separately.)*
+
+---
+
 ## 4. Life Events & Downside Modeling
 
 This section documents the four features added in the Tasks 1–8 pass: discretionary travel spending, one-time life events, a survivor-transition mode, and a sequence-of-returns stress path. It also clarifies how the headline reconciles modeled spend, sustainable capacity, and surplus.
@@ -624,26 +665,28 @@ Travel spending is added to the year's spending `need`, which is then covered by
 
 ---
 
-### 4.2 One-Time Life Events
+### 4.2 One-Time and Recurring Life Events
 
-**Purpose.** Model large, discrete after-tax outflows (gifts, home-purchase help, milestone celebrations) in the years they occur.
+**Purpose.** Model large after-tax outflows — both one-time (gifts, home-purchase help, milestone celebrations) and recurring (a new car every ~10 years, ongoing home upkeep) — in the years they occur.
 
-**Inputs.** `events[]` — an array of event objects `{ id, label, on, year, amount }`. Defaults are provided for common milestones (child weddings, home-purchase help, grandchild 529 seed); all are **off by default**. Users can edit labels, years, and amounts, and add or remove events dynamically. All amounts are in today's (real) dollars.
+**Inputs.** `events[]` — an array of event objects `{ id, label, on, year, amount, everyYears?, untilYear? }`. Defaults cover common milestones (child weddings, home help, grandchild seed) plus a recurring **Vehicle replacement** ($45,000 every 10 years) and **Home upkeep (owners only)** ($6,000/yr); all **off by default**. `everyYears` absent ⇒ one-time. Users edit labels, year/start year, amount, repeat cadence, and an optional until-year, and add/remove events. All amounts are in today's (real) dollars.
 
-**Logic.**
+**Logic** (`scheduledSpendForYear`, `src/finance/events.js`; `oneTimeSpendForYear` is a back-compat alias).
 
 ```js
-function oneTimeSpendForYear(events, cal) {
-  return events.reduce(
-    (sum, e) => (e.on && Number(e.year) === cal ? sum + (Number(e.amount) || 0) : sum),
-    0,
-  )
+function fires(e, cal) {
+  if (!e.on || cal < e.year) return false
+  if (e.everyYears > 0)                                   // recurring
+    return cal <= (e.untilYear ?? Infinity) && (cal - e.year) % e.everyYears === 0
+  return cal === e.year                                   // one-time
 }
+scheduledSpendForYear = (events, cal) =>
+  events.reduce((sum, e) => fires(e, cal) ? sum + (Number(e.amount) || 0) : sum, 0)
 ```
 
-The total for the calendar year is added to the spending `need` for that year alongside travel. Because `need` is an after-tax target, the solver grosses up the portfolio withdrawal automatically to cover taxes on the extra draw.
+The total for the calendar year is added to the spending `need` alongside travel. Because `need` is an after-tax target, the solver grosses up the portfolio withdrawal to cover taxes on the extra draw. Recurring events also surface as flagged badges in the year-by-year navigator (UC‑18).
 
-**Edge cases.** Events are deterministic — they fire in exactly the year specified and are zero in all other years. An event with `on = false` is never included. Multiple events in the same calendar year accumulate correctly.
+**Edge cases.** Events are deterministic. One-time events (no `everyYears`) behave exactly as before. Recurring events fire on `(cal − year) % everyYears === 0` from `year` through `untilYear` (or the whole horizon if unset). **"Home upkeep (owners only)"** is labelled, not auto-suppressed — it applies whether the household owns or rents, so a renter should leave it off (the model has no explicit home-ownership flag). An event with `on = false` is never included; same-year events accumulate.
 
 ---
 

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   afcIsAuto,
   benefits,
+  monthlyBreakdown,
+  yearMilestones,
   calculateFederalTaxYear,
   calculatePlan,
   drsEligibilityNote,
@@ -10,6 +12,7 @@ import {
   oneTimeSpendForYear,
   requiredMinimum,
   rmdStartAge,
+  scheduledSpendForYear,
   uniformLifetimeFactor,
   ownBenefitAtClaimMonthly,
   pensionERF,
@@ -25,7 +28,9 @@ import {
   stressReturnForYear,
   taxableSS,
   travelSpendForYear,
+  yearReturn,
 } from "./calculatorCore.js";
+import { LOCATIONS, SINGLE_COST_FACTOR } from "./retirementData.js";
 
 const baseState = {
   ageA:45, ageB:45, stopA:62, stopB:60, claimA:67, claimB:67, pensionAge:65,
@@ -808,5 +813,209 @@ describe("required minimum distributions", () => {
     expect(r.defBal).toBeLessThanOrEqual(r.bal);
     expect(typeof r.growth).toBe("number"); // zero real return here -> no growth
     expect(r.growth).toBe(0);
+  });
+});
+
+describe("monthly breakdown (year-by-year navigator)", () => {
+  it("derives each monthly income figure as the annual value divided by 12", () => {
+    const rows = calculatePlan(baseState).simChosen.rows;
+    const row = rows.find((r) => r.ssA > 0 && r.pens > 0); // a fully-retired, fully-claimed year
+    const b = monthlyBreakdown(row);
+    expect(b.income.ssA).toBeCloseTo(row.ssA / 12, 6);
+    expect(b.income.pens).toBeCloseTo(row.pens / 12, 6);
+    expect(b.draw).toBeCloseTo((row.wdSpend ?? row.wd) / 12, 6);
+  });
+
+  it("splits expenses into core living (need minus extra), extra, and tax", () => {
+    const rows = calculatePlan(baseState).simChosen.rows;
+    const row = rows.find((r) => r.extraSpend > 0) ?? rows[rows.length - 1];
+    const b = monthlyBreakdown(row);
+    expect(b.expenses.extra).toBeCloseTo(row.extraSpend / 12, 6);
+    expect(b.expenses.living).toBeCloseTo((row.need - row.extraSpend) / 12, 6);
+    expect(b.expenses.tax).toBeCloseTo(row.tax / 12, 6);
+  });
+
+  it("reconciles to ~zero net in a binding retirement year (draw funds the gap)", () => {
+    const rows = calculatePlan(baseState).simChosen.rows;
+    // A fully-retired year where the portfolio draw is the binding source of cash.
+    const row = rows.find((r) => r.salA === 0 && r.salB === 0 && (r.wdSpend ?? r.wd) > 0);
+    const b = monthlyBreakdown(row);
+    expect(Math.abs(b.netMo)).toBeLessThan(1); // within sub-dollar rounding
+  });
+
+  it("shows a positive monthly surplus while still working", () => {
+    const rows = calculatePlan(baseState).simChosen.rows;
+    const row = rows.find((r) => r.salA > 0 || r.salB > 0); // a working year
+    const b = monthlyBreakdown(row);
+    expect(b.netMo).toBeGreaterThan(0);
+  });
+});
+
+describe("year milestones", () => {
+  it("flags the first Social Security year as an income milestone", () => {
+    const rows = calculatePlan(baseState).simChosen.rows;
+    const idx = rows.findIndex((r) => r.ssA > 0);
+    const ms = yearMilestones(rows[idx], rows[idx - 1], baseState);
+    expect(ms.some((e) => e.key === "ssA" && e.kind === "income")).toBe(true);
+  });
+
+  it("flags Medicare eligibility at age 65", () => {
+    const rows = calculatePlan(baseState).simChosen.rows;
+    const row = rows.find((r) => r.aA === 65);
+    const ms = yearMilestones(row, null, baseState);
+    expect(ms.some((e) => e.key === "med-a")).toBe(true);
+  });
+
+  it("flags a home sale with its lump-sum amount", () => {
+    const sold = { ...baseState, at: { on: true, value: 324000, year: 2040, strategy: "sell" } };
+    const rows = calculatePlan(sold).simChosen.rows;
+    const row = rows.find((r) => r.sellLump > 0);
+    const ms = yearMilestones(row, null, sold);
+    const sale = ms.find((e) => e.key === "sell");
+    expect(sale).toBeTruthy();
+    expect(sale.amount).toBe(Math.round(row.sellLump));
+  });
+
+  it("returns no milestones for an empty row", () => {
+    expect(yearMilestones(null, null, baseState)).toEqual([]);
+  });
+});
+
+describe("location-cost spending basis", () => {
+  // A tiny synthetic location keeps the arithmetic obvious: basket = $1,500/mo.
+  const loc = { m: { rent: 1000, food: 500 }, hcPre: 600, hcPost: 400 };
+  const base = { spendBasis: "location", lifestyle: 100, status: "married", retLocObj: loc };
+
+  it("derives the need from the basket × 12 plus age-based healthcare (post-65)", () => {
+    // basket 1500*12 = 18000; healthcare 400/2 per person *2 *12 = 4800.
+    expect(spendingNeed(base, 70, 70)).toBe(18000 + 4800);
+  });
+
+  it("uses the higher pre-65 healthcare figure before Medicare", () => {
+    // healthcare 600/2 per person *2 *12 = 7200.
+    expect(spendingNeed(base, 60, 60)).toBe(18000 + 7200);
+  });
+
+  it("steps healthcare down as each spouse turns 65", () => {
+    const mixed = spendingNeed(base, 66, 60); // one post-65, one pre-65
+    expect(mixed).toBe(18000 + (200 + 300) * 12);
+  });
+
+  it("scales living by the single-person factor in a survivor year", () => {
+    const need = spendingNeed(base, 70, 70, 0, true, 70);
+    expect(need).toBe(18000 * SINGLE_COST_FACTOR + 200 * 12); // one person's healthcare
+  });
+
+  it("scales living (not healthcare) by the lifestyle multiplier", () => {
+    const lux = spendingNeed({ ...base, lifestyle: 130 }, 70, 70);
+    expect(lux).toBe(18000 * 1.3 + 4800);
+  });
+
+  it("offsets the need with inherited-home rent savings (liveSav)", () => {
+    expect(spendingNeed(base, 70, 70, 5000)).toBe(18000 + 4800 - 5000);
+  });
+
+  it("leaves the income basis untouched when spendBasis is absent", () => {
+    const inc = { incomeHH: 100000, targetPct: 0.4, hcPre: 2450, hcPost: 1000 };
+    expect(spendingNeed(inc, 70, 70)).toBe(40000); // both 65+, no healthcare bump
+  });
+
+  it("flows the location basis through calculatePlan into row.need", () => {
+    const us = LOCATIONS.find((l) => l.name === "US -- national average");
+    const basket = Object.values(us.m).reduce((a, b) => a + b, 0) * 12;
+    const plan = calculatePlan({ ...baseState, spendBasis: "location", retireLoc: us.name });
+    // A working year before any inheritance/travel effects; both spouses pre-65.
+    const row = plan.simChosen.rows.find((r) => r.cal === 2032);
+    const hc = (us.hcPre / 2) * 2 * 12; // both under 65
+    expect(row.need).toBe(Math.round(basket + hc));
+  });
+});
+
+describe("recurring life events", () => {
+  const car = { id: "car", label: "Car", on: true, year: 2030, amount: 45000, everyYears: 10, untilYear: 2050 };
+
+  it("fires a recurring event on its cadence within the window", () => {
+    expect(scheduledSpendForYear([car], 2030)).toBe(45000); // start
+    expect(scheduledSpendForYear([car], 2040)).toBe(45000); // +10
+    expect(scheduledSpendForYear([car], 2050)).toBe(45000); // last (untilYear inclusive)
+  });
+
+  it("stays silent in the off-cadence years and past the until year", () => {
+    expect(scheduledSpendForYear([car], 2035)).toBe(0); // not a multiple of 10 from start
+    expect(scheduledSpendForYear([car], 2029)).toBe(0); // before start
+    expect(scheduledSpendForYear([car], 2060)).toBe(0); // past untilYear
+  });
+
+  it("runs to the horizon when untilYear is unset", () => {
+    const upkeep = { id: "up", on: true, year: 2030, amount: 6000, everyYears: 1 };
+    expect(scheduledSpendForYear([upkeep], 2099)).toBe(6000);
+  });
+
+  it("treats an event with no everyYears as a one-time hit (back-compat)", () => {
+    const wedding = { id: "w", on: true, year: 2032, amount: 15000 };
+    expect(scheduledSpendForYear([wedding], 2032)).toBe(15000);
+    expect(scheduledSpendForYear([wedding], 2033)).toBe(0);
+  });
+
+  it("flows a recurring event into the simulation's extraSpend", () => {
+    const plan = calculatePlan({ ...baseState, events: [car] });
+    const hit = plan.simChosen.rows.find((r) => r.cal === 2040);
+    const miss = plan.simChosen.rows.find((r) => r.cal === 2041);
+    expect(hit.extraSpend).toBeGreaterThanOrEqual(45000);
+    expect(miss.extraSpend).toBe(0);
+  });
+});
+
+describe("spendingNeed location basis (seam contract for 0D)", () => {
+  const L = LOCATIONS.find((x) => x.m); // any location with a basket
+  const i = { spendBasis: "location", retLocObj: L, status: "married", lifestyle: 100 };
+
+  it("sums the cost-of-living basket plus age-based healthcare (couple, pre-65)", () => {
+    const livingYr = Object.values(L.m).reduce((a, b) => a + b, 0) * 12;
+    const hcYr = (L.hcPre / 2) * 2 * 12; // both under 65, couple
+    expect(spendingNeed(i, 60, 60)).toBeCloseTo(livingYr + hcYr, 2);
+  });
+
+  it("applies the single/survivor cost factor and single healthcare", () => {
+    const livingYr = Object.values(L.m).reduce((a, b) => a + b, 0) * 12 * SINGLE_COST_FACTOR;
+    const hcYr = (L.hcPre / 2) * 12;
+    expect(spendingNeed(i, 60, 60, 0, true, 60)).toBeCloseTo(livingYr + hcYr, 2);
+  });
+
+  it("scales living (not healthcare) by lifestyle and subtracts live-in saving", () => {
+    const lo = spendingNeed({ ...i, lifestyle: 80 }, 70, 70, 5000);
+    const base = spendingNeed(i, 70, 70, 0);
+    expect(lo).toBeLessThan(base);
+  });
+});
+
+describe("recurring events (seam contract for Wave 1 C3)", () => {
+  const ev = [{ on: true, year: 2030, amount: 45000, everyYears: 10, untilYear: 2050 }];
+  it("fires on cadence within the window and is silent off-cadence", () => {
+    expect(scheduledSpendForYear(ev, 2030)).toBe(45000);
+    expect(scheduledSpendForYear(ev, 2035)).toBe(0);
+    expect(scheduledSpendForYear(ev, 2040)).toBe(45000);
+    expect(scheduledSpendForYear(ev, 2060)).toBe(0); // past untilYear
+  });
+  it("treats no everyYears as a one-time event (old behavior preserved)", () => {
+    const one = [{ on: true, year: 2031, amount: 10000 }];
+    expect(oneTimeSpendForYear(one, 2031)).toBe(10000);
+    expect(oneTimeSpendForYear(one, 2032)).toBe(0);
+  });
+  it("skips disabled events", () => {
+    expect(scheduledSpendForYear([{ ...ev[0], on: false }], 2030)).toBe(0);
+  });
+});
+
+describe("yearReturn seam", () => {
+  const i = { realReturn: 0.05 };
+  it("prefers an injected return path", () => {
+    expect(yearReturn(i, 2, { returns: [0.1, 0.2, 0.3] })).toBeCloseTo(0.3, 6);
+  });
+  it("applies the stress schedule when stress is set", () => {
+    expect(yearReturn(i, 0, { stress: true })).toBeCloseTo(-0.10, 6); // STRESS_EARLY_DROP
+  });
+  it("falls back to the central real return", () => {
+    expect(yearReturn(i, 10, {})).toBeCloseTo(0.05, 6);
   });
 });

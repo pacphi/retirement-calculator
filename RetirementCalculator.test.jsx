@@ -19,6 +19,9 @@ vi.mock("recharts", () => {
     Tooltip: Primitive,
     ReferenceDot: Primitive,
     ReferenceLine: Primitive,
+    PieChart: Chart,
+    Pie: Primitive,
+    Cell: Primitive,
   };
 });
 
@@ -295,5 +298,67 @@ describe("investments chart view toggle", () => {
     fireEvent.click(buckets);
     expect(buckets).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Cash flow" })).toHaveAttribute("aria-pressed", "false");
+  });
+});
+
+describe("year-by-year navigator", () => {
+  it("renders the navigable year section with a year slider", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByText(/A month in the life of/i)).toBeInTheDocument();
+    expect(screen.getByRole("slider", { name: /select year/i })).toBeInTheDocument();
+  });
+
+  it("advances the displayed year when Next is clicked", () => {
+    render(<RetirementCalculator />);
+    const slider = screen.getByRole("slider", { name: /select year/i });
+    const before = Number(slider.value);
+    fireEvent.click(screen.getByRole("button", { name: /next year/i }));
+    expect(Number(screen.getByRole("slider", { name: /select year/i }).value)).toBe(before + 1);
+  });
+
+  it("exposes play and step controls for moving through the years", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByRole("button", { name: /^play$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /previous year/i })).toBeInTheDocument();
+  });
+});
+
+describe("spending basis toggle", () => {
+  it("defaults to the income-share basis and shows the share slider", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByRole("button", { name: "% of income" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText(/Retire on this share of income/i)).toBeInTheDocument();
+  });
+
+  it("switches to the location-cost basis, hiding the income share and revealing the lifestyle slider", () => {
+    render(<RetirementCalculator />);
+    fireEvent.click(screen.getByRole("button", { name: "Location cost" }));
+    expect(screen.queryByText(/Retire on this share of income/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Lifestyle —/i)).toBeInTheDocument();
+  });
+});
+
+describe("recurring life events editor", () => {
+  it("seeds a recurring vehicle default with a repeat field", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByDisplayValue("Vehicle replacement")).toBeInTheDocument();
+    expect(screen.getAllByLabelText(/repeat every years/i).length).toBeGreaterThan(0);
+  });
+});
+
+describe("year-by-year polish", () => {
+  it("offers a month vs full-year view toggle, defaulting to typical month", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByRole("button", { name: "Typical month" })).toHaveAttribute("aria-pressed", "true");
+    const fullYear = screen.getByRole("button", { name: "Full year" });
+    fireEvent.click(fullYear);
+    expect(fullYear).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("collapses the section, hiding the year slider", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByRole("slider", { name: /select year/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /collapse year by year/i }));
+    expect(screen.queryByRole("slider", { name: /select year/i })).not.toBeInTheDocument();
   });
 });

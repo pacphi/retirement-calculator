@@ -1,3 +1,4 @@
+export * from "./finance/seams.js";
 export * from "./finance/tax.js";
 export * from "./finance/socialSecurity.js";
 export * from "./finance/pension.js";
@@ -6,3 +7,4 @@ export * from "./finance/rmd.js";
 export * from "./finance/simulate.js";
 export * from "./finance/plan.js";
 export * from "./finance/monteCarlo.js";
+export * from "./finance/breakdown.js";

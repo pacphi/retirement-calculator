@@ -19,11 +19,13 @@ The app is still planning-grade, not advice-grade. Keep the in-app disclaimer an
 
 - Use one federal tax engine for both annual depletion and headline income.
 - Treat spending needs as after-tax spending.
+- Spending need defaults to income × targetPct (+ pre-65 healthcare bump). An opt-in "location" basis instead derives it from the selected location's cost-of-living basket × lifestyle %, with healthcare applied by age and a single/survivor scale (`SINGLE_COST_FACTOR`). One location applies for the whole horizon — relocation is not modeled.
 - Apply age-65 deductions only to filers who are actually 65+ in the modeled year.
 - Prefer SSA statement inputs for Social Security. The income-based PIA estimate is only a fallback.
 - Spousal Social Security benefits cap at 50% of the worker PIA at FRA and do not receive delayed retirement credits.
 - Use current WA DRS early-retirement factors and service-year eligibility guards.
 - Keep rental income separate from guaranteed lifetime benefits.
+- Monthly views are an honest per-month rate (the year's annual figure ÷ 12); the engine has no intra-year timing, so genuinely one-time items (home sale, first RMD, age-65, survivor) are flagged as year milestones, not placed in a month. Derivation lives in `src/finance/breakdown.js` and is unit-tested; chart layout is not.
 
 ## Test strategy
 

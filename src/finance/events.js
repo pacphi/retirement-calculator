@@ -18,11 +18,29 @@ export const travelSpendForYear = (travel, cal) => {
   return amount;
 };
 
-export const oneTimeSpendForYear = (events, cal) =>
+// Does a (possibly recurring) life event fire in this calendar year? With `everyYears`
+// set it repeats from `year` on that cadence through `untilYear` (or the whole horizon if
+// unset); without it, it is a one-time hit in `year`. Amounts are today's (real) dollars.
+const eventFiresInYear = (e, cal) => {
+  if (!e || !e.on) return false;
+  const start = Number(e.year) || 0;
+  if (cal < start) return false;
+  const every = Number(e.everyYears) || 0;
+  if (every > 0) {
+    const until = e.untilYear != null && e.untilYear !== "" ? Number(e.untilYear) : Infinity;
+    return cal <= until && (cal - start) % every === 0;
+  }
+  return cal === start;
+};
+
+export const scheduledSpendForYear = (events, cal) =>
   (events || []).reduce(
-    (sum, e) => (e && e.on && Number(e.year) === cal ? sum + (Number(e.amount) || 0) : sum),
+    (sum, e) => (eventFiresInYear(e, cal) ? sum + (Number(e.amount) || 0) : sum),
     0,
   );
+
+// Backwards-compatible alias: one-time events (no `everyYears`) behave exactly as before.
+export const oneTimeSpendForYear = scheduledSpendForYear;
 
 // One long-term-care episode keyed to the older spouse (ageA) reaching startAge,
 // lasting `years`. Cost defaults to the selected location's annual private-care
