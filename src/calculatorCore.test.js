@@ -1263,3 +1263,45 @@ describe("housing-explicit need + floor policy (Wave 2 Task 4)", () => {
     expect(composeNeed(parts, 10000)).toBeCloseTo(45000, 6);
   });
 });
+
+describe("location property tax into housing (Wave 2 Task 7)", () => {
+  // Persona for a US-retired homeowner. baseState retires internationally (Austria,
+  // stateCode null → activePropertyTaxRate 0), so we build an explicit US variant.
+  const usOwnerBase = {
+    ...baseState,
+    retireLoc: "US -- national average",
+    stateCode: null,                           // overridden per case
+    at: { ...baseState.at, on: false },        // no international inheritance
+    tx: { ...baseState.tx, on: false },        // no US inheritance (non-inherited owned)
+    housing: {
+      tenure: "own",
+      homeValue: 500000,
+      maintenancePct: 0.01,
+      insuranceAnnual: 0,
+      rent: null,
+      mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: 2026 },
+    },
+  };
+
+  it("property tax scales the housing cost by the active state's rate (Task 7)", () => {
+    // TX propertyTaxRate 0.0163, CA 0.0068 — both on a $500k owned home.
+    // At age 70+ the household is fully retired; the property-tax difference
+    // flows directly into need (real-flat, no inflation compounding).
+    const txPlan = calculatePlan({ ...usOwnerBase, stateCode: "TX" });
+    const caPlan = calculatePlan({ ...usOwnerBase, stateCode: "CA" });
+    const txRow = txPlan.simChosen.rows.find((r) => r.aA >= 70);
+    const caRow = caPlan.simChosen.rows.find((r) => r.aA >= 70);
+    // Expected delta: (0.0163 − 0.0068) × 500 000 = $4 750
+    expect(txRow.need - caRow.need).toBeCloseTo((0.0163 - 0.0068) * 500000, -1);
+  });
+
+  it("a null stateCode yields activePropertyTaxRate 0 (international / no-state default)", () => {
+    const plan = calculatePlan({ ...usOwnerBase, stateCode: null });
+    expect(plan.inp.activePropertyTaxRate).toBe(0);
+  });
+
+  it("a known US stateCode resolves the correct propertyTaxRate from US_STATE_TAX", () => {
+    const plan = calculatePlan({ ...usOwnerBase, stateCode: "TX" });
+    expect(plan.inp.activePropertyTaxRate).toBeCloseTo(0.0163, 6);
+  });
+});

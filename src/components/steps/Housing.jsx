@@ -1,7 +1,7 @@
 import { C } from "../theme.js";
 import { Field, NumberInput, Segmented, Section } from "../atoms/index.jsx";
 import { monthlyPI, payoffYear } from "../../finance/housing.js";
-import { TAX_YEAR } from "../../retirementData.js";
+import { TAX_YEAR, US_STATE_TAX } from "../../retirementData.js";
 
 /**
  * Housing step — tenure selection (Rent / Mortgage / Own) with mode-specific
@@ -41,6 +41,12 @@ export function Housing({ s, set }) {
       + (Number(h.insuranceAnnual) || 0)
       + (Number(h.maintenancePct) || 0.01) * (Number(h.homeValue) || 0)) / 12
   );
+
+  // Property-tax read-out: shown when stateCode is set and homeValue > 0.
+  // US_STATE_TAX carries propertyTaxRate for every US state; international = 0 (bundled in PROP.ownRate).
+  const propTaxRate = (s.stateCode && US_STATE_TAX[s.stateCode]?.propertyTaxRate) || 0;
+  const propTaxAnnual = propTaxRate * (Number(h.homeValue) || 0);
+  const showPropTax = propTaxRate > 0 && (Number(h.homeValue) || 0) > 0;
 
   return (
     <Section eyebrow="Housing" title="Housing">
@@ -128,6 +134,14 @@ export function Housing({ s, set }) {
               {ownCostMo > 0 && (
                 <>{" · "}≈&nbsp;<b style={{ color: C.ink }}>${ownCostMo.toLocaleString()}/mo</b> real carrying cost after payoff</>
               )}
+              {showPropTax && (
+                <>
+                  <br />
+                  Property tax ≈&nbsp;<b style={{ color: C.ink }}>${Math.round(propTaxAnnual).toLocaleString()}/yr</b>
+                  {" "}({(propTaxRate * 100).toFixed(2)}% state rate)
+                  <span style={{ color: C.mut }}>{" — "}county-local; state figure is a planning-grade approximation.</span>
+                </>
+              )}
             </div>
           )}
           <div className="rc-inputs">
@@ -182,6 +196,14 @@ export function Housing({ s, set }) {
           {ownCostMo > 0 && (
             <div role="note" style={{ fontSize: 11.5, color: C.slate, lineHeight: 1.55, marginBottom: 10, padding: "8px 10px", background: "#F6F2E8", borderRadius: 8 }}>
               Estimated carrying cost: ≈&nbsp;<b style={{ color: C.ink }}>${ownCostMo.toLocaleString()}/mo</b> (property tax + insurance + maintenance)
+              {showPropTax && (
+                <>
+                  <br />
+                  Property tax ≈&nbsp;<b style={{ color: C.ink }}>${Math.round(propTaxAnnual).toLocaleString()}/yr</b>
+                  {" "}({(propTaxRate * 100).toFixed(2)}% state rate)
+                  <span style={{ color: C.mut }}>{" — "}county-local; state figure is a planning-grade approximation.</span>
+                </>
+              )}
             </div>
           )}
         </>
