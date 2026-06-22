@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import {
-  ComposedChart, Area, Line, LineChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ReferenceDot, ReferenceLine,
+  ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer,
 } from "recharts";
 import { DEFAULT_LIFE, DEFAULT_LIFE_EVENTS, DEFAULT_TRAVEL, LOCATIONS, MC_DEFAULTS, SINGLE_COST_FACTOR, SOURCES } from "./src/retirementData.js";
 import { C, SRC, FONTS } from "./src/components/theme.js";

@@ -1,7 +1,6 @@
 import { C } from "../theme.js";
 import { Segmented } from "../atoms/index.jsx";
 import { lineItems, monthlyTotal } from "../../calculatorCore.js";
-import { SINGLE_COST_FACTOR } from "../../retirementData.js";
 
 const usd0 = (x) => (x < 0 ? "-$" : "$") + Math.abs(Math.round(x)).toLocaleString();
 const usdK = (x) => Math.abs(x) >= 1000 ? "$" + Math.round(x / 1000) + "k" : "$" + Math.round(x);

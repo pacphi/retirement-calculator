@@ -109,7 +109,9 @@ export function composeNeed(parts, liveSav = 0) {
   const { nonHousingBase, healthcare, housing, lifestyleSteps, events } = parts;
   const total = nonHousingBase + healthcare + housing + lifestyleSteps + events;
 
-  // Use the internal floor base if provided; fall back to total (location convention).
+  // NOTE: _floorBase is fixed at component-build time (housing/lifestyleSteps/events are 0).
+  // Wave 2 (housing) and any wave adding nonzero lifestyleSteps/events MUST decide: does the
+  // 0.35 floor apply to total incl. housing, or non-housing only? Update _floorBase accordingly.
   const floorBase = parts._floorBase != null ? parts._floorBase : total;
 
   return Math.max(0.35 * floorBase, total - liveSav);
