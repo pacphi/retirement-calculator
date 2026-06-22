@@ -38,8 +38,27 @@ export function buildInheritanceInputs(s) {
   for (const key of ["tx", "at"]) {
     const p = s[key];
     if (!p.on) continue;
-    const e = propEcon(key, Number(p.value) || 0);
-    out.push({ key, year: Number(p.year) || 2038, type: p.strategy, sell: e.sell, rent: e.rent, live: e.live });
+    const value = Number(p.value) || 0;
+    const e = propEcon(key, value);
+    const m = PROP[key];
+    // Task 5 (Wave 2): carry the home value and property-tax rate into "live" entries
+    // so simulate.js can build an inheritedOwnOverride (owned carrying cost) for that year.
+    // US properties use ownRate as a combined carrying-cost rate (property tax + insurance +
+    // maintenance) — we model it as maintenance for the override since property tax is
+    // handled separately via activePropertyTaxRate. International properties (e.g. "at")
+    // carry 0 property-tax rate because the retirement jurisdiction is international and
+    // its carrying cost is captured entirely in ownRate.
+    out.push({
+      key,
+      year: Number(p.year) || 2038,
+      type: p.strategy,
+      sell: e.sell,
+      rent: e.rent,
+      live: e.live,
+      // Fields used only when type === "live" (Task 5 tenure override):
+      homeValue: value,
+      ownRate: m.ownRate,
+    });
   }
   return out;
 }

@@ -127,13 +127,32 @@ export function simulate(i, ssOpt) {
     const survPensionPct = lifeOn ? lifePensionPct : Number(i.survivor?.pensionPct ?? 0);
     const pensEff = pensHolderDead ? pens * (survPensionPct / 100) : pens;
     let rent = 0;
-    let liveSav = 0;
     let sellLump = 0;
+    // Task 5 (Wave 2): track the first active "live" entry so we can build an
+    // inheritedOwnOverride below. Only the first active entry is used (one home at a time).
+    let inheritedOwnOverride = null;
     for (const p of (i.inher || [])) {
       if (p.type === "rent" && cal >= p.year) rent += p.rent;
-      if (p.type === "live" && cal > p.year) liveSav += p.live; // year+1: skip the relocation/transition year
+      if (p.type === "live" && cal > p.year && inheritedOwnOverride === null) {
+        // Year+1 convention: skip the relocation/transition year (same as the old liveSav logic).
+        // Build an owned-tenure override using the inherited home's value and the household's
+        // insurance/maintenance rates. Property-tax rate comes from activePropertyTaxRate,
+        // which is already 0 for international properties (Austria) per Task 4 / plan.js.
+        // The old flat liveSav credit is REMOVED here — the override replaces it with an
+        // explicit owned carrying cost, preventing double-counting.
+        inheritedOwnOverride = {
+          tenure: "own",
+          homeValue: p.homeValue || 0,
+          insuranceAnnual: i.housing?.insuranceAnnual || 0,
+          maintenancePct: p.ownRate || (i.housing?.maintenancePct || 0),
+        };
+      }
       if (p.type === "sell" && cal === p.year) sellLump += p.sell;
     }
+    // Resolve the effective housing inputs for this year. When a live-in inheritance is
+    // active, use the inheritedOwnOverride (Task 5); otherwise use i.housing as before.
+    // Task 8 will extend this to compose: cal < relocationYear ? housing : (inheritedOwnOverride ?? retireHousing ?? defaultRetireRent).
+    const effectiveHousing = inheritedOwnOverride ?? i.housing;
     const extraSpend =
       travelSpendForYear(i.travel, cal)
       + oneTimeSpendForYear(i.events, cal, { includeEmergent: ssOpt.includeEmergent ?? false })
@@ -143,11 +162,23 @@ export function simulate(i, ssOpt) {
     // inside spendingComponents can deflate mortgage P&I and compute property tax.
     // i.inflation is a real engine input that deflates nominal P&I only — it does
     // not compound rent, insurance, maintenance, or any other spending line.
-    const need = spendingNeed(i, aA, aB, liveSav, isSurvivor, survAge, {
+    //
+    // Task 5: when a live-in inheritance is active, override i.housing with the
+    // inheritedOwnOverride so spendingComponents prices the inherited home as owned
+    // (carrying cost only) rather than applying the old flat liveSav credit.
+    const overrideActive = effectiveHousing !== i.housing;
+    const iEffective = overrideActive ? { ...i, housing: effectiveHousing } : i;
+    // I1 fix: PROP.ownRate already bundles property tax + insurance + maintenance into
+    // maintenancePct, so don't apply the state property-tax rate again to an inherited
+    // owned home — that would double-count property tax (e.g. a US "tx" home once Task
+    // 7/8 turns on US property tax). The inherited owned carrying cost is therefore
+    // ownRate × homeValue exactly, for both international (rate already 0) and US homes.
+    const effPropertyTaxRate = overrideActive ? 0 : i.activePropertyTaxRate;
+    const need = spendingNeed(iEffective, aA, aB, 0, isSurvivor, survAge, {
       retireAgeA,
       cal,
       inflation: i.inflation,
-      propertyTaxRate: i.activePropertyTaxRate,
+      propertyTaxRate: effPropertyTaxRate,
     }) + extraSpend;
     const yr = yearReturn(i, y, ssOpt);
     // The deferred pool's prior year-end value is the IRS base for this year's RMD.
@@ -235,13 +266,14 @@ export function steadyState(i, sim) {
   const row = sim.rows.find((r) => r.aA >= startAgeA) ?? sim.rows[sim.rows.length - 1];
   let sellAfter = 0;
   let rentInc = 0;
-  let liveSav = 0;
   for (const p of i.inher) {
     // Discount a future sale's proceeds back to the steady-state year so the SWR
     // base isn't inflated by money not yet received.
     if (p.type === "sell" && p.year > row.cal) sellAfter += p.sell / Math.pow(1 + (Number(i.realReturn) || 0), p.year - row.cal);
     if (p.type === "rent" && p.year <= row.cal) rentInc += p.rent;
-    if (p.type === "live" && p.year < row.cal) liveSav += p.live; // year+1: skip the relocation/transition year
+    // Task 5 (Wave 2): "live" entries no longer produce a flat liveSav credit.
+    // The inherited home is modelled as an owned tenure override in simulate(),
+    // so its carrying cost is already baked into row.need. No accumulation here.
   }
   const FV = row.bal + sellAfter;
   const wd = FV * i.swr;
@@ -289,7 +321,7 @@ export function steadyState(i, sim) {
   const net = gross - taxDetails.tax;
   return {
     FV, wd, ssA, ssB, pension, erf: i.pensionOn ? b.erf : null, pensionNote: b.pensionNote,
-    ssHouse, guaranteed, recurring, rentInc, liveSav, gross,
+    ssHouse, guaranteed, recurring, rentInc, liveSav: 0, gross,
     net,
     sustainableCapacity: net,
     modeledSpend: targetNeed,

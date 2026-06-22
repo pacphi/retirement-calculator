@@ -711,18 +711,146 @@ describe("location-aware additional income tax", () => {
 });
 
 describe("live-in inheritance timing", () => {
-  it("credits the live-in housing saving only from the year after inheritance", () => {
+  it("activates the owned tenure override only from the year after inheritance (Task 5)", () => {
+    // Task 5 re-baseline: the old flat liveSav credit is replaced by an owned tenure
+    // override. With homeValue=0 the carrying cost is 0, so need is EQUAL in both
+    // years (no housing cost either way). The key invariant is that the override does
+    // NOT activate in the move year itself (cal === p.year), only from cal > p.year.
+    // We verify timing by checking need is unchanged in the move year (2030) and that
+    // the override is active in 2031 — the need change between them now reflects the
+    // delta between renting (i.housing) and owning (carrying cost of homeValue=0).
+    const baseHousing = {
+      tenure: "rent", rent: 1000, // $12k/yr
+      mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: 2026 },
+      homeValue: 0, insuranceAnnual: 0, maintenancePct: 0.01,
+    };
     const i = {
       ...baseState, ageA: 65, ageB: 65, stopA: 65, stopB: 65, claimA: 65, claimB: 65,
       pensionOn: false, savings: 800000, contrib: 0, targetPct: 0.5,
       incomeHH: 100000, hcPre: 2450, hcPost: 1000, ltcAnnual: 129000,
       travel: { on: false }, events: [], survivor: { on: false, year: 9999, pensionPct: 0 }, ltc: { on: false }, horizonAge: 95,
-      inher: [{ type: "live", year: 2030, live: 12000 }],
+      housing: baseHousing,
+      // Minimal live entry: homeValue 0 → owned carrying cost is 0 → rent ($12k) is saved
+      inher: [{ type: "live", year: 2030, live: 0, homeValue: 0, ownRate: 0 }],
     };
     const sim = simulate(i, { haircut: 1, cutYear: 9999 });
     const moveYear = sim.rows.find((r) => r.cal === 2030).need;
     const after = sim.rows.find((r) => r.cal === 2031).need;
-    expect(moveYear - after).toBe(12000); // saving applies in 2031, not the 2030 move year
+    // From 2031 housing switches from rent ($12k/yr) to owned (carrying cost $0),
+    // so the need drops by exactly the annual rent that was previously in housing.
+    // M1 note: homeValue=0 makes the owned carrying cost $0, so the saving equals the
+    // FULL rent — this test proves the year+1 TIMING, not the economic magnitude of a
+    // real owned home (that is exercised by the Texas/Austria tests below).
+    expect(moveYear - after).toBe(12000); // override activates in 2031 not 2030
+  });
+});
+
+describe("inherited live-in switches housing to owned carrying cost (Task 5)", () => {
+  it("switches housing to owned carrying cost from the live year; need drops vs renting", () => {
+    // Arrange: income-basis persona renting at $1,650/mo ($19,800/yr). The Austria
+    // home (value 324000, ownRate 0.012) is inherited in 2040. From 2041 the housing
+    // line switches from rent to owned carrying cost (0.012 × 324000 = $3,888/yr).
+    // No double credit: the old flat liveSav credit is removed.
+    const i = {
+      ...baseState,
+      ageA: 45, ageB: 45, stopA: 62, stopB: 60, claimA: 67, claimB: 67,
+      pensionOn: false, savings: 300000, contrib: 0,
+      targetPct: 0.28, realReturn: 0.05, swr: 0.04, tradFrac: 0,
+      incomeHH: 165000, hcPre: 2450, hcPost: 1000, ltcAnnual: 129000,
+      travel: { on: false }, events: [], survivor: { on: false, year: 9999, pensionPct: 0 },
+      ltc: { on: false }, horizonAge: 95,
+      housing: {
+        tenure: "rent", rent: 1650, // $1,650/mo = $19,800/yr
+        mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: 2026 },
+        homeValue: 0, insuranceAnnual: 0, maintenancePct: 0.01,
+      },
+      // Austria home via inher directly (bypasses buildInheritanceInputs for isolation)
+      at: { on: false }, tx: { on: false },
+      inher: [{ type: "live", year: 2040, live: 0, homeValue: 324000, ownRate: 0.012 }],
+    };
+    const sim = simulate(i, { haircut: 1, cutYear: 9999 });
+    // Act
+    const before = sim.rows.find((r) => r.cal === 2039); // last renting year
+    const after  = sim.rows.find((r) => r.cal === 2041); // first owned year (year+1 convention)
+    // Assert: owned carrying cost (0.012 × 324000 = $3,888) < annual rent ($19,800)
+    // so need drops once the override is active.
+    expect(after.need).toBeLessThan(before.need);
+    // The delta should be close to the housing saving (rent minus owned cost).
+    // rent: $19,800/yr → owned carrying cost: $3,888/yr → saving ≈ $15,912/yr
+    const delta = before.need - after.need;
+    expect(delta).toBeGreaterThan(10000); // well above zero: override is real
+    expect(delta).toBeLessThan(25000);    // bounded: no double-count
+  });
+
+  it("does not double-apply state property tax on a US inherited owned home (I1)", () => {
+    // I1 locking test: PROP.ownRate is a COMBINED carrying-cost rate (property tax +
+    // insurance + maintenance) that the override folds into maintenancePct. The state
+    // property-tax rate (activePropertyTaxRate) must NOT be applied again on top — else
+    // a US inherited home (TX, propertyTaxRate 0.0163) double-counts its property tax.
+    // The owned-year carrying cost must equal exactly ownRate × homeValue.
+    // Arrange
+    const homeValue = 790000;     // Texas home value
+    const ownRate = 0.027;        // PROP.tx.ownRate (combined carrying cost)
+    const stateRate = 0.0163;     // a non-zero US state property-tax rate (e.g. TX)
+    const common = {
+      ...baseState,
+      ageA: 45, ageB: 45, stopA: 62, stopB: 60, claimA: 67, claimB: 67,
+      pensionOn: false, savings: 300000, contrib: 0,
+      targetPct: 0.28, realReturn: 0.05, swr: 0.04, tradFrac: 0,
+      incomeHH: 165000, hcPre: 2450, hcPost: 1000, ltcAnnual: 129000,
+      travel: { on: false }, events: [], survivor: { on: false, year: 9999, pensionPct: 0 },
+      ltc: { on: false }, horizonAge: 95,
+      activePropertyTaxRate: stateRate, // US retirement jurisdiction with a real rate
+      at: { on: false }, tx: { on: false },
+    };
+    const withHome = {
+      ...common,
+      housing: { tenure: "rent", rent: 1650, mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: 2026 }, homeValue: 0, insuranceAnnual: 0, maintenancePct: 0.01 },
+      inher: [{ type: "live", year: 2040, live: 0, homeValue, ownRate }],
+    };
+    // A baseline with zero housing + no inheritance isolates the non-housing need, so
+    // (owned-year need − baseline need) equals the inherited home's carrying cost.
+    const zeroHousing = {
+      ...common,
+      housing: { tenure: "rent", rent: 0, mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: 2026 }, homeValue: 0, insuranceAnnual: 0, maintenancePct: 0 },
+      inher: [],
+    };
+    // Act
+    const owned = simulate(withHome, { haircut: 1, cutYear: 9999 }).rows.find((r) => r.cal === 2041).need;
+    const base = simulate(zeroHousing, { haircut: 1, cutYear: 9999 }).rows.find((r) => r.cal === 2041).need;
+    const carry = owned - base;
+    // Assert: carrying cost is exactly ownRate × homeValue (NOT ownRate×v + stateRate×v).
+    const expectedCarry = ownRate * homeValue;                 // 0.027 × 790000 = 21,330
+    const doubleCounted = expectedCarry + stateRate * homeValue; // the bug: + 12,877
+    expect(carry).toBeCloseTo(expectedCarry, 0);
+    expect(carry).not.toBeCloseTo(doubleCounted, 0);
+  });
+
+  it("does not double-count: need in the move year (2040) is unchanged from 2039", () => {
+    // The override only activates for cal > p.year (year+1 convention), so the
+    // move year itself (2040) must show the same housing line as 2039.
+    const i = {
+      ...baseState,
+      ageA: 45, ageB: 45, stopA: 62, stopB: 60, claimA: 67, claimB: 67,
+      pensionOn: false, savings: 300000, contrib: 0,
+      targetPct: 0.28, realReturn: 0.05, swr: 0.04, tradFrac: 0,
+      incomeHH: 165000, hcPre: 2450, hcPost: 1000, ltcAnnual: 129000,
+      travel: { on: false }, events: [], survivor: { on: false, year: 9999, pensionPct: 0 },
+      ltc: { on: false }, horizonAge: 95,
+      housing: {
+        tenure: "rent", rent: 1650,
+        mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: 2026 },
+        homeValue: 0, insuranceAnnual: 0, maintenancePct: 0.01,
+      },
+      at: { on: false }, tx: { on: false },
+      inher: [{ type: "live", year: 2040, live: 0, homeValue: 324000, ownRate: 0.012 }],
+    };
+    const sim = simulate(i, { haircut: 1, cutYear: 9999 });
+    const yr2039 = sim.rows.find((r) => r.cal === 2039);
+    const yr2040 = sim.rows.find((r) => r.cal === 2040); // transition year — no override yet
+    // Housing is still rent in the move year; need is the same as the prior year
+    // (ignoring age-driven healthcare changes — both spouses are same age).
+    expect(yr2040.need).toBe(yr2039.need);
   });
 });
 
