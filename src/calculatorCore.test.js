@@ -989,6 +989,18 @@ describe("spendingNeed location basis (seam contract for 0D)", () => {
   });
 });
 
+describe("spending smile (seam contract for Wave 1 C1)", () => {
+  it("spending smile scales the income base in retirement but not healthcare (C1)", () => {
+    const base = {
+      incomeHH: 200000, targetPct: 0.4, hcPre: 24000, hcPost: 12000,
+      status: "married", spendBasis: "income",
+    };
+    const flat = spendingNeed({ ...base, spendingShape: { mode: "flat" } }, 75, 70, 0, false, null, { retireAgeA: 65 });
+    const smiled = spendingNeed({ ...base, spendingShape: { mode: "smile", earlyDecline: 0.01, upturnAge: 85 } }, 75, 70, 0, false, null, { retireAgeA: 65 });
+    expect(smiled).toBeLessThan(flat); // 10 years past retirement => ~10% lower base
+  });
+});
+
 describe("recurring events (seam contract for Wave 1 C3)", () => {
   const ev = [{ on: true, year: 2030, amount: 45000, everyYears: 10, untilYear: 2050 }];
   it("fires on cadence within the window and is silent off-cadence", () => {

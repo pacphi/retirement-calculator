@@ -425,3 +425,13 @@ describe("B1 return preset and variability controls", () => {
     expect(screen.getByLabelText(/Custom real return/i)).toBeInTheDocument();
   });
 });
+
+describe("spending smile (C1)", () => {
+  it("exposes the retirement spending smile control", () => {
+    render(<RetirementCalculator />);
+    // Section heading appears multiple times due to nested label wrappers — take first match.
+    expect(screen.getAllByText(/Retirement spending/i)[0]).toBeInTheDocument();
+    // Query by visible text (Field wraps children in <label>, inflating button accessible names)
+    expect(screen.getAllByText(/Spending smile/i)[0]).toBeInTheDocument();
+  });
+});

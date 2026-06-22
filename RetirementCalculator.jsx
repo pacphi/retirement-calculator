@@ -26,6 +26,7 @@ import { Timing } from "./src/components/steps/Timing.jsx";
 import { Pension } from "./src/components/steps/Pension.jsx";
 import { Inheritance as InheritanceStep } from "./src/components/steps/Inheritance.jsx";
 import { Milestones } from "./src/components/steps/Milestones.jsx";
+import { SpendingStrategy } from "./src/components/steps/SpendingStrategy.jsx";
 import { TravelLongevity } from "./src/components/steps/TravelLongevity.jsx";
 import { Advanced } from "./src/components/steps/Advanced.jsx";
 import { usePlan } from "./src/hooks/usePlan.js";
@@ -226,6 +227,7 @@ export default function RetirementCalculator() {
               <Pension s={s} set={set} afcAuto={afcAuto} afcEff={afcEff} steady={steady} />
               <InheritanceStep s={s} set={set} setProp={setProp} />
               <Milestones s={s} set={set} addEvent={addEvent} removeEvent={removeEvent} />
+              <SpendingStrategy s={s} set={set} setProp={setProp} />
               <TravelLongevity s={s} set={set} />
               <Advanced s={s} set={set} adv={adv} onAdvToggle={() => setAdv(a => !a)} />
             </div>
@@ -253,6 +255,7 @@ export default function RetirementCalculator() {
               onYbyOpen={setYbyOpen}
               onSelectYear={setSelYear}
               compTip={compTip}
+              spendingShape={s.spendingShape}
             />
 
             {/* Year by year — a typical month (or full year) for the selected year */}

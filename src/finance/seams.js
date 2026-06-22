@@ -27,6 +27,7 @@
  */
 
 import { SINGLE_COST_FACTOR, STRESS_EARLY_DROP } from "../retirementData.js";
+import { smileMultiplier } from "./spending/smile.js";
 
 /**
  * ctx shape accepted by spendingComponents:
@@ -65,7 +66,8 @@ export function spendingComponents(i, ageA, ageB, ctx = {}) {
     const single = isSurvivor || i.status === "single";
     const scale = single ? SINGLE_COST_FACTOR : 1;
     const lifestyle = (Number(i.lifestyle) || 100) / 100;
-    const nonHousingBase = livingMo * 12 * scale * lifestyle;
+    const smile = smileMultiplier(ageA, retireAgeA, i.spendingShape);
+    const nonHousingBase = livingMo * 12 * scale * lifestyle * smile;
 
     const hcPer = (age) => (age < 65 ? L.hcPre : L.hcPost) / 2; // couple figures ÷ 2
     const healthcare = (isSurvivor
@@ -79,7 +81,8 @@ export function spendingComponents(i, ageA, ageB, ctx = {}) {
   }
 
   // ── INCOME basis (default) ──────────────────────────────────────────────────
-  const nonHousingBase = i.incomeHH * i.targetPct;
+  const smile = smileMultiplier(ageA, retireAgeA, i.spendingShape);
+  const nonHousingBase = i.incomeHH * i.targetPct * smile;
   const perPersonHC = Math.max(0, (i.hcPre - i.hcPost)) / 2;
   const under65 = isSurvivor
     ? (survAge < 65 ? 1 : 0)
