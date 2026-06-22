@@ -987,3 +987,21 @@ describe("spendingNeed location basis (seam contract for 0D)", () => {
     expect(lo).toBeLessThan(base);
   });
 });
+
+describe("recurring events (seam contract for Wave 1 C3)", () => {
+  const ev = [{ on: true, year: 2030, amount: 45000, everyYears: 10, untilYear: 2050 }];
+  it("fires on cadence within the window and is silent off-cadence", () => {
+    expect(scheduledSpendForYear(ev, 2030)).toBe(45000);
+    expect(scheduledSpendForYear(ev, 2035)).toBe(0);
+    expect(scheduledSpendForYear(ev, 2040)).toBe(45000);
+    expect(scheduledSpendForYear(ev, 2060)).toBe(0); // past untilYear
+  });
+  it("treats no everyYears as a one-time event (old behavior preserved)", () => {
+    const one = [{ on: true, year: 2031, amount: 10000 }];
+    expect(oneTimeSpendForYear(one, 2031)).toBe(10000);
+    expect(oneTimeSpendForYear(one, 2032)).toBe(0);
+  });
+  it("skips disabled events", () => {
+    expect(scheduledSpendForYear([{ ...ev[0], on: false }], 2030)).toBe(0);
+  });
+});
