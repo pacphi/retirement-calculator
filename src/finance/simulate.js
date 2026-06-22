@@ -394,6 +394,21 @@ export function simulate(i, ssOpt) {
     }
     const afterTaxCash = wages + pensEff + rent + ssAyEff + ssByEff + wdTotal - tax;
     if (bal <= 0 && depAge === null && afterTaxCash < need) depAge = aA;
+    // Task 9: compute housing breakdown parts for the row so monthlyBreakdown can itemize them.
+    // housingCostForYear is already called inside spendingComponents via seams; we call it once
+    // more here with the same effective inputs to surface the parts on the row. This is a pure
+    // derivation (same inputs → same result) and adds no simulation state.
+    const housingBreakdown = housingCostForYear(effectiveHousing, cal, i.inflation, effPropertyTaxRate);
+    // For renters: housingRentOrPI is the annual rent (housingBreakdown.other includes rent).
+    // For mortgage: housingRentOrPI is the deflated P&I (housingBreakdown.pi).
+    // For owned outright: pi=0, other=insurance+maintenance, so housingRentOrPI=0.
+    const housingRentOrPI = effectiveHousing?.tenure === "rent"
+      ? (Number(effectiveHousing.rent) || 0) * 12
+      : housingBreakdown.pi;
+    const prevHousingRentOrPI = rows.length > 0 ? (rows[rows.length - 1].housingRentOrPI ?? 0) : null;
+    const mortgagePaidOff = effectiveHousing?.tenure === "mortgage"
+      && housingRentOrPI === 0
+      && prevHousingRentOrPI != null && prevHousingRentOrPI > 0;
     rows.push({
       aA, aB, cal, salA, salB, rent, pens: pensEff, ssA: ssAyEff, ssB: ssByEff, survivor: isSurvivor,
       wd: Math.round(wdTotal), wdSpend: Math.round(wd), bal: Math.round(bal), need: Math.round(need),
@@ -401,6 +416,11 @@ export function simulate(i, ssOpt) {
       tax: Math.round(tax), contrib: Math.round(contrib), sellLump: Math.round(sellLump),
       rmd: Math.round(rmd), forcedRmd: Math.round(forcedRmd), defBal: Math.round(defBal),
       growth: Math.round(growth),
+      // Housing breakdown (Task 9): annual total + non-overlapping parts for itemized view.
+      housing: Math.round(housingBreakdown.total),
+      housingRentOrPI: Math.round(housingRentOrPI),
+      housingPropertyTax: Math.round(housingBreakdown.propertyTax),
+      mortgagePaidOff,
     });
   }
 

@@ -22,14 +22,27 @@ export function monthlyBreakdown(row) {
     ssB: m(row.ssB),
   };
   const draw = m(row.wdSpend ?? row.wd);
-  // need is after-tax spending and already includes extraSpend (travel/events/LTC);
-  // core living is the remainder. tax is funded on top of need by the draw/income.
+  // need is after-tax spending and already includes extraSpend (travel/events/LTC)
+  // and housing. Core living is the remainder after removing both so that housing
+  // shows as its own labeled line and is not double-counted in "living".
   const extra = m(row.extraSpend);
-  const living = m((Number(row.need) || 0) - (Number(row.extraSpend) || 0));
+  const housingAnnual = Number(row.housing) || 0;
+  const housing = m(housingAnnual);
+  // Task 9: itemize housing sub-components per month so the UI can label them.
+  const housingDetail = {
+    rentOrPI: m(Number(row.housingRentOrPI) || 0),
+    propertyTax: m(Number(row.housingPropertyTax) || 0),
+    // other = total − rentOrPI − propertyTax (insurance + maintenance + rent-other).
+    // Clamp at 0: independently-rounded caller fields can make this slightly negative
+    // from rounding artifacts, and a displayed per-month sub-line must never be negative.
+    other: Math.max(0, m(housingAnnual - (Number(row.housingRentOrPI) || 0) - (Number(row.housingPropertyTax) || 0))),
+  };
+  // living = (need − extraSpend − housing) / 12 — housing is now its own line.
+  const living = m((Number(row.need) || 0) - (Number(row.extraSpend) || 0) - housingAnnual);
   const tax = m(row.tax);
-  const expenses = { living, extra, tax };
+  const expenses = { living, extra, housing, housingDetail, tax };
   const incomeTotalMo = income.salA + income.salB + income.rent + income.pens + income.ssA + income.ssB;
-  const expenseTotalMo = living + extra + tax;
+  const expenseTotalMo = living + extra + housing + tax;
   // Net surplus/shortfall for the month: everything coming in (incl. the savings draw)
   // less everything going out. ~0 when the draw is sized to meet the need; positive in
   // working years where income exceeds need (the surplus the engine can contribute).
@@ -62,6 +75,11 @@ export function yearMilestones(row, prevRow, inputs = {}, depAge = null) {
   if (row.survivor && (!prevRow || !prevRow.survivor)) out.push({ key: "surv", label: "Survivor year begins", kind: "life" });
   if ((Number(row.extraSpend) || 0) > 0) out.push({ key: "extra", label: "Travel / one-time spending", kind: "spend", amount: Math.round(row.extraSpend) });
   if (depAge != null && row.aA === depAge) out.push({ key: "dep", label: "Savings depleted", kind: "tax" });
+  // Task 9: mortgage payoff — flag when the row carries a mortgagePaidOff flag set by simulate,
+  // OR when housingRentOrPI drops to 0 from a positive prior year (P&I ended, carrying-cost only).
+  const paidOffFlag = !!row.mortgagePaidOff;
+  const piDropped = (Number(row.housingRentOrPI) || 0) === 0 && prevRow && (Number(prevRow.housingRentOrPI) || 0) > 0;
+  if (paidOffFlag || piDropped) out.push({ key: "payoff", label: "Mortgage paid off", kind: "life" });
 
   return out;
 }

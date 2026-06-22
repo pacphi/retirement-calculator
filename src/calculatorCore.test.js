@@ -991,12 +991,15 @@ describe("monthly breakdown (year-by-year navigator)", () => {
     expect(b.draw).toBeCloseTo((row.wdSpend ?? row.wd) / 12, 6);
   });
 
-  it("splits expenses into core living (need minus extra), extra, and tax", () => {
+  it("splits expenses into core living (need minus extra minus housing), extra, housing, and tax", () => {
+    // Task 9: living now excludes housing so housing can show as its own labeled line.
+    // Before Task 9: living = (need - extraSpend) / 12
+    // After  Task 9: living = (need - extraSpend - housing) / 12
     const rows = calculatePlan(baseState).simChosen.rows;
     const row = rows.find((r) => r.extraSpend > 0) ?? rows[rows.length - 1];
     const b = monthlyBreakdown(row);
     expect(b.expenses.extra).toBeCloseTo(row.extraSpend / 12, 6);
-    expect(b.expenses.living).toBeCloseTo((row.need - row.extraSpend) / 12, 6);
+    expect(b.expenses.living).toBeCloseTo((row.need - row.extraSpend - (row.housing ?? 0)) / 12, 6);
     expect(b.expenses.tax).toBeCloseTo(row.tax / 12, 6);
   });
 
