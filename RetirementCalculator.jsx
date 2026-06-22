@@ -59,6 +59,9 @@ export default function RetirementCalculator() {
     ltc: { on:false, startAge:80, years:3, annual:null },
     horizonAge: 95,
     stateRate: null,
+    returnPreset: "balanced", volatility: 0.12, showStress: false,
+    spendingShape: { mode: "flat", earlyDecline: 0.01, upturnAge: 85, lateUpturn: 0.01 },
+    lifestyleSteps: [],
   });
   const [couple, setCouple] = useState(true);
   const [stage, setStage] = useState("post");

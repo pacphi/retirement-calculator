@@ -71,6 +71,10 @@ export function buildPlanInputs(s) {
     events: s.events ?? [],
     survivor: s.survivor ?? { on: false, year: 9999, pensionPct: 0 },
     life: s.life ?? { on: false, deathAgeA: 95, deathAgeB: 95, pensionPct: 0 },
+    returnPreset: s.returnPreset ?? "custom",
+    volatility: (s.volatility != null && s.volatility !== "") ? Number(s.volatility) : 0.12,
+    spendingShape: s.spendingShape ?? { mode: "flat" },
+    lifestyleSteps: s.lifestyleSteps ?? [],
   };
 }
 

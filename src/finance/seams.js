@@ -53,7 +53,7 @@ import { SINGLE_COST_FACTOR, STRESS_EARLY_DROP } from "../retirementData.js";
  * }}
  */
 export function spendingComponents(i, ageA, ageB, ctx = {}) {
-  const { isSurvivor = false, survivorAge = null } = ctx;
+  const { isSurvivor = false, survivorAge = null, retireAgeA = Infinity, cal = null } = ctx;
 
   // Preserve the survivor-age fallback from the original spendingNeed.
   const survAge = survivorAge != null ? survivorAge : Math.min(ageA, ageB);
