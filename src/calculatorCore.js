@@ -11,3 +11,4 @@ export * from "./finance/simulate.js";
 export * from "./finance/plan.js";
 export * from "./finance/monteCarlo.js";
 export * from "./finance/breakdown.js";
+export { spendingHeadroom } from "./finance/headroom.js";

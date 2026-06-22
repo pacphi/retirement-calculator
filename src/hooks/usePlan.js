@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 import { calculatePlan, monthlyTotal, tierFor } from "../calculatorCore.js";
+import { spendingHeadroom } from "../finance/headroom.js";
+import { simulate } from "../finance/simulate.js";
 import { LOCATIONS, SINGLE_COST_FACTOR } from "../retirementData.js";
 import { C, SRC } from "../components/theme.js";
 
@@ -76,6 +78,11 @@ export function usePlan(s, couple, stage) {
     ...(s.pensionOn ? [{ name: "WA pension", value: Math.round(steady.pension), color: C.ink }] : []),
   ], [steady.wd, steady.rentInc, steady.ssHouse, steady.pension, s.pensionOn]);
 
+  const headroom = useMemo(
+    () => spendingHeadroom(calc.inp, simulate, Number(s.horizonAge) || 95, { haircut: effHaircut, cutYear: effCutYear }),
+    [calc.inp, effHaircut, effCutYear, s.horizonAge],
+  );
+
   return {
     calc,
     // calc destructure — exposed with identical names
@@ -89,5 +96,6 @@ export function usePlan(s, couple, stage) {
     locRows, compRows, balRows, invRows, incomeStack,
     // pass-through used by caller
     sFactor,
+    headroom,
   };
 }

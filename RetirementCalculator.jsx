@@ -18,6 +18,7 @@ import { Places } from "./src/components/charts/Places.jsx";
 import { Compare } from "./src/components/charts/Compare.jsx";
 import { IncomeMix } from "./src/components/charts/IncomeMix.jsx";
 import { Headline } from "./src/components/results/Headline.jsx";
+import { HeadroomCard } from "./src/components/results/HeadroomCard.jsx";
 import { Stats } from "./src/components/results/Stats.jsx";
 import { RiskTable } from "./src/components/results/RiskTable.jsx";
 import { Inheritance as InheritanceResult } from "./src/components/results/Inheritance.jsx";
@@ -138,6 +139,7 @@ export default function RetirementCalculator() {
     simSS, simNo,
     locRows, compRows, balRows, invRows, incomeStack,
     sFactor,
+    headroom,
   } = usePlan(s, couple, stage);
 
   // Monte Carlo worker lifecycle
@@ -243,6 +245,7 @@ export default function RetirementCalculator() {
           {/* RESULTS */}
           <div>
             <Headline steady={steady} s={s} mc={mc} onTrack={onTrack} effHaircut={effHaircut} effCutYear={effCutYear} />
+            <HeadroomCard headroom={headroom} horizon={horizon} />
             <Stats steady={steady} simSS={simSS} simNo={simNo} horizon={horizon} swr={s.swr} />
             <RiskTable sFull={sFull} sTrust={sTrust} sNone={sNone} simFull={simFull} simTrust={simTrust} simNone={simNone} s={s} effHaircut={effHaircut} horizon={horizon} />
             <InheritanceResult s={s} setProp={setProp} />

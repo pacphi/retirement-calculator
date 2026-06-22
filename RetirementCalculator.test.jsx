@@ -444,3 +444,11 @@ describe("lifestyle step-changes (C2)", () => {
     expect(screen.getAllByLabelText(/lifestyle change amount|delta/i).length).toBeGreaterThan(0);
   });
 });
+
+describe("live headroom read-out (E1)", () => {
+  it("shows a live headroom read-out", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByText(/raise spending by up to|over budget/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/spending headroom/i)).toBeInTheDocument();
+  });
+});
