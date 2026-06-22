@@ -3,6 +3,7 @@ export { smileMultiplier } from "./finance/spending/smile.js";
 export { lifestyleStepDelta } from "./finance/spending/lifestyle.js";
 export * from "./finance/seams.js";
 export * from "./finance/tax.js";
+export { residenceTaxForYear } from "./finance/residenceTax.js";
 export * from "./finance/socialSecurity.js";
 export * from "./finance/pension.js";
 export * from "./finance/events.js";
