@@ -1,4 +1,4 @@
-import { LOCATIONS, PROP, TAX_YEAR, TIERS } from "../retirementData.js";
+import { LOCATIONS, PROP, TAX_YEAR, TIERS, US_STATE_TAX } from "../retirementData.js";
 import { resolveReturn } from "./returns.js";
 import { simulate, steadyState } from "./simulate.js";
 
@@ -80,7 +80,26 @@ export function buildPlanInputs(s) {
     workLoc: s.workLoc ?? "WA",
     relocationYear: Number(s.relocationYear) || (TAX_YEAR + 20),
     stateCode: s.stateCode ?? null,
-    housing: s.housing ?? { tenure: "rent", rent: null, mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: TAX_YEAR }, homeValue: 0, insuranceAnnual: 0, maintenancePct: 0.01 },
+    // Wave 2 (Task 4): resolve the effective property-tax rate for the retirement
+    // jurisdiction. US states carry it in US_STATE_TAX; international locations
+    // model it as 0. Falls back to 0 when stateCode is absent or unknown.
+    activePropertyTaxRate: (s.stateCode && US_STATE_TAX[s.stateCode]?.propertyTaxRate) || 0,
+    housing: (() => {
+      const base = s.housing ?? {
+        tenure: "rent",
+        rent: null,
+        mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: TAX_YEAR },
+        homeValue: 0,
+        insuranceAnnual: 0,
+        maintenancePct: 0.01,
+      };
+      // Seed default rent from the retire location's basket when tenure is "rent"
+      // and no explicit rent has been entered (Wave 2, Task 4).
+      if (base.tenure === "rent" && base.rent == null) {
+        return { ...base, rent: retLocObj.m.rent };
+      }
+      return base;
+    })(),
   };
 }
 

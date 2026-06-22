@@ -29,6 +29,7 @@ import { Pension } from "./src/components/steps/Pension.jsx";
 import { Inheritance as InheritanceStep } from "./src/components/steps/Inheritance.jsx";
 import { Milestones } from "./src/components/steps/Milestones.jsx";
 import { SpendingStrategy } from "./src/components/steps/SpendingStrategy.jsx";
+import { Housing } from "./src/components/steps/Housing.jsx";
 import { TravelLongevity } from "./src/components/steps/TravelLongevity.jsx";
 import { Advanced } from "./src/components/steps/Advanced.jsx";
 import { usePlan } from "./src/hooks/usePlan.js";
@@ -47,7 +48,7 @@ export const mcSummaryLines = (mc, horizon = 95) => mc ? [
 export default function RetirementCalculator() {
   const [s, setS] = useState({
     ageA:57, ageB:48, stopA:65, stopB:56, claimA:65, claimB:65, pensionAge:65,
-    incomeA:0, incomeB:170000, savings:670000, contrib:18000, targetPct:0.40, status:"married",
+    incomeA:0, incomeB:170000, savings:670000, contrib:18000, targetPct:0.28, status:"married",
     ssModeA:"statement", ssModeB:"statement", ssFraA:50424, ssFraB:31592,
     pensionOn:true, system:"TRS", plan:3, pYears:22, afc:170000,
     realReturn:0.05, swr:0.04, tradFrac:0.7, inflation:0.025,
@@ -66,7 +67,9 @@ export default function RetirementCalculator() {
     spendingShape: { mode: "flat", earlyDecline: 0.01, upturnAge: 85, lateUpturn: 0.01 },
     lifestyleSteps: [],
     workLoc: "WA", relocationYear: 2046, stateCode: null,
-    housing: { tenure: "rent", rent: null, mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: 2026 }, homeValue: 0, insuranceAnnual: 0, maintenancePct: 0.01 },
+    // Wave 2 Task 4: default housing is rent at the retire location (Austria 1650/mo).
+    // targetPct is reframed as non-housing (0.28); the explicit housing line covers rent.
+    housing: { tenure: "rent", rent: 1650, mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: 2026 }, homeValue: 0, insuranceAnnual: 0, maintenancePct: 0.01 },
   });
   const [couple, setCouple] = useState(true);
   const [stage, setStage] = useState("post");
@@ -242,6 +245,7 @@ export default function RetirementCalculator() {
               <InheritanceStep s={s} set={set} setProp={setProp} />
               <Milestones s={s} set={set} addEvent={addEvent} removeEvent={removeEvent} />
               <SpendingStrategy s={s} set={set} setProp={setProp} addLifestyleStep={addLifestyleStep} removeLifestyleStep={removeLifestyleStep} setLifestyleStep={setLifestyleStep} />
+              <Housing s={s} set={set} />
               <TravelLongevity s={s} set={set} />
               <Advanced s={s} set={set} adv={adv} onAdvToggle={() => setAdv(a => !a)} />
             </div>
@@ -273,6 +277,7 @@ export default function RetirementCalculator() {
               onSelectYear={setSelYear}
               compTip={compTip}
               spendingShape={s.spendingShape}
+              housing={s.housing}
             />
 
             {/* Year by year — a typical month (or full year) for the selected year */}

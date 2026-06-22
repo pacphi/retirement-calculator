@@ -139,7 +139,16 @@ export function simulate(i, ssOpt) {
       + oneTimeSpendForYear(i.events, cal, { includeEmergent: ssOpt.includeEmergent ?? false })
       + ltcSpendForYear(i.ltc, aA, i.ltcAnnual);
     const survAge = lifeOn && isSurvivor ? (survivorIsA ? aA : aB) : null;
-    const need = spendingNeed(i, aA, aB, liveSav, isSurvivor, survAge, { retireAgeA, cal }) + extraSpend;
+    // Wave 2 (Task 4): thread inflation + activePropertyTaxRate so housingCostForYear
+    // inside spendingComponents can deflate mortgage P&I and compute property tax.
+    // i.inflation is a real engine input that deflates nominal P&I only — it does
+    // not compound rent, insurance, maintenance, or any other spending line.
+    const need = spendingNeed(i, aA, aB, liveSav, isSurvivor, survAge, {
+      retireAgeA,
+      cal,
+      inflation: i.inflation,
+      propertyTaxRate: i.activePropertyTaxRate,
+    }) + extraSpend;
     const yr = yearReturn(i, y, ssOpt);
     // The deferred pool's prior year-end value is the IRS base for this year's RMD.
     const defBalStart = defBal;

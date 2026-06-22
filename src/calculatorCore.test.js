@@ -6,6 +6,7 @@ import {
   yearMilestones,
   calculateFederalTaxYear,
   calculatePlan,
+  composeNeed,
   drsEligibilityNote,
   fedTax,
   ltcSpendForYear,
@@ -776,6 +777,9 @@ describe("required minimum distributions", () => {
     ssModeA: "statement", ssModeB: "statement", ssFraA: 40000, ssFraB: 20000,
     tx: { ...baseState.tx, on: false }, at: { ...baseState.at, on: false },
     travel: { on: false }, events: [], horizonAge: 80,
+    // Wave 2 Task 4: zero out housing so guaranteed income still covers the need
+    // and the RMD mechanics remain the sole focus of these tests.
+    housing: { tenure: "rent", rent: 0, mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: 2026 }, homeValue: 0, insuranceAnnual: 0, maintenancePct: 0 },
   };
 
   it("leaves the timeline untouched when there is no pre-tax balance", () => {
@@ -1103,5 +1107,31 @@ describe("emergent-shock overlay derivation (C3 / Task 10)", () => {
     const lastBaseline = simChosen.rows[simChosen.rows.length - 1];
     const lastShock = simShock.rows[simShock.rows.length - 1];
     expect(lastShock.bal).toBeCloseTo(lastBaseline.bal, 0);
+  });
+});
+
+describe("housing-explicit need + floor policy (Wave 2 Task 4)", () => {
+  it("adds housing OUTSIDE the 0.35 non-housing floor", () => {
+    // Arrange: non-housing base 40k, housing 24k, liveSav 0
+    // Act: floor applies to 40k only; housing added on top
+    const parts = { nonHousingBase: 40000, healthcare: 0, housing: 24000, lifestyleSteps: 0, events: 0, _floorBase: 40000 };
+    // Assert: need = max(0.35*40k, 40k - 0) + 24k = 40k + 24k = 64k
+    expect(composeNeed(parts, 0)).toBeCloseTo(40000 + 24000, 6);
+  });
+
+  it("floor discounts only non-housing; housing still paid in full when liveSav exceeds non-housing", () => {
+    // Arrange: liveSav 100k would zero non-housing but floor holds it at 0.35*40k
+    // Act: housing is outside the floor and unaffected by liveSav
+    const parts = { nonHousingBase: 40000, healthcare: 0, housing: 24000, lifestyleSteps: 0, events: 0, _floorBase: 40000 };
+    // Assert: need = max(0.35*40k, 40k - 100k) + 24k = 14k + 24k = 38k
+    expect(composeNeed(parts, 100000)).toBeCloseTo(0.35 * 40000 + 24000, 6);
+  });
+
+  it("zero housing produces same result as old non-housing-only composeNeed", () => {
+    // Arrange: housing = 0 (the Wave 0 default)
+    const parts = { nonHousingBase: 50000, healthcare: 5000, housing: 0, lifestyleSteps: 0, events: 0, _floorBase: 50000 };
+    // Assert: floor on non-housing total (50k + 5k = 55k), liveSav 10k
+    // max(0.35*50k, 55k-10k) + 0 = max(17.5k, 45k) = 45k
+    expect(composeNeed(parts, 10000)).toBeCloseTo(45000, 6);
   });
 });

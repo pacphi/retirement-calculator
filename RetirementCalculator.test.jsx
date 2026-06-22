@@ -468,3 +468,42 @@ describe("accumulation summary read-out (A3)", () => {
     expect(screen.getAllByText(/blended return/i).length).toBeGreaterThan(0);
   });
 });
+
+describe("Housing step (Wave 2 Task 4)", () => {
+  it("renders the Housing section and shows the monthly rent input by default", () => {
+    render(<RetirementCalculator />);
+    // Section heading — at least eyebrow + title
+    expect(screen.getAllByText(/housing/i).length).toBeGreaterThan(0);
+    // Monthly rent label is unique to the Housing step; confirms rent mode is default
+    expect(screen.getByLabelText(/monthly rent/i)).toBeInTheDocument();
+  });
+
+  it("switches to mortgage mode and reveals mortgage-specific inputs", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    // "Mortgage" button exists in Housing Segmented; click the first unpressed one
+    const mortgageBtns = screen.getAllByRole("button", { name: /^mortgage$/i });
+    const unpressed = mortgageBtns.find(b => b.getAttribute("aria-pressed") === "false");
+    await user.click(unpressed);
+    expect(screen.getByLabelText(/mortgage principal/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/mortgage rate/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/mortgage term/i)).toBeInTheDocument();
+  });
+
+  it("switches to own-outright mode and hides rent input", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    // Click the "Own outright" button (unique label, first unpressed instance)
+    const ownBtns = screen.getAllByRole("button", { name: /own outright/i });
+    const unpressed = ownBtns.find(b => b.getAttribute("aria-pressed") === "false");
+    await user.click(unpressed);
+    expect(screen.queryByLabelText(/monthly rent/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/mortgage principal/i)).not.toBeInTheDocument();
+  });
+
+  it("shows the housing-outside-floor disclosure note", () => {
+    render(<RetirementCalculator />);
+    // At least one paragraph must contain the floor policy explanation
+    expect(screen.getAllByText(/outside.*35%.*floor|hard.*obligation/i).length).toBeGreaterThan(0);
+  });
+});
