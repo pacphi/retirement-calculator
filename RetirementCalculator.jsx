@@ -4,6 +4,7 @@ import {
   ResponsiveContainer, ReferenceDot, ReferenceLine, PieChart, Pie, Cell,
 } from "recharts";
 import { DEFAULT_LIFE, DEFAULT_LIFE_EVENTS, DEFAULT_TRAVEL, LOCATIONS, MC_DEFAULTS, PROP, SINGLE_COST_FACTOR, SOURCES } from "./src/retirementData.js";
+import { C, SRC, inputStyle, FONTS } from "./src/components/theme.js";
 import {
   afcIsAuto,
   resolveAfc,
@@ -35,10 +36,6 @@ export const mcSummaryLines = (mc, horizon = 95) => mc ? [
   `Median sustainable income: ${mc.sustainableIncome.p50.toLocaleString("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0})}`,
   `Worst-case (10th pct) savings run out at age: ${mc.depletionAge.p10 > horizon ? `beyond ${horizon}` : mc.depletionAge.p10}`,
 ] : [];
-
-const C = { ink:"#102B28", inkSoft:"#1C3D39", paper:"#FBFAF6", panel:"#FFFFFF", line:"#E7E2D6",
-  brass:"#B5852C", brassDeep:"#946B1E", viridian:"#1E7A5E", clay:"#BE4A2B", slate:"#5E6B67", mut:"#8A938F" };
-const SRC = { salA:"#9DB4AE", salB:"#C6D2CD", rent:"#6E7F5C", pension:"#14302E", ssA:"#1E7A5E", ssB:"#69B197", wd:"#B5852C" };
 
 /* The "Nest & Next" mark: two birds in a woven nest, with an arrow looking ahead. */
 function NestLogo({ size = 46 }) {
@@ -98,7 +95,6 @@ function AssumptionIcon({ title }) {
     </svg>
   );
 }
-const inputStyle = { width:"100%", boxSizing:"border-box", padding:"9px 11px", border:`1px solid ${C.line}`, borderRadius:8, fontSize:15, fontFamily:"'JetBrains Mono', monospace", color:C.ink, background:C.panel, outline:"none" };
 function NumberInput({ value, onChange, prefix, suffix, min, ...rest }) {
   // While focused, show exactly what the user is typing (draft). Applying `min`
   // on every keystroke fights the user: a leading digit below the floor gets
