@@ -1031,3 +1031,14 @@ describe("yearReturn seam", () => {
     expect(yearReturn(i, 10, {})).toBeCloseTo(0.05, 6);
   });
 });
+
+describe("lifestyle step need-composition guard (C2)", () => {
+  it("a lifestyle step raises the need once its year arrives (C2)", () => {
+    const i = { incomeHH: 200000, targetPct: 0.4, hcPre: 24000, hcPost: 12000, status: "married",
+      spendBasis: "income", spendingShape: { mode: "flat" },
+      lifestyleSteps: [{ id: "x", fromYear: 2040, deltaAnnual: 12000 }] };
+    const before = spendingNeed(i, 78, 70, 0, false, null, { retireAgeA: 65, cal: 2039 });
+    const after = spendingNeed(i, 79, 71, 0, false, null, { retireAgeA: 65, cal: 2040 });
+    expect(after - before).toBeCloseTo(12000, 6);
+  });
+});

@@ -122,6 +122,13 @@ export default function RetirementCalculator() {
   };
   const removeEvent = (idx) => set("events")(s.events.filter((_, i) => i !== idx));
 
+  const lifeSeq = useRef(0);
+  const addLifestyleStep = () =>
+    set("lifestyleSteps")([...(s.lifestyleSteps || []), { id: `ls-${lifeSeq.current++}`, fromYear: 2040, deltaAnnual: 12000, on: true }]);
+  const removeLifestyleStep = (idx) => set("lifestyleSteps")((s.lifestyleSteps || []).filter((_, i) => i !== idx));
+  const setLifestyleStep = (idx, field) => (v) =>
+    set("lifestyleSteps")((s.lifestyleSteps || []).map((st, i) => (i === idx ? { ...st, [field]: v } : st)));
+
   // Plan derivation (calc + all downstream memos)
   const {
     incomeHH, inher,
@@ -227,7 +234,7 @@ export default function RetirementCalculator() {
               <Pension s={s} set={set} afcAuto={afcAuto} afcEff={afcEff} steady={steady} />
               <InheritanceStep s={s} set={set} setProp={setProp} />
               <Milestones s={s} set={set} addEvent={addEvent} removeEvent={removeEvent} />
-              <SpendingStrategy s={s} set={set} setProp={setProp} />
+              <SpendingStrategy s={s} set={set} setProp={setProp} addLifestyleStep={addLifestyleStep} removeLifestyleStep={removeLifestyleStep} setLifestyleStep={setLifestyleStep} />
               <TravelLongevity s={s} set={set} />
               <Advanced s={s} set={set} adv={adv} onAdvToggle={() => setAdv(a => !a)} />
             </div>

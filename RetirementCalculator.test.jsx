@@ -435,3 +435,12 @@ describe("spending smile (C1)", () => {
     expect(screen.getAllByText(/Spending smile/i)[0]).toBeInTheDocument();
   });
 });
+
+describe("lifestyle step-changes (C2)", () => {
+  it("can add a lifestyle change row", () => {
+    render(<RetirementCalculator />);
+    const btn = screen.getByRole("button", { name: /add a lifestyle change/i });
+    fireEvent.click(btn);
+    expect(screen.getAllByLabelText(/lifestyle change amount|delta/i).length).toBeGreaterThan(0);
+  });
+});

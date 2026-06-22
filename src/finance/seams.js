@@ -28,6 +28,7 @@
 
 import { SINGLE_COST_FACTOR, STRESS_EARLY_DROP } from "../retirementData.js";
 import { smileMultiplier } from "./spending/smile.js";
+import { lifestyleStepDelta } from "./spending/lifestyle.js";
 
 /**
  * ctx shape accepted by spendingComponents:
@@ -77,7 +78,7 @@ export function spendingComponents(i, ageA, ageB, ctx = {}) {
     // Location basis: floor applies to living + healthcare together.
     const _floorBase = nonHousingBase + healthcare;
 
-    return { nonHousingBase, healthcare, housing: 0, lifestyleSteps: 0, events: 0, _floorBase };
+    return { nonHousingBase, healthcare, housing: 0, lifestyleSteps: cal != null ? lifestyleStepDelta(i.lifestyleSteps, cal) : 0, events: 0, _floorBase };
   }
 
   // ── INCOME basis (default) ──────────────────────────────────────────────────
@@ -92,7 +93,7 @@ export function spendingComponents(i, ageA, ageB, ctx = {}) {
   // Income basis: floor applies to income*targetPct ONLY (not healthcare).
   const _floorBase = nonHousingBase;
 
-  return { nonHousingBase, healthcare, housing: 0, lifestyleSteps: 0, events: 0, _floorBase };
+  return { nonHousingBase, healthcare, housing: 0, lifestyleSteps: cal != null ? lifestyleStepDelta(i.lifestyleSteps, cal) : 0, events: 0, _floorBase };
 }
 
 /**

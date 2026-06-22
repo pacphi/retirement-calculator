@@ -1,5 +1,6 @@
 export * from "./finance/returns.js";
 export { smileMultiplier } from "./finance/spending/smile.js";
+export { lifestyleStepDelta } from "./finance/spending/lifestyle.js";
 export * from "./finance/seams.js";
 export * from "./finance/tax.js";
 export * from "./finance/socialSecurity.js";
