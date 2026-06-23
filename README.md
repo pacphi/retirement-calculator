@@ -28,6 +28,11 @@ Most retirement calculators give you one number and a leap of faith. Nest & Next
 - 🌍 **Where you live changes everything** — compare cost of living across 14 locations side by side.
 - 🧾 **Real tax math** — one 2026 federal tax engine drives both projections and headline income, with age-65 deductions applied only when they actually apply.
 - ⚠️ **Stress-tested** — built-in Social Security funding-cut scenarios so you can plan for the downside, not just the brochure.
+- 🎲 **Odds, not just averages** — Monte Carlo runs report your success probability and a p10/p50/p90 spread for both sustainable spending and depletion age.
+- 🪣 **Three buckets, taxed right** — taxable, pre-tax, and Roth accounts drawn down in a tax-smart order, with SECURE 2.0 required minimum distributions.
+- 🎚️ **Tunable strategy** — optional glidepath returns, Guyton-Klinger spending guardrails, and a Blanchett "spending smile" for retirements that aren't flat.
+- 📈 **Counts the years before, too** — pre-retirement accumulation with your contributions and employer match, not just the drawdown.
+- 🧭 **Guided, then printable** — a step-by-step wizard to build the plan, then a sectioned report you can read on screen or print / save to PDF.
 - 🔗 **Show your work** — in-app links to the SSA, IRS, CMS, and Washington DRS sources behind every assumption.
 
 > ⚖️ This is a planning tool, **not** financial, tax, or legal advice.
@@ -58,10 +63,15 @@ Most retirement calculators give you one number and a leap of faith. Nest & Next
 
 ## 🚀 Run Locally
 
+Prerequisites: **Node ≥ 24** and **pnpm 11.5.2** (see `packageManager` in `package.json`).
+
 ```bash
 pnpm install
-pnpm dev
+pnpm dev      # local dev server at http://127.0.0.1:5173
+pnpm build    # production build → dist/
 ```
+
+The live site at [pacphi.github.io/retirement-calculator](https://pacphi.github.io/retirement-calculator) is built and deployed to GitHub Pages from `main`.
 
 ## ✅ Test
 
@@ -69,17 +79,20 @@ pnpm dev
 pnpm test
 ```
 
-Tests cover the high-risk logic: federal tax, senior deductions, Social Security spousal rules, Washington DRS early-retirement factors, Social Security cuts by year, and tax-aware depletion. Run the full quality gate (lint, types, links, markdown, tests) with `pnpm check`.
+Tests cover the high-risk logic: federal tax, senior deductions, Social Security spousal rules, Washington DRS early-retirement factors, Social Security cuts by year, and tax-aware depletion. Run the full quality gate (lint, types, links, markdown, tests) with `pnpm check`. Coverage (`pnpm test:coverage`) and mutation testing (`pnpm test:mutation`) are available too.
 
 ## 🗂️ Project Layout
 
 | Path | Role |
 | --- | --- |
-| `RetirementCalculator.jsx` | React UI, charts, and tables |
-| `src/calculatorCore.js` | Pure calculation engine |
+| `src/App.jsx` | App shell / entry point (mounts the calculator) |
+| `RetirementCalculator.jsx` | Top-level UI — orchestrates the wizard and report |
+| `src/calculatorCore.js` | Engine entry point (re-exports `src/finance/`) |
+| `src/finance/` | Pure calculation engine — tax, Social Security, pension, buckets, RMDs, returns, guardrails, Monte Carlo |
+| `src/components/` | UI atoms, charts, result sections, and wizard steps |
+| `src/nav/`, `src/hooks/`, `src/report/` | Navigation, memoized derivations, and print/PDF export |
 | `src/retirementData.js` | Source-linked 2026 constants & assumptions |
-| `src/calculatorCore.test.js` | Formula and simulation tests |
-| `RetirementCalculator.test.jsx` | UI, source-link, and accessibility tests |
+| `*.test.js` / `*.test.jsx` | Co-located formula, simulation, UI, and accessibility tests |
 | `docs/` | Product, logic, sources, and release notes |
 
 ---
