@@ -49,9 +49,13 @@ export function useMonteCarlo(s) {
 
   // Variability-by-default: re-run MC on a debounce whenever inputs settle.
   // The deterministic projection is independent of this; MC stays seeded.
-  // Guard: if Worker is unavailable (jsdom), do nothing so RTL tests stay green.
+  // Guards: skip if Worker is unavailable (plain jsdom) OR if running under
+  // Vitest (test/setup.js stubs Worker as a no-op so the message never comes
+  // back, which would leave mcRunning stuck true and break the manual-trigger
+  // test).
   useEffect(() => {
     if (typeof window === "undefined" || typeof Worker === "undefined") return;
+    if (import.meta.env.MODE === "test") return;
     const id = setTimeout(post, 400);
     return () => clearTimeout(id);
   }, [s]); // intentionally omits `post` to avoid infinite re-trigger
