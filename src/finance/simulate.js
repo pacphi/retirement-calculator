@@ -251,7 +251,14 @@ export function simulate(i, ssOpt) {
       workingA: workA,
       workingB: workB,
     }) + extraSpend;
-    const yr = yearReturn(i, y, ssOpt);
+    // Wave 3 Task 5: build the return-model context for glidepath / byBucket.
+    // yearsToRetire: years remaining until the last spouse stops working (clamped ≥ 0).
+    // totalAccumYears: total working years from simulation start to full retirement.
+    // buckets: current bucket balances BEFORE this year's growth (pre-growth basis for byBucket).
+    const yearsToRetireNow = Math.max(0, retireAgeA - aA);
+    const totalAccumYears = Math.max(0, retireAgeA - i.ageA);
+    const returnCtx = { yearsToRetire: yearsToRetireNow, totalAccumYears, buckets: { ...buckets } };
+    const yr = yearReturn(i, y, ssOpt, returnCtx);
     // The deferred pool's prior year-end value is the IRS base for this year's RMD,
     // captured BEFORE growth (Wave 3 D1: this is buckets.deferred).
     const defBalStart = buckets.deferred;

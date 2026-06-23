@@ -1,6 +1,6 @@
 import { C } from "../theme.js";
 import { Field, NumberInput, Segmented, Section } from "../atoms/index.jsx";
-import { LOCATIONS, SOURCES } from "../../retirementData.js";
+import { GLIDEPATH_DEFAULTS, LOCATIONS, RETURN_MODEL_DEFAULTS, SOURCES } from "../../retirementData.js";
 import { usd0 } from "../format.js";
 
 const locByName = (n) => LOCATIONS.find(l => l.name === n);
@@ -50,10 +50,41 @@ export function Advanced({ s, set, adv, onAdvToggle }) {
             Show a "bad first decade" return path on the long-run chart
           </label>
         </Field>
+        <Field label="Return model" hint="How the engine assigns per-year portfolio returns. Blended uses one rate; glidepath tilts from equity-heavy early to bond-heavy near retirement; by bucket weights each account's rate by balance.">
+          <Segmented
+            value={s.returnModel?.mode ?? RETURN_MODEL_DEFAULTS.mode}
+            onChange={(v) => set("returnModel")({ ...(s.returnModel ?? RETURN_MODEL_DEFAULTS), mode: v })}
+            options={[
+              { value: "blended",   label: "Blended" },
+              { value: "byBucket",  label: "By bucket" },
+              { value: "glidepath", label: "Glidepath" },
+            ]}
+          />
+        </Field>
+        {(s.returnModel?.mode ?? RETURN_MODEL_DEFAULTS.mode) === "glidepath" && (
+          <>
+            <Field label="Equity % now" hint="Equity allocation at the start of the projection. Declines linearly to the retirement value.">
+              <NumberInput
+                value={s.returnModel?.equityPctNow ?? GLIDEPATH_DEFAULTS.equityPctNow}
+                onChange={(v) => set("returnModel")({ ...(s.returnModel ?? RETURN_MODEL_DEFAULTS), equityPctNow: Number(v) || 0 })}
+                step={5} min={0} max={100} suffix="%"
+              />
+            </Field>
+            <Field label="Equity % at retirement" hint="Equity allocation when the last spouse stops working. Held constant through the decumulation phase.">
+              <NumberInput
+                value={s.returnModel?.equityPctAtRetire ?? GLIDEPATH_DEFAULTS.equityPctAtRetire}
+                onChange={(v) => set("returnModel")({ ...(s.returnModel ?? RETURN_MODEL_DEFAULTS), equityPctAtRetire: Number(v) || 0 })}
+                step={5} min={0} max={100} suffix="%"
+              />
+            </Field>
+          </>
+        )}
         <p style={{ fontSize:11, color:C.mut, lineHeight:1.5, margin:"4px 0 10px" }}>
           Central return anchored to long-run 60/40 history (~5% real, with dispersion);
-          the band is a Monte Carlo p10–p90 fan.{" "}
-          <a href={SOURCES.cfa6040 ?? "https://rpc.cfainstitute.org/research/reports/2025/performance-of-the-60-40-portfolio"} target="_blank" rel="noreferrer" style={{ color:C.brassDeep }}>Source</a>.
+          the band is a Monte Carlo p10–p90 fan. Glidepath is opt-in; Monte Carlo samples
+          around the blended mean regardless of model.{" "}
+          <a href={SOURCES.cfa6040 ?? "https://rpc.cfainstitute.org/research/reports/2025/performance-of-the-60-40-portfolio"} target="_blank" rel="noreferrer" style={{ color:C.brassDeep }}>CFA</a>{" / "}
+          <a href={SOURCES.carson6040 ?? "https://www.carsongroup.com/insights/blog/the-60-40-portfolio-a-historical-powerhouse-or-a-rate-dependent-misinterpretation/"} target="_blank" rel="noreferrer" style={{ color:C.brassDeep }}>Carson</a>.
         </p>
         <Field label={`Inflation — ${(s.inflation*100).toFixed(1)}%`} hint="Translates today's costs into future dollars in the breakdowns."><input type="range" min={1} max={5} step={0.5} value={s.inflation*100} onChange={(e)=>set("inflation")(Number(e.target.value)/100)} style={{ width:"100%", accentColor:C.brass }} /></Field>
         <Field label="Withdrawal rate"><Segmented value={s.swr} onChange={set("swr")} options={[{label:"3.9%",value:0.039},{label:"4%",value:0.04},{label:"5.7%",value:0.057}]} /></Field>

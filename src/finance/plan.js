@@ -1,4 +1,4 @@
-import { LOCATIONS, PROP, TAX_YEAR, TIERS, US_STATE_TAX } from "../retirementData.js";
+import { LOCATIONS, PROP, RETURN_MODEL_DEFAULTS, TAX_YEAR, TIERS, US_STATE_TAX } from "../retirementData.js";
 import { seedBuckets, derivedTradFrac } from "./buckets.js";
 import { resolveReturn } from "./returns.js";
 import { simulate, steadyState } from "./simulate.js";
@@ -141,6 +141,8 @@ export function buildPlanInputs(s) {
     initialBuckets,
     // Wave 3 D1: tax-smart withdrawal order (default taxable→deferred→roth).
     withdrawalOrder: s.withdrawalOrder ?? ["taxable", "deferred", "roth"],
+    // Wave 3 Task 5: return model (opt-in; default "blended" preserves all existing results).
+    returnModel: s.returnModel ?? RETURN_MODEL_DEFAULTS,
   };
 }
 

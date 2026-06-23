@@ -3,6 +3,7 @@ import { quantile } from "d3-array";
 import { MC_DEFAULTS } from "../retirementData.js";
 import { simulate, steadyState } from "./simulate.js";
 import { resolveSocialSecurityScenario, buildPlanInputs } from "./plan.js";
+import { blendedMean } from "./returns.js";
 
 export function runMonteCarlo(s, mcOpt = {}) {
   const paths = mcOpt.paths ?? MC_DEFAULTS.paths;
@@ -16,8 +17,11 @@ export function runMonteCarlo(s, mcOpt = {}) {
   const rng = randomLcg(seed);                       // seeded, reproducible
   // Lognormal annual returns: log-return ~ N(mu, volatility) so the gross return
   // exp(...) is always positive (real return can't fall below -100%) and the
-  // median path compounds at realReturn (no arithmetic-vs-geometric overstatement).
-  const mu = Math.log(1 + inp.realReturn);
+  // median path compounds at the blended mean (no arithmetic-vs-geometric overstatement).
+  // For the default "blended" returnModel, blendedMean === inp.realReturn — MC is unchanged.
+  // For "glidepath", the midpoint equity blend is used as the scalar mean (the glidepath
+  // shape is averaged in; variability band semantics are preserved). Opt-in simplification.
+  const mu = Math.log(1 + blendedMean(inp));
   const z = randomNormal.source(rng)(0, 1);
   const sample = () => Math.exp(mu + volatility * z()) - 1;
   const horizon = Number(inp.horizonAge) || 95;

@@ -1,4 +1,4 @@
-import { DEFAULT_TRAVEL, DEFAULT_LIFE_EVENTS, DEFAULT_LIFE } from "./retirementData.js";
+import { DEFAULT_TRAVEL, DEFAULT_LIFE_EVENTS, DEFAULT_LIFE, RETURN_MODEL_DEFAULTS } from "./retirementData.js";
 
 // The single source of truth for the app's default scenario. Imported by
 // RetirementCalculator.jsx (initial useState) and pinned by a golden regression
@@ -32,6 +32,8 @@ export const DEFAULT_PLAN = {
   realRaise: 0,
   // Wave 3 D1: tax-smart withdrawal order (taxable→deferred→roth defers ordinary income).
   withdrawalOrder: ["taxable", "deferred", "roth"],
+  // Wave 3 Task 5: return model (opt-in; "blended" default keeps all results unchanged).
+  returnModel: { ...RETURN_MODEL_DEFAULTS },
   // bucketSplit is intentionally absent from the default — plan.js derives it from
   // tradFrac when not explicitly set. Once a user adjusts the bucket controls in
   // Saving.jsx, bucketSplit is stored in state and takes precedence over tradFrac.
@@ -50,4 +52,5 @@ export const makeDefaultPlan = () => ({
   contribStreams: [],
   employerMatch: { ...DEFAULT_PLAN.employerMatch },
   withdrawalOrder: [...DEFAULT_PLAN.withdrawalOrder],
+  returnModel: { ...DEFAULT_PLAN.returnModel },
 });

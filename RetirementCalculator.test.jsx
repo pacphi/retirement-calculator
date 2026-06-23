@@ -457,6 +457,38 @@ describe("B1 return preset and variability controls", () => {
     await user.click(customBtn);
     expect(screen.getByLabelText(/Custom real return/i)).toBeInTheDocument();
   });
+
+  it("exposes the Return model label in the advanced panel", async () => {
+    await openAssumptions();
+    expect(screen.getByText(/Return model/i)).toBeInTheDocument();
+  });
+
+  it("Return model defaults to Blended with aria-pressed true", async () => {
+    await openAssumptions();
+    const blended = screen.getAllByText(/^Blended$/i)[0].closest("button");
+    expect(blended).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("switching to Glidepath reveals Equity % now and Equity % at retirement inputs", async () => {
+    const user = await openAssumptions();
+    expect(screen.queryByLabelText(/Equity % now/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Equity % at retirement/i)).not.toBeInTheDocument();
+    const glidepath = screen.getAllByText(/^Glidepath$/i)[0].closest("button");
+    await user.click(glidepath);
+    expect(screen.getByLabelText(/Equity % now/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Equity % at retirement/i)).toBeInTheDocument();
+  });
+
+  it("Glidepath inputs are hidden when Blended is re-selected", async () => {
+    const user = await openAssumptions();
+    const glidepath = screen.getAllByText(/^Glidepath$/i)[0].closest("button");
+    await user.click(glidepath);
+    expect(screen.getByLabelText(/Equity % now/i)).toBeInTheDocument();
+    const blended = screen.getAllByText(/^Blended$/i)[0].closest("button");
+    await user.click(blended);
+    expect(screen.queryByLabelText(/Equity % now/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Equity % at retirement/i)).not.toBeInTheDocument();
+  });
 });
 
 describe("spending smile (C1)", () => {

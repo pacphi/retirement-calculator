@@ -38,6 +38,7 @@ import { SINGLE_COST_FACTOR, STRESS_EARLY_DROP } from "../retirementData.js";
 import { smileMultiplier } from "./spending/smile.js";
 import { lifestyleStepDelta } from "./spending/lifestyle.js";
 import { housingCostForYear } from "./housing.js";
+import { resolveYearReturn } from "./returns.js";
 
 /**
  * ctx shape accepted by spendingComponents:
@@ -188,27 +189,31 @@ export function stressReturnForYear(realReturn, yearIndex) {
 /**
  * Resolve the per-year portfolio return for a simulation step.
  *
- * Resolution order (mirrors the inline expression previously in simulate.js):
+ * Resolution order:
  *   1. If ssOpt.returns is provided, use ssOpt.returns[y] (falling back to
- *      i.realReturn if the array has no entry at y).
+ *      i.realReturn if the array has no entry at y). MC paths win — always first.
  *   2. Else if ssOpt.stress is set, apply the stress schedule via
- *      stressReturnForYear(realReturn, y).
- *   3. Else return i.realReturn.
+ *      stressReturnForYear(realReturn, y). Stress wins over the return model.
+ *   3. Else delegate to resolveYearReturn(i, y, ctx) which applies the
+ *      returnModel (blended / glidepath / byBucket). Blended default returns
+ *      i.realReturn — byte-identical to pre-Task-5 behavior.
  *
- * Wave 1 (B1: return presets / variability / glidepath) swaps the body of
- * this function without touching simulate.js.
+ * Wave 3 Task 5: extended signature to accept ctx = { yearsToRetire,
+ * totalAccumYears, buckets } so glidepath and byBucket can resolve per-year.
+ * ctx defaults to {} so every existing call site without ctx still compiles.
  *
- * @param {{ realReturn: number }} i   - Inputs object
+ * @param {{ realReturn: number, returnModel?: object }} i   - Inputs object
  * @param {number} y                   - Year index (0-based) within the simulation
  * @param {{ returns?: number[], stress?: boolean }} ssOpt - Scenario options
+ * @param {{ yearsToRetire?: number, totalAccumYears?: number, buckets?: object }} [ctx]
  * @returns {number}
  */
-export function yearReturn(i, y, ssOpt) {
+export function yearReturn(i, y, ssOpt, ctx = {}) {
   if (ssOpt.returns) {
     return ssOpt.returns[y] ?? i.realReturn;
   }
   if (ssOpt.stress) {
     return stressReturnForYear(i.realReturn, y);
   }
-  return i.realReturn;
+  return resolveYearReturn(i, y, ctx);
 }

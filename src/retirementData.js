@@ -65,6 +65,20 @@ export const CONTRIB_LIMITS_2026 = {
   highEarnerRothCatchUpWageFloor: 150000,
 };
 
+// Return model defaults (Wave 3 Task 5).
+// "blended" is the opt-in default — resolveYearReturn returns i.realReturn unchanged,
+// so every existing result is byte-identical. "glidepath" and "byBucket" are opt-in.
+// Glidepath defaults anchored to long-run 60/40 history: 80% equity now → 40% at
+// retirement, using Growth (~6.5% real) and Conservative (~2% real bond) endpoints.
+// Sources: SOURCES.cfa6040, SOURCES.carson6040.
+export const RETURN_MODEL_DEFAULTS = { mode: "blended" };
+export const GLIDEPATH_DEFAULTS = {
+  equityPctNow: 80,
+  equityPctAtRetire: 40,
+  equityReal: 0.065,
+  bondReal: 0.02,
+};
+
 export const SOURCES = {
   irs2026: "https://www.irs.gov/newsroom/irs-releases-tax-inflation-adjustments-for-tax-year-2026-including-amendments-from-the-one-big-beautiful-bill",
   ssaPia: "https://www.ssa.gov/oact/progdata/retirebenefit2.html",
