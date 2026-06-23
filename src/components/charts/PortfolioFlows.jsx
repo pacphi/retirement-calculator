@@ -1,10 +1,11 @@
 import {
   ComposedChart, Bar, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ReferenceLine,
+  ReferenceLine,
 } from "recharts";
 import { C, SRC } from "../theme.js";
 import { Segmented, Select } from "../atoms/index.jsx";
 import { usd0, usdK } from "../format.js";
+import { ChartFrame } from "./chartFrame.jsx";
 
 const invName = {
   growth: "Growth",
@@ -50,7 +51,7 @@ const orderKey = (order) => (Array.isArray(order) && order.length ? order : DEFA
  *   view          — "flow" | "buckets" | "bucketsRmd"; root expression: invView
  *   onViewChange  — (v: string) => void; root: setInvView
  */
-export function PortfolioFlows({ invRows, firstRmdAge, view, onViewChange, withdrawalOrder, onWithdrawalOrderChange }) {
+export function PortfolioFlows({ invRows, firstRmdAge, view, onViewChange, withdrawalOrder, onWithdrawalOrderChange, printWidth }) {
   return (
     <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 14, padding: "16px 14px 12px", marginBottom: 16 }}>
       <div style={{ padding: "0 4px 6px" }}>
@@ -76,7 +77,7 @@ export function PortfolioFlows({ invRows, firstRmdAge, view, onViewChange, withd
           )}
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={244}>
+      <ChartFrame printWidth={printWidth} height={244}>
         {view === "flow" ? (
           <ComposedChart data={invRows} margin={{ top: 6, right: 12, left: 4, bottom: 0 }} stackOffset="sign">
             <CartesianGrid stroke={C.line} strokeDasharray="3 3" vertical={false} />
@@ -106,7 +107,7 @@ export function PortfolioFlows({ invRows, firstRmdAge, view, onViewChange, withd
             {firstRmdAge != null && <ReferenceLine yAxisId="bal" x={firstRmdAge} stroke={C.clay} strokeWidth={1.2} strokeDasharray="2 2" label={{ value: `RMDs · ${firstRmdAge}`, position: "insideTopRight", fontSize: 10.5, fill: C.clay }} />}
           </ComposedChart>
         )}
-      </ResponsiveContainer>
+      </ChartFrame>
       <div style={{ display: "flex", gap: "6px 14px", flexWrap: "wrap", padding: "8px 6px 2px" }}>
         {(view === "flow"
           ? [["Contributions", C.viridian], ["Surplus reinvested", C.viridian], ["Growth", SRC.ssB], ["Spending draw", C.brass], ["Forced RMD", C.clay]]

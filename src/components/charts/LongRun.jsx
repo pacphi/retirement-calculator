@@ -1,9 +1,10 @@
 import {
   ComposedChart, Area, Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ReferenceDot,
+  ReferenceDot,
 } from "recharts";
 import { C } from "../theme.js";
 import { usd0, usdK } from "../format.js";
+import { ChartFrame } from "./chartFrame.jsx";
 
 // Distinct hue for the emergent-shock overlay so it does not collide with the
 // clay "Without SS" line (both lines are dashed). TIERS purple.
@@ -37,6 +38,7 @@ export function LongRun({
   mcSummaryLines,
   showStress = false,
   hasShock = false,
+  printWidth,
 }) {
   return (
     <div style={{ background:C.panel, border:`1px solid ${C.line}`, borderRadius:14, padding:"16px 14px 12px", marginBottom:16 }}>
@@ -46,7 +48,7 @@ export function LongRun({
         <p style={{ margin:"2px 0 8px", fontSize:12.5, color:C.slate, lineHeight:1.5 }}>The green line is your plan as modeled ({ssMode==="full"?"full SS":`${Math.round(effHaircut*100)}% SS`}). The clay dashed line drops Social Security entirely.{showStress ? " The brass dotted line is a sequence-risk stress test — a market crash in your first retirement years (illustrative and milder than 2008; for the full downside range run Monte Carlo below)." : <> Enable &ldquo;Bad first decade&rdquo; in Advanced &rarr; Sequence stress to overlay a sequence-of-returns stress path.</>}{sellDots.length>0?" The step up is an inherited home being sold.":""}</p>
         {hasShock && <p style={{ margin:"0 0 6px", fontSize:11.5, color:SHOCK_COLOR, lineHeight:1.4 }}>Dashed purple = balance if the events you flagged &ldquo;emergent&rdquo; actually happen.</p>}
       </div>
-      <ResponsiveContainer width="100%" height={220}>
+      <ChartFrame printWidth={printWidth} height={220}>
         <LineChart data={balRows} margin={{ top:6, right:14, left:4, bottom:0 }}>
           <CartesianGrid stroke={C.line} strokeDasharray="3 3" vertical={false} />
           <XAxis dataKey="age" tick={{ fontSize:11, fill:C.slate }} tickLine={false} axisLine={{ stroke:C.line }} />
@@ -58,7 +60,7 @@ export function LongRun({
           {hasShock && <Line type="monotone" dataKey="shock" stroke={SHOCK_COLOR} strokeWidth={2} strokeDasharray="8 3" dot={false} name="shock" />}
           {sellDots.map((d,i)=><ReferenceDot key={i} x={d.age} y={d.bal} r={4} fill={C.brass} stroke="#fff" strokeWidth={1.5} />)}
         </LineChart>
-      </ResponsiveContainer>
+      </ChartFrame>
       <div style={{ display:"flex", gap:16, flexWrap:"wrap", padding:"6px 6px 2px" }}>
         <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:C.slate }}><span style={{ width:16, height:3, background:C.viridian, borderRadius:2 }} />With Social Security</span>
         <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:C.slate }}><span style={{ width:16, height:3, background:C.clay, borderRadius:2, borderTop:`2px dashed ${C.clay}` }} />Without SS</span>
@@ -82,7 +84,7 @@ export function LongRun({
       {mc && (
         <div style={{ marginTop:12 }}>
           <div style={{ fontSize:11, letterSpacing:1.5, textTransform:"uppercase", color:C.brassDeep, fontWeight:700, marginBottom:4, paddingLeft:4 }}>Monte Carlo · percentile fan</div>
-          <ResponsiveContainer width="100%" height={180}>
+          <ChartFrame printWidth={printWidth} height={180}>
             <ComposedChart data={mc.balanceFan} margin={{ top:6, right:14, left:4, bottom:0 }}>
               <CartesianGrid stroke={C.line} strokeDasharray="2 4" vertical={false} />
               <XAxis dataKey="age" tick={{ fontSize:11, fill:C.slate }} tickLine={false} axisLine={{ stroke:C.line }} />
@@ -92,7 +94,7 @@ export function LongRun({
               <Line type="monotone" dataKey="p50" stroke={C.viridian} strokeWidth={2.4} dot={false} />
               <Line type="monotone" dataKey="p10" stroke={C.clay} strokeWidth={1.4} strokeDasharray="4 3" dot={false} />
             </ComposedChart>
-          </ResponsiveContainer>
+          </ChartFrame>
           <div style={{ display:"flex", gap:14, flexWrap:"wrap", padding:"4px 6px 2px" }}>
             <span style={{ display:"flex", alignItems:"center", gap:5, fontSize:11.5, color:C.slate }}><span style={{ width:11, height:11, borderRadius:3, background:C.viridian, opacity:0.25 }} />p10–p90 band</span>
             <span style={{ display:"flex", alignItems:"center", gap:5, fontSize:11.5, color:C.slate }}><span style={{ width:16, height:3, background:C.viridian, borderRadius:2 }} />p50 median</span>

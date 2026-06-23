@@ -28,11 +28,56 @@ export function Headline({ steady, s, mc, onTrack, effHaircut, effCutYear }) {
         <span style={{ width:8, height:8, borderRadius:99, background:onTrack?"#5BD6A8":"#F09B82" }} />
         {onTrack ? `On track -- after-tax income covers the modeled spending need` : `Short of the modeled spending need`}
       </div>
+      {!onTrack && <ShortfallWhy steady={steady} />}
       <div style={{ marginTop:10, fontSize:11.5, color:"#9FB0AB" }}>
         Social Security modeled at {s.ssMode==="full" ? "100% (assumes Congress acts)" : `${Math.round(effHaircut*100)}% from ${effCutYear}${s.ssMode==="trustees"?" (2025 Trustees projection)":""}`} · change it under Step two
       </div>
       <div style={{ marginTop:8, fontSize:11.5, color:"#9FB0AB", lineHeight:1.5 }}>
         This figure assumes a steady {(effReturn*100).toFixed(1)}% real return every year — a best-case-within-average, not a median outcome.{mc ? ` Monte Carlo median (P50): ${usd0(mc.sustainableIncome.p50)}/yr; 10th–90th pct ${usd0(mc.sustainableIncome.p10)}–${usd0(mc.sustainableIncome.p90)}/yr.` : ` Run Monte Carlo (below) for the realistic range.`}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * ShortfallWhy — when the plan is short, break down WHY: the income sources that
+ * make up after-tax income, the tax drag, the spending need, and the gap. All values
+ * are read from the already-computed `steady` object (no recomputation). The engine
+ * solves each year independently — there is no carried-forward shortfall — so a "short"
+ * verdict means even guaranteed income plus the sustainable withdrawal can't cover the
+ * year's need.
+ */
+function ShortfallWhy({ steady }) {
+  const gap = Math.max(0, steady.targetNeed - steady.net);
+  const rows = [
+    { label: "Guaranteed income (Social Security + pension)", value: steady.guaranteed },
+    ...(steady.rentInc > 0 ? [{ label: "Rental income", value: steady.rentInc }] : []),
+    { label: "Sustainable portfolio withdrawal", value: steady.wd },
+    { label: "Less federal & residence tax", value: -steady.tax, neg: true },
+  ];
+  const line = (label, value, opts = {}) => (
+    <div style={{ display:"flex", justifyContent:"space-between", gap:12, fontSize:12.5, padding:"3px 0", color: opts.strong ? "#F4F1E8" : "#C9D3CF", fontWeight: opts.strong ? 700 : 400 }}>
+      <span>{label}</span>
+      <span style={{ fontFamily:"'JetBrains Mono',monospace", color: opts.neg ? "#F09B82" : (opts.strong ? "#fff" : "#C9D3CF") }}>
+        {opts.neg ? "-" : ""}{usd0(Math.abs(value))}{opts.suffix || ""}
+      </span>
+    </div>
+  );
+  return (
+    <div style={{ marginTop:12, padding:"12px 14px", background:"rgba(190,74,43,.12)", border:"1px solid rgba(190,74,43,.35)", borderRadius:11 }}>
+      <div style={{ fontSize:11, letterSpacing:1, textTransform:"uppercase", color:"#F09B82", fontWeight:700, marginBottom:6 }}>
+        Why it falls short
+      </div>
+      {rows.map((r) => line(r.label, r.value, { neg: r.neg }))}
+      <div style={{ borderTop:"1px solid rgba(255,255,255,.14)", margin:"5px 0" }} />
+      {line("After-tax income", steady.net, { strong: true })}
+      {line("Modeled spending need", steady.targetNeed, { strong: true })}
+      {line("Annual gap", gap, { strong: true, neg: true })}
+      <div style={{ marginTop:8, fontSize:11.5, color:"#9FB0AB", lineHeight:1.5 }}>
+        Each year is modeled on its own — a shortfall isn't carried forward and compounded.
+        A "short" verdict means that even guaranteed income plus the sustainable withdrawal
+        doesn't cover this year's need. To close the gap, raise income (later claiming, larger
+        portfolio), lower the spending need, or choose a lower-cost location.
       </div>
     </div>
   );

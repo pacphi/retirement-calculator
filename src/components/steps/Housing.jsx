@@ -89,7 +89,7 @@ export function Housing({ s, set }) {
     set("retireHousing")({ ...rh, mortgage: { ...(rh.mortgage ?? {}), [field]: v } });
 
   return (
-    <Section eyebrow="Step two" title="Your home today">
+    <Section eyebrow="Step two" title="Housing & mortgage today">
       <Field label="Tenure">
         <Segmented
           value={h.tenure}

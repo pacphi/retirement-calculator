@@ -93,9 +93,11 @@ export function RetirementPlace({ s, set }) {
           style={selectStyle}
         >
           <option value="">— International / use location rate —</option>
-          {Object.entries(US_STATE_TAX).map(([code, p]) => (
-            <option key={code} value={code}>{p.name}</option>
-          ))}
+          {Object.entries(US_STATE_TAX)
+            .sort((a, b) => a[1].name.localeCompare(b[1].name))
+            .map(([code, p]) => (
+              <option key={code} value={code}>{p.name}</option>
+            ))}
         </select>
       </Field>
 

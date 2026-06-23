@@ -6,15 +6,13 @@ import { usd0 } from "../format.js";
 const locByName = (n) => LOCATIONS.find(l => l.name === n);
 
 /**
- * Advanced / assumptions section (collapsible).
+ * Advanced / assumptions step (Wave: now a normal wizard step, no longer collapsed).
  *
- * @param {{ s: object, set: function, setProp: function, adv: boolean, onAdvToggle: function }} props
+ * @param {{ s: object, set: function }} props
  */
-export function Advanced({ s, set, adv, onAdvToggle }) {
+export function Advanced({ s, set }) {
   return (
-    <>
-      <button onClick={onAdvToggle} style={{ width:"100%", background:"none", border:`1px dashed ${C.line}`, borderRadius:9, padding:"10px", color:C.slate, fontSize:12.5, fontWeight:600, cursor:"pointer", marginBottom:adv?16:8, fontFamily:"inherit" }}>{adv?"Hide assumptions ▲":"Long-term care & assumptions (return, inflation, withdrawal, tax) ▾"}</button>
-      {adv && (<Section eyebrow="Optional" title="Strategy & assumptions">
+      <Section eyebrow="Step ten" title="Strategy & assumptions">
         <Field label="Return assumption">
           <Segmented
             value={s.returnPreset}
@@ -119,7 +117,6 @@ export function Advanced({ s, set, adv, onAdvToggle }) {
             );
           })()}
         </Field>
-      </Section>)}
-    </>
+      </Section>
   );
 }

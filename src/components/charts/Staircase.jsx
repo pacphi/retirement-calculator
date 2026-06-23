@@ -1,12 +1,13 @@
 import {
   ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ReferenceDot, ReferenceLine,
+  ReferenceDot, ReferenceLine,
 } from "recharts";
 import { LOCATIONS, TAX_YEAR } from "../../retirementData.js";
 import { C, SRC } from "../theme.js";
 import { Select } from "../atoms/index.jsx";
 import { usd0, usdK } from "../format.js";
 import { monthlyPI, payoffYear } from "../../finance/housing.js";
+import { ChartFrame } from "./chartFrame.jsx";
 
 /**
  * Staircase chart panel — income by source, year by year.
@@ -44,6 +45,7 @@ export function Staircase({
   housing,
   relocationYear,
   workLoc,
+  printWidth,
 }) {
   const locByName = (n) => LOCATIONS.find(l => l.name === n);
 
@@ -68,7 +70,7 @@ export function Staircase({
         <p style={{ margin: "2px 0 8px", fontSize: 12.5, color: C.slate, lineHeight: 1.5 }}>The dashed line is your spending need — it rises in the pre-65 years to cover full-price healthcare, then drops when Medicare/local cover kicks in. The portfolio (gold) fills whatever the other sources don&apos;t.{depAge != null ? <> At the dotted line (<b style={{ color: C.clay }}>age {depAge}</b>) the gold runs out — savings are spent and you live on the guaranteed floor (SS{pensionOn ? " + pension" : ""}{hasRental ? " + rental" : ""}) of about <b style={{ color: C.clay }}>{usd0(floorAtDep)}/yr</b>{floorAtDep < needAtDep ? <>, roughly <b style={{ color: C.clay }}>{usd0(needAtDep - floorAtDep)}/yr short</b> of the need</> : <>, which still covers the need</>}.</> : <> The savings are never fully drawn down in this plan.</>}</p>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
           <span style={{ fontSize: 11.5, color: C.slate, fontWeight: 600 }}>{spendBasis === "location" ? "Cost-of-living basis:" : "Healthcare basis:"}</span>
-          <div style={{ minWidth: 200, flex: "1 1 200px" }}><Select value={retireLoc} onChange={onRetireLocChange} options={LOCATIONS.map(l => l.name)} /></div>
+          <div style={{ minWidth: 200, flex: "1 1 200px" }}><Select value={retireLoc} onChange={onRetireLocChange} options={LOCATIONS.map(l => l.name).sort((a, b) => a.localeCompare(b))} /></div>
           {spendBasis === "location" && <span style={{ fontSize: 11, color: C.brassDeep, fontWeight: 600 }}>drives the whole spend</span>}
         </div>
         {locByName(retireLoc)?.region !== "US" && (() => {
@@ -82,7 +84,7 @@ export function Staircase({
           );
         })()}
       </div>
-      <ResponsiveContainer width="100%" height={252}>
+      <ChartFrame printWidth={printWidth} height={252}>
         <ComposedChart data={compRows} margin={{ top: 6, right: 12, left: 4, bottom: 0 }} style={{ cursor: "pointer" }}
           onClick={(e) => { const a = e && e.activeLabel; if (a != null) { onYbyOpen(true); onSelectYear(2026 + (Number(a) - ageA)); } }}>
           <CartesianGrid stroke={C.line} strokeDasharray="3 3" vertical={false} />
@@ -105,7 +107,7 @@ export function Staircase({
           {relocAge != null && <ReferenceLine x={relocAge} stroke={C.viridian} strokeWidth={1.2} strokeDasharray="4 3"
             label={{ value: `leave ${workLoc ?? "work"} · age ${relocAge}`, position: "insideTopLeft", fontSize: 10, fill: C.viridian }} />}
         </ComposedChart>
-      </ResponsiveContainer>
+      </ChartFrame>
       <div style={{ display: "flex", gap: "6px 14px", flexWrap: "wrap", padding: "8px 6px 2px" }}>
         {[["Salary (you)", SRC.salA], ["Salary (spouse)", SRC.salB], ...(hasRental ? [["Rental", SRC.rent]] : []), ["Pension", SRC.pension], ["SS (you)", SRC.ssA], ["SS (spouse)", SRC.ssB], ["Portfolio draw", SRC.wd]].map(([n, c]) => (
           <span key={n} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, color: C.slate }}><span style={{ width: 11, height: 11, borderRadius: 3, background: c }} />{n}</span>

@@ -105,9 +105,11 @@ export function Household({ s, set, deferredMode, onDeferredModeChange, incomeHH
           onChange={(e) => set("workLoc")(e.target.value || "WA")}
           style={selectStyle}
         >
-          {Object.entries(US_STATE_TAX).map(([code, p]) => (
-            <option key={code} value={code}>{p.name}</option>
-          ))}
+          {Object.entries(US_STATE_TAX)
+            .sort((a, b) => a[1].name.localeCompare(b[1].name))
+            .map(([code, p]) => (
+              <option key={code} value={code}>{p.name}</option>
+            ))}
         </select>
       </Field>
 
@@ -156,7 +158,7 @@ export function Household({ s, set, deferredMode, onDeferredModeChange, incomeHH
         return (
           <>
             <Field label="Cost-of-living basis" hint="Where you'll retire — sets the spending baseline and healthcare. (Same selector as on the timeline.)">
-              <Select value={s.retireLoc} onChange={set("retireLoc")} options={LOCATIONS.map(x => x.name)} />
+              <Select value={s.retireLoc} onChange={set("retireLoc")} options={LOCATIONS.map(x => x.name).sort((a, b) => a.localeCompare(b))} />
             </Field>
             <Field label={`Lifestyle — ${s.lifestyle}% of ${s.retireLoc} cost of living`} hint={`Spending here: about ${usd0(yr65)}/yr at 65+ (${usd0(yrPre)}/yr before Medicare, full-price healthcare). Lifestyle scales living costs; healthcare is applied by age.`}>
               <input type="range" min={70} max={150} step={5} value={s.lifestyle} onChange={(e)=>set("lifestyle")(Number(e.target.value))} style={{ width:"100%", accentColor:C.brass }} />

@@ -61,7 +61,7 @@ describe("simulate() guardrail carry-forward", () => {
     // The golden row at startAgeA=74 must match the pinned need from the golden test.
     const startRow = sim.rows.find((r) => r.aA === 74);
     expect(startRow).toBeDefined();
-    // need is 66488 from the golden test; allow ±1 for rounding.
-    expect(Math.abs(startRow.need - 66488)).toBeLessThanOrEqual(1);
+    // need matches the golden targetNeed (Wave 4 re-baseline); allow ±1 for rounding.
+    expect(Math.abs(startRow.need - 75294)).toBeLessThanOrEqual(1);
   });
 });

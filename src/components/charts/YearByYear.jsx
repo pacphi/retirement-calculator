@@ -1,7 +1,8 @@
 import {
   ComposedChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ReferenceLine, PieChart, Pie, Cell,
+  ReferenceLine, PieChart, Pie, Cell,
 } from "recharts";
+import { ChartFrame } from "./chartFrame.jsx";
 import { monthlyBreakdown, yearMilestones } from "../../finance/breakdown.js";
 import { C, SRC } from "../theme.js";
 import { Segmented, Chevron } from "../atoms/index.jsx";
@@ -37,6 +38,7 @@ export function YearByYear({
   onViewChange,
   open,
   onToggleOpen,
+  printWidth,
 }) {
   const yrMin = rows[0]?.cal ?? 2026;
   const yrMax = rows[rows.length - 1]?.cal ?? yrMin;
@@ -123,7 +125,7 @@ export function YearByYear({
 
       {/* Chart + donut + summary */}
       <div style={{ display: "grid", gap: 14, alignItems: "center" }} className="rc-yby-grid">
-        <ResponsiveContainer width="100%" height={250}>
+        <ChartFrame printWidth={printWidth} height={250}>
           <ComposedChart data={monthBar} margin={{ top: 6, right: 8, left: 4, bottom: 0 }} stackOffset="sign">
             <CartesianGrid stroke={C.line} strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="name" tick={false} axisLine={{ stroke: C.line }} height={1} />
@@ -133,17 +135,17 @@ export function YearByYear({
             {mbInc.map(([n,, c]) => (<Bar key={n} dataKey={n} stackId="mo" fill={c} />))}
             {mbExp.map(([n,, c]) => (<Bar key={n} dataKey={n} stackId="mo" fill={c} />))}
           </ComposedChart>
-        </ResponsiveContainer>
+        </ChartFrame>
         <div>
           <div style={{ height: 150 }}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ChartFrame printWidth={printWidth ? 220 : undefined} height={150}>
               <PieChart>
                 <Pie data={mbInc.map(([n, v, c]) => ({ name: n, value: Math.round(v), color: c }))} dataKey="value" nameKey="name" innerRadius={40} outerRadius={62} paddingAngle={2} stroke="none">
                   {mbInc.map(([n,, c]) => (<Cell key={n} fill={c} />))}
                 </Pie>
                 <Tooltip formatter={(v, n) => [usd0(v) + ybyUnit, n]} contentStyle={{ borderRadius: 8, border: `1px solid ${C.line}`, fontSize: 12, fontFamily: "'JetBrains Mono',monospace" }} />
               </PieChart>
-            </ResponsiveContainer>
+            </ChartFrame>
             <div style={{ textAlign: "center", fontSize: 10.5, color: C.mut, marginTop: -2 }}>where the money comes from</div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>

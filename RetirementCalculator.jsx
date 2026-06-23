@@ -1,45 +1,20 @@
 import { useState, useRef, useEffect } from "react";
-import {
-  ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import { DEFAULT_LIFE, DEFAULT_LIFE_EVENTS, DEFAULT_TRAVEL, INTL_TAX, LOCATIONS, MC_DEFAULTS, SINGLE_COST_FACTOR, SOURCES } from "./src/retirementData.js";
+import { createPortal } from "react-dom";
 import { makeDefaultPlan } from "./src/defaultPlan.js";
-import { C, SRC, FONTS } from "./src/components/theme.js";
+import { C } from "./src/components/theme.js";
 import { Chevron, NestLogo } from "./src/components/atoms/index.jsx";
-import {
-  afcIsAuto,
-  resolveAfc,
-} from "./src/calculatorCore.js";
-import { Staircase } from "./src/components/charts/Staircase.jsx";
-import { YearByYear } from "./src/components/charts/YearByYear.jsx";
-import { PortfolioFlows } from "./src/components/charts/PortfolioFlows.jsx";
-import { LongRun } from "./src/components/charts/LongRun.jsx";
-import { RealizedSpending } from "./src/components/charts/RealizedSpending.jsx";
-import { Places } from "./src/components/charts/Places.jsx";
-import { Compare } from "./src/components/charts/Compare.jsx";
-import { IncomeMix } from "./src/components/charts/IncomeMix.jsx";
+import { afcIsAuto, resolveAfc } from "./src/calculatorCore.js";
 import { Headline } from "./src/components/results/Headline.jsx";
-import { HeadroomCard } from "./src/components/results/HeadroomCard.jsx";
-import { AccumulationSummary } from "./src/components/results/AccumulationSummary.jsx";
-import { Stats } from "./src/components/results/Stats.jsx";
-import { RiskTable } from "./src/components/results/RiskTable.jsx";
-import { Inheritance as InheritanceResult } from "./src/components/results/Inheritance.jsx";
-import { Household } from "./src/components/steps/Household.jsx";
-import { Saving } from "./src/components/steps/Saving.jsx";
-import { Timing } from "./src/components/steps/Timing.jsx";
-import { Pension } from "./src/components/steps/Pension.jsx";
-import { Inheritance as InheritanceStep } from "./src/components/steps/Inheritance.jsx";
-import { Milestones } from "./src/components/steps/Milestones.jsx";
-import { SpendingStrategy } from "./src/components/steps/SpendingStrategy.jsx";
-import { Housing } from "./src/components/steps/Housing.jsx";
-import { RetirementPlace } from "./src/components/steps/RetirementPlace.jsx";
-import { TravelLongevity } from "./src/components/steps/TravelLongevity.jsx";
-import { Advanced } from "./src/components/steps/Advanced.jsx";
-import { DualTaxExposure } from "./src/components/results/DualTaxExposure.jsx";
 import { usePlan } from "./src/hooks/usePlan.js";
 import { useMonteCarlo } from "./src/hooks/useMonteCarlo.js";
 import { usd0 } from "./src/components/format.js";
+import { useWizardNav } from "./src/nav/useWizardNav.js";
+import { WizardShell } from "./src/nav/WizardShell.jsx";
+import { ReportShell } from "./src/nav/ReportShell.jsx";
+import { buildSteps } from "./src/nav/stepRegistry.jsx";
+import { buildReportSections } from "./src/nav/reportRegistry.jsx";
+import { useReportExport } from "./src/report/useReportExport.js";
+import { ReportDocument } from "./src/report/ReportDocument.jsx";
 
 /* ------------------------ Format + tiers ------------------------ */
 
@@ -54,14 +29,13 @@ export default function RetirementCalculator() {
   const [s, setS] = useState(makeDefaultPlan);
   const [couple, setCouple] = useState(true);
   const [stage, setStage] = useState("post");
-  const [adv, setAdv] = useState(false);
   const [deferredMode, setDeferredMode] = useState("pct"); // "pct" | "amt" -- view for the pre-tax share
   const [invView, setInvView] = useState("flow"); // "flow" | "buckets" | "bucketsRmd" -- investments chart view
   const [selYear, setSelYear] = useState(null); // selected calendar year for the year-by-year navigator (null -> default)
   const [playing, setPlaying] = useState(false); // auto-advance the year navigator
   const [ybyView, setYbyView] = useState("month"); // "month" (annual ÷ 12) | "year" (annual totals)
   const [ybyOpen, setYbyOpen] = useState(true); // collapse the year-by-year section
-  const [openLoc, setOpenLoc] = useState("Portugal");
+  const [openLoc, setOpenLoc] = useState("Austria");
   const [cmpA, setCmpA] = useState("Austria");
   const [cmpB, setCmpB] = useState("US -- Texas / Florida");
   const set = (k) => (v) => setS(p => ({ ...p, [k]: v }));
@@ -168,6 +142,39 @@ export default function RetirementCalculator() {
     </div>);
   };
 
+  // Everything the step + report registries need, in one bag. The registries close over
+  // this to render the existing step/result/chart components unchanged.
+  const ctx = {
+    s, set, setProp,
+    deferredMode, setDeferredMode,
+    incomeHH, retireHousingAnnual, sFull, sTrust, sNone,
+    afcAuto, afcEff, steady,
+    addEvent, removeEvent, addLifestyleStep, removeLifestyleStep, setLifestyleStep,
+    // report-derived
+    mc, mcRunning, runMc, mcSummaryLines,
+    onTrack, effHaircut, effCutYear, headroom, horizon,
+    simSS, simNo, simFull, simTrust, simNone,
+    yearsToRet, accumulation, retYear, inflFactor,
+    compRows, floorAtDep, needAtDep, hasRental, depAge,
+    selYear, setSelYear, playing, setPlaying, ybyView, setYbyView, ybyOpen, setYbyOpen,
+    compTip, invRows, firstRmdAge, invView, setInvView,
+    balRows, sellDots, hasEmergent,
+    locRows, couple, setCouple, stage, setStage, openLoc, setOpenLoc, sFactor,
+    cmpA, cmpB, setCmpA, setCmpB, incomeStack,
+  };
+
+  const steps = buildSteps(ctx);
+  const sections = buildReportSections(ctx);
+  // A print-only variant where charts render at a fixed pixel width (no responsive measuring),
+  // so the printed/PDF report lays out cleanly without overlapping or clipping.
+  const printSections = buildReportSections({ ...ctx, printWidth: 660 });
+  const nav = useWizardNav(steps.map((st) => st.id), sections.map((sec) => sec.id));
+
+  const verdict = (
+    <Headline steady={steady} s={s} mc={mc} onTrack={onTrack} effHaircut={effHaircut} effCutYear={effCutYear} />
+  );
+  const { reportRef, printing, print } = useReportExport();
+
   return (
     <div style={{ background:C.paper, minHeight:"100%", color:C.ink, fontFamily:"'Inter', system-ui, sans-serif", WebkitFontSmoothing:"antialiased", paddingBottom:40 }}>
       <style>{`
@@ -186,6 +193,25 @@ export default function RetirementCalculator() {
         .rc-loc:focus-visible { outline:2px solid ${C.brass}; outline-offset:2px; }
         .rc-exp { animation:exp .25s ease both; }
         @keyframes exp { from{opacity:0;} to{opacity:1;} }
+        /* Print: the print-only report (portaled to <body id="nn-print">) is hidden on screen
+           and revealed only for print, where it replaces the interactive app entirely. */
+        #nn-print { display:none; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+        @media print {
+          body > *:not(#nn-print) { display:none !important; }
+          #nn-print { display:block !important; }
+          #nn-print, #nn-print * { overflow:visible !important; }
+          #nn-print .rc-stat { animation:none !important; }
+          #nn-print .rc-yby-grid { grid-template-columns:1fr !important; }
+          /* Compact, continuous flow: sections run on from each other (no forced page break),
+             breaking only where a page fills. .report-keep groups each section heading with its
+             first panel so the heading is never stranded at a page bottom; every panel stays
+             intact so a chart never splits from its heading. Panels taller than a page still
+             break (the browser overrides break-inside:avoid when it cannot fit). */
+          #nn-print .report-block, #nn-print .report-keep, #nn-print .rc-stat, #nn-print table, #nn-print svg { break-inside:avoid; }
+          #nn-print .report-section > * { break-inside:avoid; }
+          #nn-print h3 { break-after:avoid; }
+          @page { margin:14mm; }
+        }
       `}</style>
 
       <header ref={headerRef} style={{ position:"fixed", top:0, left:0, right:0, zIndex:50, background:C.ink, color:"#F4F1E8", padding: headerCollapsed ? "9px 22px" : "30px 22px 26px" }}>
@@ -217,195 +243,20 @@ export default function RetirementCalculator() {
       </header>
 
       <div style={{ maxWidth:1160, margin:"0 auto", padding:"24px 22px 60px", paddingTop:headerH + 24 }}>
-        <div className="rc-grid">
-          {/* INPUTS */}
-          <div>
-            <div style={{ background:C.panel, border:`1px solid ${C.line}`, borderRadius:14, padding:"20px 20px 6px", marginBottom:18 }}>
-              <Household s={s} set={set} deferredMode={deferredMode} onDeferredModeChange={setDeferredMode} incomeHH={incomeHH} retireHousingAnnual={retireHousingAnnual} />
-              <Saving s={s} set={set} />
-              <Housing s={s} set={set} />
-              <Timing s={s} set={set} sFull={sFull} />
-              <Pension s={s} set={set} afcAuto={afcAuto} afcEff={afcEff} steady={steady} />
-              <RetirementPlace s={s} set={set} />
-              <InheritanceStep s={s} set={set} setProp={setProp} />
-              <SpendingStrategy s={s} set={set} setProp={setProp} addLifestyleStep={addLifestyleStep} removeLifestyleStep={removeLifestyleStep} setLifestyleStep={setLifestyleStep} />
-              <Milestones s={s} set={set} addEvent={addEvent} removeEvent={removeEvent} />
-              <TravelLongevity s={s} set={set} />
-              <Advanced s={s} set={set} adv={adv} onAdvToggle={() => setAdv(a => !a)} />
-            </div>
-          </div>
-
-          {/* RESULTS */}
-          <div>
-            <Headline steady={steady} s={s} mc={mc} onTrack={onTrack} effHaircut={effHaircut} effCutYear={effCutYear} />
-            <HeadroomCard headroom={headroom} horizon={horizon} />
-            <Stats steady={steady} simSS={simSS} simNo={simNo} horizon={horizon} swr={s.swr} />
-            <RiskTable sFull={sFull} sTrust={sTrust} sNone={sNone} simFull={simFull} simTrust={simTrust} simNone={simNone} s={s} effHaircut={effHaircut} horizon={horizon} />
-            <InheritanceResult s={s} setProp={setProp} />
-
-            {/* Cross-border tax exposure — shown only when retirement location is international */}
-            <DualTaxExposure profile={s.stateCode ? null : INTL_TAX[s.retireLoc]} />
-
-            {yearsToRet > 0 && <AccumulationSummary accumulation={accumulation} retYear={retYear} />}
-
-            {/* Staircase (healthcare-aware) */}
-            <Staircase
-              compRows={compRows}
-              depAge={simSS.depAge}
-              floorAtDep={floorAtDep}
-              needAtDep={needAtDep}
-              hasRental={hasRental}
-              pensionOn={s.pensionOn}
-              spendBasis={s.spendBasis}
-              retireLoc={s.retireLoc}
-              onRetireLocChange={set("retireLoc")}
-              ageA={s.ageA}
-              onYbyOpen={setYbyOpen}
-              onSelectYear={setSelYear}
-              compTip={compTip}
-              spendingShape={s.spendingShape}
-              housing={s.housing}
-              relocationYear={s.relocationYear}
-              workLoc={s.workLoc}
-            />
-
-            {/* Year by year — a typical month (or full year) for the selected year */}
-            <YearByYear
-              rows={simSS.rows}
-              depAge={depAge}
-              inputs={s}
-              selYear={selYear}
-              onYearChange={setSelYear}
-              playing={playing}
-              onSetPlaying={setPlaying}
-              view={ybyView}
-              onViewChange={setYbyView}
-              open={ybyOpen}
-              onToggleOpen={() => setYbyOpen(o => !o)}
-            />
-
-            {/* Inside the portfolio — flows + tax buckets */}
-            <PortfolioFlows
-              invRows={invRows}
-              firstRmdAge={firstRmdAge}
-              view={invView}
-              onViewChange={setInvView}
-              withdrawalOrder={s.withdrawalOrder}
-              onWithdrawalOrderChange={set("withdrawalOrder")}
-            />
-
-            {/* Balance with vs without SS */}
-            <LongRun
-              balRows={balRows}
-              sellDots={sellDots}
-              mc={mc}
-              mcRunning={mcRunning}
-              onRunMc={runMc}
-              horizon={horizon}
-              ssMode={s.ssMode}
-              effHaircut={effHaircut}
-              mcSummaryLines={mcSummaryLines}
-              showStress={s.showStress}
-              hasShock={hasEmergent}
-            />
-
-            {/* Task 6: Realized spending distribution — only when guardrails are on and MC has run */}
-            <RealizedSpending realizedSpending={mc?.realizedSpending ?? null} />
-
-            {/* Places */}
-            <Places
-              locRows={locRows}
-              steadyNet={steady.net}
-              couple={couple}
-              onCoupleChange={setCouple}
-              stage={stage}
-              onStageChange={setStage}
-              openLoc={openLoc}
-              onToggle={setOpenLoc}
-              sFactor={sFactor}
-              retYear={retYear}
-              inflFactor={inflFactor}
-              inflation={s.inflation}
-              yearsToRet={yearsToRet}
-              stateCode={s.stateCode}
-              retireLoc={s.retireLoc}
-              steadyIncomeMix={{
-                ss: steady.ssHouse,
-                ssTaxablePortion: steady.taxDetails?.taxableSocialSecurity,
-                pension: steady.pension,
-                deferredWithdrawal: steady.wd * (s.tradFrac || 0.7),
-              }}
-            />
-
-            {/* Compare */}
-            <Compare
-              cmpA={cmpA}
-              cmpB={cmpB}
-              onPickA={setCmpA}
-              onPickB={setCmpB}
-              stage={stage}
-              couple={couple}
-              sFactor={sFactor}
-              steadyNet={steady.net}
-              inflFactor={inflFactor}
-              retYear={retYear}
-            />
-
-            {/* Income mix */}
-            <IncomeMix
-              incomeStack={incomeStack}
-              steadyGross={steady.gross}
-            />
-
-            {/* Notes */}
-            <div style={{ background:"#F6F4EC", border:`1px solid ${C.line}`, borderRadius:14, padding:"16px 18px" }}>
-              <h3 style={{ margin:"0 0 10px", fontFamily:"'Newsreader',serif", fontWeight:500, fontSize:18, color:C.ink }}>Planner's notes</h3>
-              {[
-                ["Texas: sell or rent, don't just hold.","The US basis step-up wipes out capital-gains tax on a near-term sale, and Texas has no estate/inheritance/income tax — so selling nets ~93% of value, free to invest. Renting yields ~3.5% net. Living in it saves little because Texas property tax (~1.7%/yr) roughly equals the rent you'd avoid."],
-                ["Klagenfurt: living in it is the prize.","Austria charges no inheritance tax but ~1.85% to transfer, and a sale later is taxed 30% (or 4.2% of price if pre-2002) with no step-up — a tax the US foreign credit usually can't offset. But property tax is tiny, so living there replaces ~$1,650/mo of rent for ~$300, and a 5-of-10-year primary-residence history can exempt a future sale entirely."],
-                ["Social Security is a risk you can size, not a coin flip.","Current law projects a ~19–23% shortfall around 2033–34 if Congress does nothing, not a shutoff — and lawmakers have always acted before. The funding control lets you stress-test it; because the spouse's pension and your savings carry most of the load, even the 81% case leaves you close to plan. Delaying a claim to 70 also hardens the survivor's check against any cut."],
-                ["The pre-65 healthcare cliff is now in the timeline.","The dashed need line rises before 65 by the full-price ACA premium for your chosen retirement spot, then drops at Medicare age. Pick a US location and the bridge years cost ~$17k/yr more; pick Europe and it barely moves. Keeping taxable income modest in those years can unlock ACA subsidies."],
-                ["File the paperwork.","A foreign inheritance over $100k needs IRS Form 3520 (reporting only, but steep penalties if missed), plus FBAR/FATCA if you hold foreign accounts. None of these are taxes — just disclosures."],
-                ["Cross-border tax is treaty territory.","The US taxes you on worldwide income and gains; the US–Austria income and estate-tax treaties plus the foreign tax credit are what prevent double taxation. This is the one area to run past a cross-border specialist before acting."],
-              ].map((n,idx,arr)=>(
-                <div key={idx} style={{ display:"flex", gap:10, marginBottom:idx<arr.length-1?11:0 }}>
-                  <span style={{ flexShrink:0, width:6, height:6, borderRadius:99, background:C.brass, marginTop:6 }} />
-                  <div style={{ fontSize:13, lineHeight:1.5, color:C.inkSoft }}><b style={{ color:C.ink }}>{n[0]}</b> {n[1]}</div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ background:C.panel, border:`1px solid ${C.line}`, borderRadius:14, padding:"14px 18px", marginTop:16 }}>
-              <h3 style={{ margin:"0 0 8px", fontFamily:"'Newsreader',serif", fontWeight:500, fontSize:18, color:C.ink }}>Source links</h3>
-              <p style={{ margin:"0 0 10px", fontSize:12.5, color:C.slate, lineHeight:1.5 }}>
-                These are the main public sources behind the formulas. They are here so you can check the numbers yourself.
-              </p>
-              <div style={{ display:"flex", flexWrap:"wrap", gap:"7px 12px", fontSize:12.5 }}>
-                {[
-                  ["IRS 2026 tax rules", SOURCES.irs2026],
-                  ["SSA benefit formula", SOURCES.ssaPia],
-                  ["SSA wage base", SOURCES.ssaWageBase],
-                  ["SSA spouse benefits", SOURCES.ssaRetirement],
-                  ["SSA trust funds", SOURCES.ssaTrustees],
-                  ["WA DRS pension", SOURCES.drsTrs2],
-                  ["KFF ACA premiums", SOURCES.kffAca],
-                  ["CMS Medicare", SOURCES.cmsMedicare],
-                ].map(([label, href]) => (
-                  <a key={label} href={href} target="_blank" rel="noreferrer" style={{ color:C.brassDeep, fontWeight:700 }}>{label}</a>
-                ))}
-              </div>
-            </div>
-
-            <p style={{ fontSize:11, color:C.mut, lineHeight:1.5, marginTop:16 }}>
-              Estimates for planning only — not financial, tax, or legal advice. Figures are in today's dollars; breakdowns also show a
-              future-dollar equivalent. Inheritance outcomes use simplified net factors (Texas ~93% on sale via basis step-up; Austria ~90%
-              after transfer + capital-gains tax) and assume the estate stays under the $15M federal exemption — confirm the decedent's
-              acquisition history, currency basis, and treaty treatment with a cross-border tax professional. 2026 federal brackets. Inherited-home live-in savings begin the year after inheritance; one-time relocation costs are not modeled.
-              {!s.ltc.on && " Long-term care is not modeled (about 70% of retirees need it; roughly $50k–$200k/yr depending on location) — enable it under Strategy & assumptions (bottom of inputs) to stress-test."}
-            </p>
-          </div>
-        </div>
+        {nav.mode === "wizard"
+          ? <WizardShell steps={steps} nav={nav} />
+          : <ReportShell sections={sections} nav={nav} pinnedVerdict={verdict} onPrint={print} />}
       </div>
+
+      {/* Print-only render of the FULL report (verdict + every section), portaled to <body> so
+          @media print can hide the app and show just this. Charts use fixed widths so they don't
+          overlap or clip. Mounted only while printing. */}
+      {printing && createPortal(
+        <div id="nn-print" ref={reportRef}>
+          <ReportDocument verdict={verdict} sections={printSections} />
+        </div>,
+        document.body,
+      )}
 
       <footer style={{ position:"fixed", left:0, right:0, bottom:0, zIndex:50, background:C.ink, color:C.paper,
         display:"flex", justifyContent:"center", alignItems:"center", gap:10, flexWrap:"wrap",
