@@ -127,7 +127,7 @@ export function simulate(i, ssOpt) {
   const order = i.withdrawalOrder || DEFAULT_WITHDRAWAL_ORDER;
   let buckets = i.initialBuckets ? { ...i.initialBuckets } : seedBuckets(Number(i.savings) || 0, i.bucketSplit);
   let bal = balOf(buckets);
-  let defBal = buckets.deferred;
+  let defBal;
   const olderAgeNow = Math.max(i.ageA, i.ageB);
   const rmdStart = rmdStartAge(TAX_YEAR - olderAgeNow);
   let depAge = null;
@@ -304,8 +304,6 @@ export function simulate(i, ssOpt) {
     buckets.taxable = buckets.taxable * (1 + yr) + sellLump;
     buckets.deferred = buckets.deferred * (1 + yr);
     buckets.roth = buckets.roth * (1 + yr);
-    bal = balOf(buckets);
-    defBal = buckets.deferred;
 
     // Compute the authoritative per-bucket split on the rrf-scaled streams BEFORE applying
     // the affordability cap. In Simple mode the plan just carries `i.contrib` (the
@@ -347,7 +345,6 @@ export function simulate(i, ssOpt) {
     buckets.deferred += contribByBucket.deferred;
     buckets.roth += contribByBucket.roth;
     bal = balOf(buckets);
-    defBal = buckets.deferred;
 
     const olderAge = olderAgeNow + y;
     const rmd = (defBalStart > 0 && olderAge >= rmdStart) ? requiredMinimum(defBalStart, olderAge) : 0;
@@ -427,7 +424,6 @@ export function simulate(i, ssOpt) {
         // is reinvested into the taxable bucket (the gross leaves the tax-deferred pool).
         buckets.deferred = Math.max(0, buckets.deferred - forcedRmd);
         buckets.taxable += afterTaxForced;
-        bal = balOf(buckets);
       }
     }
     defBal = Math.max(0, buckets.deferred);
