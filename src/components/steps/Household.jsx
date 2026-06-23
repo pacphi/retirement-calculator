@@ -1,6 +1,6 @@
 import { C } from "../theme.js";
 import { Field, NumberInput, Select, Segmented, Section } from "../atoms/index.jsx";
-import { LOCATIONS } from "../../retirementData.js";
+import { LOCATIONS, US_STATE_TAX } from "../../retirementData.js";
 import { usd0 } from "../format.js";
 
 /**
@@ -9,6 +9,24 @@ import { usd0 } from "../format.js";
  * @param {{ s: object, set: function, setProp: function, deferredMode: string, onDeferredModeChange: function, incomeHH: number }} props
  */
 export function Household({ s, set, deferredMode, onDeferredModeChange, incomeHH }) {
+  const workProfile = s.workLoc ? US_STATE_TAX[s.workLoc] : null;
+
+  // Plain-language summary for the work state (wage-tax face only).
+  function workProfileNote(p, name) {
+    if (!p) return null;
+    if (p.wageRate === 0) return `${name}: no wage income tax while working here.`;
+    return `${name}: ~${(p.wageRate * 100).toFixed(2)}% state wage tax applied to employment income before retirement.`;
+  }
+
+  const workNote = workProfile ? workProfileNote(workProfile, workProfile.name) : null;
+
+  const selectStyle = {
+    width: "100%", boxSizing: "border-box", padding: "9px 11px",
+    border: `1px solid ${C.line}`, borderRadius: 8, fontSize: 15,
+    fontFamily: "'Inter', sans-serif", fontWeight: 600, color: C.ink,
+    background: C.panel, outline: "none", cursor: "pointer",
+  };
+
   return (
     <Section eyebrow="Step one" title="Your household, today">
       <div className="rc-inputs">
@@ -19,6 +37,34 @@ export function Household({ s, set, deferredMode, onDeferredModeChange, incomeHH
         <Field label="Combined savings now"><NumberInput value={s.savings} onChange={set("savings")} prefix="$" /></Field>
         <Field label="Saved per year" hint="Stops as each of you retires."><NumberInput value={s.contrib} onChange={set("contrib")} prefix="$" /></Field>
       </div>
+
+      <Field
+        label="Where you live & earn now"
+        hint="Your US state while employed. Sets the wage-tax rate applied to employment income before retirement."
+      >
+        <select
+          aria-label="Where you live and earn now"
+          value={s.workLoc ?? "WA"}
+          onChange={(e) => set("workLoc")(e.target.value || "WA")}
+          style={selectStyle}
+        >
+          {Object.entries(US_STATE_TAX).map(([code, p]) => (
+            <option key={code} value={code}>{p.name}</option>
+          ))}
+        </select>
+      </Field>
+
+      {workNote && (
+        <div
+          role="note"
+          style={{
+            fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5, marginBottom: 14,
+            padding: "8px 10px", background: "#F6F2E8", borderRadius: 8,
+          }}
+        >
+          {workNote}
+        </div>
+      )}
       <div style={{ display:"flex", marginBottom:8 }}>
         <Segmented value={deferredMode} onChange={onDeferredModeChange}
           options={[{label:"% of savings",value:"pct"},{label:"$ amount",value:"amt"}]} />

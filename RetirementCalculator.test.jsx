@@ -520,7 +520,7 @@ describe("Housing step (Wave 2 Task 4)", () => {
   });
 });
 
-describe("LocationTax step (Wave 2 Task 6)", () => {
+describe("RetirementPlace step (Step 5 — Wave 2.5 Task 3a)", () => {
   it("renders the Retirement state select with accessible label", () => {
     render(<RetirementCalculator />);
     expect(screen.getByLabelText(/retirement state/i)).toBeInTheDocument();
@@ -547,9 +547,8 @@ describe("LocationTax step (Wave 2 Task 6)", () => {
     expect(screen.getByText(/California.*effective state income tax/i)).toBeInTheDocument();
   });
 
-  it("renders the work-state select and relocation-year input with accessible labels", () => {
+  it("renders the relocation-year input with an accessible label", () => {
     render(<RetirementCalculator />);
-    expect(screen.getByLabelText(/where you live and earn now|work state/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/relocation year/i)).toBeInTheDocument();
   });
 
@@ -557,6 +556,13 @@ describe("LocationTax step (Wave 2 Task 6)", () => {
     render(<RetirementCalculator />);
     expect(screen.getByText(/transition year is simplified/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Pension Source Tax Act/i })).toBeInTheDocument();
+  });
+
+  it("places work-state in Household and retirement-place controls in Step 5", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByLabelText("Where you live and earn now")).toBeInTheDocument();
+    expect(screen.getByLabelText("Retirement state")).toBeInTheDocument();
+    expect(screen.getByLabelText("Relocation year")).toBeInTheDocument();
   });
 });
 

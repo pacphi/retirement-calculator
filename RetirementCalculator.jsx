@@ -31,7 +31,7 @@ import { Inheritance as InheritanceStep } from "./src/components/steps/Inheritan
 import { Milestones } from "./src/components/steps/Milestones.jsx";
 import { SpendingStrategy } from "./src/components/steps/SpendingStrategy.jsx";
 import { Housing } from "./src/components/steps/Housing.jsx";
-import { LocationTax } from "./src/components/steps/LocationTax.jsx";
+import { RetirementPlace } from "./src/components/steps/RetirementPlace.jsx";
 import { TravelLongevity } from "./src/components/steps/TravelLongevity.jsx";
 import { Advanced } from "./src/components/steps/Advanced.jsx";
 import { DualTaxExposure } from "./src/components/results/DualTaxExposure.jsx";
@@ -222,7 +222,7 @@ export default function RetirementCalculator() {
               <Housing s={s} set={set} />
               <Timing s={s} set={set} sFull={sFull} />
               <Pension s={s} set={set} afcAuto={afcAuto} afcEff={afcEff} steady={steady} />
-              <LocationTax s={s} set={set} />
+              <RetirementPlace s={s} set={set} />
               <InheritanceStep s={s} set={set} setProp={setProp} />
               <SpendingStrategy s={s} set={set} setProp={setProp} addLifestyleStep={addLifestyleStep} removeLifestyleStep={removeLifestyleStep} setLifestyleStep={setLifestyleStep} />
               <Milestones s={s} set={set} addEvent={addEvent} removeEvent={removeEvent} />
