@@ -4,7 +4,7 @@
 >
 > **Tagline:** This is about your money, your home, and what comes next.
 
-**Version:** 1.2 (Wave 2) · **Status:** Delivered · **Document type:** Product Requirements Document (capabilities)
+**Version:** 1.3 (Wave 2.5 — UX/IA) · **Status:** Delivered · **Document type:** Product Requirements Document (capabilities)
 
 ---
 
@@ -49,6 +49,11 @@
   - [6.29 Work-vs-Retire Two-Location Split (Wave 2 — L1)](#629-work-vs-retire-two-location-split-wave-2--l1)
   - [6.30 Relocation Home Transition (Wave 2 — L2)](#630-relocation-home-transition-wave-2--l2)
   - [6.31 Month-View Housing Itemization (Wave 2 — L3)](#631-month-view-housing-itemization-wave-2--l3)
+  - [6.32 Step IA Reorder — 1–10 Input Sequence (Wave 2.5 — IA1)](#632-step-ia-reorder--110-input-sequence-wave-25--ia1)
+  - [6.33 Work / Retire Location Split — UI Placement (Wave 2.5 — IA2)](#633-work--retire-location-split--ui-placement-wave-25--ia2)
+  - [6.34 Housing → Places Cost Substitution (Wave 2.5 — IA3)](#634-housing--places-cost-substitution-wave-25--ia3)
+  - [6.35 Event Taxonomy Fix (Wave 2.5 — IA4)](#635-event-taxonomy-fix-wave-25--ia4)
+  - [6.36 Spending-Basis Reframe — Total Income-Replacement Ratio (Wave 2.5 — IA5)](#636-spending-basis-reframe--total-income-replacement-ratio-wave-25--ia5)
 - [7. Reference Data and Assumptions](#7-reference-data-and-assumptions)
 - [8. UX and Design Requirements](#8-ux-and-design-requirements)
 - [9. Non-Functional Requirements](#9-non-functional-requirements)
@@ -453,6 +458,56 @@ Each capability area below lists functional requirements (FR‑*) and, where use
 - **FR‑MHOUSING‑03** — A **"Mortgage paid off"** milestone badge appears in the navigator for `payoffYear` (see FR‑MORT‑06).
 - **AC** — In a mortgage year, the expense side of the mirrored bar shows both a "Mortgage P&I" segment and a "Core living" segment; in the payoff year a milestone badge appears; after payoff only "Property tax / carrying cost" remains under Housing.
 
+### 6.32 Step IA Reorder — 1–10 Input Sequence (Wave 2.5 — IA1)
+
+**Description.** Reorganise the input accordion into a clean 1–10 step sequence, reducing friction and making the location-split and housing inputs discoverable before the spending and strategy steps.
+
+- **FR‑IA‑01** — The input panel exposes exactly ten steps in this order: (1) Your household, today; (2) Your home today; (3) When work stops & benefits begin; (4) Spouse's WA pension; (5) Where you'll retire & local taxes; (6) Inherited real estate; (7) Retirement spending; (8) Family milestones; (9) Travel & longevity; (10) Strategy & assumptions (Advanced).
+- **FR‑IA‑02** — The work-state jurisdiction picker (`workLoc`) moves into Step 1 alongside the household profile inputs. It was previously buried in the location/tax step.
+- **FR‑IA‑03** — Step 2 ("Your home today") surfaces the housing tenure, mortgage parameters, and the Sell-vs-Keep / retirement-dwelling selectors that previously appeared later. The Sell-vs-Keep and retirement-dwelling flow is now explicit here rather than inferred.
+- **FR‑IA‑04** — Step 5 ("Where you'll retire & local taxes") groups retirement state (`retireLoc`), relocation year, and state-rate override into one place. State keys (`workLoc`, `retireLoc`, `relocationYear`, `stateCode`, `stateRate`) are unchanged; only the UI placement changes.
+- **AC** — A user completing steps 1–5 in order arrives at the spending step (7) already having specified their home, work jurisdiction, and retirement jurisdiction. No financial engine behavior changes.
+
+### 6.33 Work / Retire Location Split — UI Placement (Wave 2.5 — IA2)
+
+**Description.** Clarify that `workLoc` and `retireLoc` are distinct controls occupying different steps, so the two-jurisdiction model is self-evident without reading documentation.
+
+- **FR‑LOC‑01** — `workLoc` (the tax jurisdiction while earning) is displayed in Step 1 alongside current income and ages, making it clear it applies to the earning phase only.
+- **FR‑LOC‑02** — `retireLoc`, `relocationYear`, and the state-rate override are displayed together in Step 5, making it clear they apply to the retirement phase.
+- **FR‑LOC‑03** — When `workLoc === retireLoc` and no relocation year is set, the plan behaves identically to the pre-Wave-2 single-location path (FR‑RELO‑04 is unchanged).
+- **AC** — A user who sets `workLoc = CA` in Step 1 and `retireLoc = NV` in Step 5 sees CA tax on wage years and zero NV tax on retirement income without needing to understand the underlying `activeJurisdiction` logic.
+
+### 6.34 Housing → Places Cost Substitution (Wave 2.5 — IA3)
+
+**Description.** The Places location comparison now reflects the household's actual resolved retirement dwelling rather than each location's static basket rent, making the affordability comparison honest for owners and mortgage holders.
+
+- **FR‑PLACES‑01** — When the household's retirement dwelling is **own outright**, Places substitutes the static basket rent for all candidate locations with the household's carrying cost (property tax + insurance + maintenance). The carrying cost is fixed across all locations ("your home travels with you") and captioned as a planning-grade approximation.
+- **FR‑PLACES‑02** — When the household carries a **mortgage** (work-home carried in or new retirement-location mortgage), Places substitutes the static basket rent with the deflated P&I plus carrying cost for all candidate locations. The same "home travels with you" assumption applies.
+- **FR‑PLACES‑03** — When the household is **renting**, Places uses each candidate location's local rent from the cost basket, as before. Renters see location-specific housing costs; owners and mortgage holders see a fixed carrying cost.
+- **FR‑PLACES‑04** — The substitution is captioned in-app as planning-grade. The note reads that for owned or mortgaged dwellings the carrying cost is held constant across locations; a specialist should be consulted for location-specific property tax and insurance differences.
+- **AC** — A household that owns outright sees the same housing cost in every Places bar (their carrying cost), not each location's local rent. A renting household continues to see location-specific rents. The financial engine's spending-need computation is unchanged by this display substitution.
+
+### 6.35 Event Taxonomy Fix (Wave 2.5 — IA4)
+
+**Description.** All default family-milestone events now carry an explicit type; vehicle replacement and home upkeep are reclassified from silent `gift` to `purchase`; type labels are clarified in the UI.
+
+- **FR‑EVTFIX‑01** — Every default event in the `events[]` array ships with an explicit `type` field. No event has an implicit or undefined type.
+- **FR‑EVTFIX‑02** — Vehicle replacement and home upkeep events are classified as `"purchase"` (were previously assigned the default `"gift"` silently). Both remain outflows; the reclassification is presentational.
+- **FR‑EVTFIX‑03** — The `type` option labels in the event editor are clarified: **Gift / support** (`gift`), **Purchase / expense** (`purchase`), **Windfall / income received** (`windfall`). The parenthetical makes the cash-flow direction unambiguous.
+- **FR‑EVTFIX‑04** — Behaviorally `gift` and `purchase` are identical: both add to spending need in the event year. Only `windfall` is treated as income (nets negative against need). This taxonomy is unchanged from Wave 1 (FR‑EVT‑01); the fix is to labeling and defaults only.
+- **AC** — Opening the Family milestones step shows vehicle replacement with type "Purchase / expense" and gift events with type "Gift / support." The cash-flow behavior of all events is unchanged.
+
+### 6.36 Spending-Basis Reframe — Total Income-Replacement Ratio (Wave 2.5 — IA5)
+
+**Description.** The `% of income` spending control is reframed as a familiar total income-replacement ratio (displaying ~40% by default) rather than the confusing 28% non-housing figure. This is a presentation change only; the financial engine is unchanged.
+
+- **FR‑SPEND‑01** — The slider and its label display the **total income-replacement ratio** — the sum of the non-housing lifestyle share and the housing share expressed as a percentage of household income. The default displays approximately 40% (non-housing 28% + housing component ≈ 12%), matching common financial-planning convention.
+- **FR‑SPEND‑02** — The engine continues to store and compute with the **non-housing share** (`targetPct = 0.28` default) internally. The displayed total ratio is derived for presentation only and is never written back to the engine state as the raw slider value.
+- **FR‑SPEND‑03** — A breakdown below the slider shows: total replacement ratio / explicit housing share / everything-else (non-housing lifestyle). This makes the composition transparent so users understand what the headline ratio contains.
+- **FR‑SPEND‑04** — The displayed total ratio decreases over time as the mortgage is paid off (the housing share falls), and tapers further if the spending smile is active. Both effects are visible in the breakdown caption.
+- **FR‑SPEND‑05** — The projection, headline sustainable income, and all chart outputs are numerically identical to the pre-Wave-2.5 result for the same underlying inputs. This requirement is non-negotiable: Wave 2.5 is a UX/presentation wave; the financial engine default is unchanged.
+- **AC** — A user who was previously confused by "28% spending goal" now sees "~40% income replacement" as the headline, with a breakdown showing housing and non-housing components. Changing the slider moves the non-housing `targetPct` in the engine; the displayed total ratio updates live to reflect the new composition.
+
 ---
 
 ## 7. Reference Data and Assumptions
@@ -478,7 +533,7 @@ All constants are 2026 values. The companion Sources document links each to its 
 
 - **UX‑01** — Mobile‑first, responsive single‑column layout that expands to a two‑column (inputs / results) layout on wider screens.
 - **UX‑02** — Live recalculation: no save/submit; every control updates results immediately.
-- **UX‑03** — Inputs grouped into clear steps: household, timing & benefits, pension, inheritance, and an optional "assumptions" panel.
+- **UX‑03** — Inputs are organised into a clean **1–10 step sequence** (Wave 2.5): (1) Your household, today — including the work-state jurisdiction picker; (2) Your home today; (3) When work stops & benefits begin; (4) Spouse's WA pension; (5) Where you'll retire & local taxes — retirement state, relocation year, and state-rate override grouped together; (6) Inherited real estate; (7) Retirement spending; (8) Family milestones; (9) Travel & longevity; (10) Strategy & assumptions (Advanced). Progressive disclosure keeps the Advanced step collapsed by default.
 - **UX‑04** — Progressive disclosure: advanced assumptions and per‑location breakdowns are collapsed by default.
 - **UX‑05** — Editorial, legible visual style (serif display headings, sans body, monospace figures), restrained color, and accessible contrast.
 - **UX‑06** — Charts are interactive (tooltips, legends) and degrade gracefully on narrow screens.
