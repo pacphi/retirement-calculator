@@ -517,9 +517,9 @@ Each capability area below lists functional requirements (FR‑*) and, where use
 
 **Description.** Model contributions to multiple account types (401k, IRA, Roth IRA) with 2026 IRS limits, catch-up provisions, employer match, Roth phase-out, and a real (inflation-adjusted) raise on the salary base.
 
-- **FR‑CONTRIB‑01** — Accept per-vehicle contribution amounts for 401(k)/403(b), Traditional IRA, and Roth IRA. Each is constrained to its 2026 IRS annual limit (`CONTRIB_LIMITS_2026`): $23,500 / $7,000 base; $31,000 / $8,000 with age-50+ catch-up; $34,750 / $8,000 with age-60–63 "super catch-up" (SECURE 2.0).
+- **FR‑CONTRIB‑01** — Accept per-vehicle contribution amounts for 401(k)/403(b), Traditional IRA, and Roth IRA. Each is constrained to its 2026 IRS annual limit (`CONTRIB_LIMITS_2026`): 401(k) base $24,500; age-50+ catch-up adds $8,000 (total $32,500); age-60–63 "super catch-up" (SECURE 2.0) adds $11,250 (total $35,750). IRA base $7,500; age-50+ catch-up adds $1,100 (total $8,600). HSA family base $8,750 (+$1,000 age-55 catch-up); HSA self $4,400 (+$1,000).
 - **FR‑CONTRIB‑02** — Accept an employer 401(k) match (match rate × employee contribution, up to a match ceiling % of salary). Employer contributions do not count against the employee limit.
-- **FR‑CONTRIB‑03** — Apply the Roth IRA income phase-out for 2026 ($236,000–$246,000 MFJ): reduce the allowable Roth contribution proportionally; zero above the ceiling.
+- **FR‑CONTRIB‑03** — Apply the Roth IRA income phase-out for 2026 ($242,000–$252,000 MFJ; $153,000–$168,000 single): reduce the allowable Roth contribution proportionally; zero above the ceiling.
 - **FR‑CONTRIB‑04** — Accept a `realRaise` percentage (default 0%). Each working year the salary base grows by `realRaise` in real terms, compounding before the next year's contribution and SS-PIA calculation.
 - **FR‑CONTRIB‑05** — The "Saving" step in the UI exposes a Simple mode (total contribution slider, same as Wave 0) and a Detailed mode (per-vehicle inputs with limit enforcement and match fields).
 - **AC** — In Detailed mode, entering an employee 401(k) contribution above the catch-up limit clamps it to the limit and shows the cap. With a 3% employer match and 6% employee contribution on $100,000 salary, the engine credits $3,000 of employer match to the deferred bucket each year.
@@ -548,11 +548,11 @@ Each capability area below lists functional requirements (FR‑*) and, where use
 
 **Description.** Allow a glidepath that shifts portfolio allocation from growth to bonds over time, with per-bucket return modeling so taxable, deferred, and Roth earn blended real returns consistent with their target allocation.
 
-- **FR‑GLIDEPATH‑01** — Accept an opt-in glidepath toggle in the Advanced step. When active, the equity allocation steps down from `startEquity` (default 80%) at retirement toward `endEquity` (default 40%) at age 85, linearly.
-- **FR‑GLIDEPATH‑02** — The blended real return for each simulation year is computed as `equity% × equityReturn + bond% × bondReturn`, using the configured return presets for each asset class.
-- **FR‑GLIDEPATH‑03** — Monte Carlo samples draw from the blended mean at each year's allocation, so the variance also shifts with the glidepath.
-- **FR‑GLIDEPATH‑04** — When the glidepath is off (default), the engine uses the single `realReturn` for all years and all buckets — behavior is identical to pre-Wave-3.
-- **AC** — Enabling the glidepath with default settings produces a visibly lower return assumption in later years; the balance chart shifts down in the post-85 range. With variability = 0 the band collapses to the blended deterministic line.
+- **FR‑GLIDEPATH‑01** — Accept an opt-in glidepath toggle in the Advanced step. When active, the equity allocation de-risks linearly during the **accumulation phase only**: `equityPctNow` (default 80%) at the start of the plan down to `equityPctAtRetire` (default 40%) at the retirement year. `progress = (totalAccumYears − yearsToRetire) / totalAccumYears` (0 today → 1 at retirement). Post-retirement years use the terminal `equityPctAtRetire` allocation. There is no post-retirement glidepath.
+- **FR‑GLIDEPATH‑02** — The per-year real return is `equityPct × equityReal + bondPct × bondReal` (defaults: `equityReal` 6.5%, `bondReal` 2.0%, from `GLIDEPATH_DEFAULTS`).
+- **FR‑GLIDEPATH‑03** — Monte Carlo samples around the single blended mean (`blendedMean`, computed at midpoint progress 0.5 as a representative scalar). The variability band is unchanged by the glidepath — this is an intentional planning-grade simplification (captioned in the UI).
+- **FR‑GLIDEPATH‑04** — When the glidepath is off (default), the engine uses the single `realReturn` for all years — behavior is identical to pre-Wave-3.
+- **AC** — Enabling the glidepath with default settings produces a lower blended return in working years as the equity share steps down; the accumulation balance grows more slowly than the flat-return path. The MC band mean shifts but the band width is unchanged.
 
 ### 6.41 Opt-In Guyton-Klinger Guardrails (Wave 3 — E2)
 
@@ -583,7 +583,7 @@ All constants are 2026 values. The companion Sources document links each to its 
 | Inheritance — US/TX | Basis step‑up to date‑of‑death value; no Texas estate/inheritance/income tax; federal estate exemption $15M/person ($30M couple); Texas property tax ~1.7%/yr |
 | Inheritance — Austria | No inheritance tax (abolished 2008); transfer tax + registration ≈ 1.85% on inheriting; later sale taxed 30% of gain or 4.2% of price (pre‑2002), no step‑up; 5‑of‑10‑year primary‑residence exemption |
 | Macro | Configurable real return (default 5%), inflation (default 2.5%), taxable share of withdrawals (default 70%); single‑household scaling ≈ 64% of couple costs. **Wave 2 note:** `s.inflation` graduates from a display‑only label to a real engine input: mortgage P&I is the engine's sole nominal cash flow, deflated each year by `(1 + inflation)^y` and zeroed at payoff. All other costs remain real‑flat. |
-| Contributions (Wave 3) | 2026 IRS limits: 401(k) $23,500 / catch-up (50+) $31,000 / super catch-up (60–63) $34,750; IRA $7,000 / $8,000 catch-up. Roth IRA phase-out $236,000–$246,000 MFJ. Employer match is additive. Source: `CONTRIB_LIMITS_2026` in `retirementData.js`. |
+| Contributions (Wave 3) | 2026 IRS limits: 401(k) base $24,500 / 50+ catch-up total $32,500 / 60–63 super catch-up total $35,750; IRA base $7,500 / 50+ catch-up total $8,600. Roth IRA phase-out $242,000–$252,000 MFJ ($153,000–$168,000 single). Employer match is additive. Source: `CONTRIB_LIMITS_2026` in `retirementData.js`. |
 | Buckets (Wave 3) | Three sub-accounts: taxable, deferred (pre-tax 401k/IRA), Roth. Default split 70/30/0. Withdrawal order default: taxable → deferred → Roth. `tradFrac` is a derived output, not a user input for the withdrawal engine. |
 | Glidepath (Wave 3) | Equity allocation steps from `startEquity` (default 80%) at retirement to `endEquity` (default 40%) at age 85, linearly. Blended real return = equity% × equityReturn + bond% × bondReturn. Sources: `SOURCES.cfa6040`, `SOURCES.carson6040`. |
 | Guardrails (Wave 3) | Guyton-Klinger ±20% bands with 10% spending adjustments. MC realized-spending p10–p90 band surfaced alongside the portfolio band. Sources: `SOURCES.kitcesGuardrails`, `SOURCES.morningstarGuardrails`. |

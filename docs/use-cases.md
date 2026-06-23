@@ -1532,13 +1532,19 @@ Wave 3 is an engine-depth wave. The financial engine gains multi-vehicle contrib
 **Logic** (`src/finance/contributions.js`).
 
 ```js
-// 2026 limits (SECURE 2.0)
-base401k      = 23500;  catchup50  = 31000;  superCatchup = 34750  // age 60–63
-baseIRA       = 7000;   catchupIRA = 8000
+// 2026 limits (SECURE 2.0) — from CONTRIB_LIMITS_2026 in retirementData.js
+// 401(k): base 24500; 50+ catch-up adds 8000 → total 32500
+//         60–63 super catch-up adds 11250 → total 35750
+// IRA:    base 7500; 50+ catch-up adds 1100 → total 8600
+// HSA family: base 8750 (+1000 age-55 catch-up); HSA self: 4400 (+1000)
 
-// Roth IRA phase-out MFJ 2026
-rothPhaseOut(magi) = clamp((magi - 236000) / 10000, 0, 1)
-allowedRoth(age, magi) = (age >= 50 ? catchupIRA : baseIRA) * (1 - rothPhaseOut(magi))
+// Roth IRA phase-out 2026
+rothPhaseOut(magi, status) =
+  status === "married"
+    ? clamp((magi - 242000) / 10000, 0, 1)   // MFJ: 242k–252k
+    : clamp((magi - 153000) / 15000, 0, 1)   // single: 153k–168k
+allowedRoth(age, magi, status) =
+  (age >= 50 ? baseIRA + catchUpIRA : baseIRA) * (1 - rothPhaseOut(magi, status))
 
 // Employer match
 matchContrib = min(employee401k * matchRate, salary * matchCeiling)
@@ -1551,9 +1557,9 @@ Each vehicle's contribution flows to its target bucket: `trad401k` + employer ma
 
 **Outputs.** Per-year bucket contributions; accumulation summary card reflects the higher balances; RMD base grows with the deferred bucket.
 
-**Scenario.** *"The younger spouse is 61 and eligible for the super catch-up. They max their 401(k) at $34,750 and contribute $8,000 to a Traditional IRA. Their employer matches 4% of salary up to 6% of salary ($6,000/yr). The accumulation card shows the full $48,750/yr flowing into deferred over the remaining 4 working years, compounding to ~$215,000 additional balance at retirement."*
+**Scenario.** *"The younger spouse is 61 and eligible for the super catch-up. They max their 401(k) at $35,750 (base $24,500 + super catch-up $11,250) and contribute $8,600 to a Traditional IRA (base $7,500 + catch-up $1,100). Their employer matches 4% of salary up to 6% of salary ($6,000/yr). The accumulation card shows $50,350/yr flowing into deferred over the remaining 4 working years, compounding to ~$220,000 additional balance at retirement."*
 
-**Edge cases.** A contribution entered above the IRS limit is silently clamped to the cap and a UI note appears. Roth contributions are reduced proportionally through the phase-out range and zeroed above $246,000 MAGI. With `realRaise = 0` (default) salary is flat in real terms — backward-compatible with Wave 2.
+**Edge cases.** A contribution entered above the IRS limit is silently clamped to the cap and a UI note appears. Roth contributions are reduced proportionally through the phase-out range and zeroed above $252,000 MAGI (MFJ) or $168,000 (single). With `realRaise = 0` (default) salary is flat in real terms — backward-compatible with Wave 2.
 
 ---
 
@@ -1622,32 +1628,39 @@ The mechanic is the generalization of the original RMD reinvest path: it fires w
 
 ### UC-43 Opt-In Glidepath and By-Bucket Return Model (Advanced)
 
-**Purpose.** Allow the portfolio allocation to step down from a growth-oriented mix at retirement toward a bond-heavy mix in late retirement, with per-year blended returns sampled by Monte Carlo.
+**Purpose.** De-risk the portfolio allocation linearly during the accumulation phase — from an equity-heavy mix today toward a bond-heavy mix at the retirement year — with per-year blended real returns. Monte Carlo samples around the single blended mean; the variability band is unchanged by the glidepath (intentional planning-grade simplification).
 
 **Implements.** FR‑GLIDEPATH‑01..04.
 
-**Inputs.** `glidepath` toggle (default off); `startEquity` (default 0.80); `endEquity` (default 0.40); `glideEndAge` (default 85); `equityReturn`; `bondReturn` (from return preset).
+**Inputs.** `returnModel.mode = "glidepath"`; `GLIDEPATH_DEFAULTS`: `equityPctNow` (default 80%), `equityPctAtRetire` (default 40%), `equityReal` (default 6.5%), `bondReal` (default 2.0%); `totalAccumYears`; `yearsToRetire` (decrements each simulated year).
 
 **Logic** (`src/finance/returns.js`).
 
 ```js
-resolveYearReturn(inp, cal):
-  if !inp.glidepath: return inp.realReturn          // flat, backward-compatible
+// resolveYearReturn — accumulation-phase de-risking only
+resolveYearReturn(i, y, ctx):
+  if mode !== "glidepath": return i.realReturn   // flat, backward-compatible
 
-  ageA = inp.ageA + (cal - TAX_YEAR)
-  t    = clamp((ageA - inp.stopA) / (inp.glideEndAge - inp.stopA), 0, 1)
-  equity = lerp(inp.startEquity, inp.endEquity, t)
-  return equity * inp.equityReturn + (1 - equity) * inp.bondReturn
+  total   = ctx.totalAccumYears ?? 0
+  // progress: 0 at start of plan (full equity tilt) → 1 at retirement (bond tilt)
+  progress = total > 0
+    ? clamp((total - (ctx.yearsToRetire ?? 0)) / total, 0, 1)
+    : 1
+  equityPct = (equityPctNow * (1 - progress) + equityPctAtRetire * progress) / 100
+  return equityPct * equityReal + (1 - equityPct) * bondReal
 
-blendedMean(inp) = resolveYearReturn averaged over the retirement horizon
-// MC samples lognormal(blendedMean, variability) each year
+// blendedMean — scalar used by Monte Carlo (midpoint progress = 0.5)
+blendedMean(i):
+  equityPct = (equityPctNow + equityPctAtRetire) / 2 / 100
+  return equityPct * equityReal + (1 - equityPct) * bondReal
+  // MC samples lognormal(blendedMean, volatility) — variability unchanged by glidepath
 ```
 
-**Outputs.** Per-year `realReturn` varies with the glidepath; MC band narrows in later years as the allocation shifts to bonds; deterministic balance line shifts down relative to the flat-return path.
+**Outputs.** Per-year `realReturn` declines during accumulation as equity share steps from `equityPctNow` to `equityPctAtRetire`; the deterministic accumulation balance grows more slowly than the flat-return path. The MC band uses the midpoint scalar — band width is unchanged. Post-retirement years use the terminal `equityPctAtRetire` allocation.
 
-**Scenario.** *"The couple starts retirement at 80% equity (6.5% real) and glides to 40% equity (3.5% real) by age 85. The blended return at age 85+ is 0.4×6.5% + 0.6×3.5% = 4.7%. The balance chart shows a moderate slowdown in portfolio growth from age 80 onward; the p90 band narrows as volatility falls with the lower equity share."*
+**Scenario.** *"The couple is 45 with 17 working years remaining. In year 1, progress = 0 → 80% equity → return = 0.8 × 6.5% + 0.2 × 2% = 5.6%. By year 17 (retirement), progress = 1 → 40% equity → return = 0.4 × 6.5% + 0.6 × 2% = 3.8%. The accumulation card shows a steadily declining blended return; the projected retirement balance is lower than with a flat 5% assumption, reflecting the intentional de-risking. The MC band mean = midpoint blend: 0.6 × 6.5% + 0.4 × 2% = 4.7%."*
 
-**Edge cases.** With `glidepath = false` (default) `resolveYearReturn` returns `inp.realReturn` — identical to pre-Wave-3. With `startEquity = endEquity` the glidepath is flat (no drift). The glidepath only affects the return model; bucket balances, withdrawal order, and tax computation are unchanged.
+**Edge cases.** With `mode = "blended"` (default) `resolveYearReturn` returns `i.realReturn` unchanged — byte-identical to pre-Wave-3. With `equityPctNow = equityPctAtRetire` the glidepath is flat (no drift). There is no post-retirement glidepath — `yearsToRetire` reaches 0 at retirement and the allocation stays at `equityPctAtRetire` thereafter. The glidepath only affects the return model; bucket balances, withdrawal order, and tax computation are unchanged.
 
 ---
 
