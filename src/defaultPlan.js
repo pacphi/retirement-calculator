@@ -5,10 +5,13 @@ import { DEFAULT_TRAVEL, DEFAULT_LIFE_EVENTS, DEFAULT_LIFE, RETURN_MODEL_DEFAULT
 // test so any deliberate re-baseline shows up as an explicit literal diff.
 export const DEFAULT_PLAN = {
   ageA:57, ageB:48, stopA:65, stopB:56, claimA:65, claimB:65, pensionAge:65,
-  incomeA:0, incomeB:170000, savings:670000, contrib:18000, targetPct:0.28, status:"married",
+  // targetPct is the NON-housing replacement share; the slider DISPLAYS the total (non-housing
+  // + retirement housing). At the default income ($170k) and rent ($3,800/mo = $45.6k/yr), 0.3318
+  // makes the displayed total-replacement default 60%.
+  incomeA:0, incomeB:170000, savings:670000, contrib:18000, targetPct:0.3318, status:"married",
   ssModeA:"statement", ssModeB:"statement", ssFraA:50424, ssFraB:31592,
   pensionOn:true, system:"TRS", plan:3, pYears:22, afc:170000,
-  realReturn:0.05, swr:0.04, tradFrac:0.7, inflation:0.025,
+  realReturn:0.05, swr:0.04, tradFrac:0.9, inflation:0.025,
   ssMode:"trustees", ssHaircut:81, ssCutYear:2034,
   retireLoc:"Austria", spendBasis:"income", lifestyle:100,
   tx:{ on:false, value:790000, year:2038, strategy:"rent" },
@@ -23,8 +26,8 @@ export const DEFAULT_PLAN = {
   returnPreset: "balanced", volatility: 0.12, showStress: false,
   spendingShape: { mode: "flat", earlyDecline: 0.01, upturnAge: 85, lateUpturn: 0.01 },
   lifestyleSteps: [],
-  workLoc: "WA", relocationYear: 2046, stateCode: null,
-  housing: { tenure: "rent", rent: 1650, mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: 2026 }, homeValue: 0, insuranceAnnual: 0, maintenancePct: 0.01, relocation: { action: "sell", saleValue: 0 } },
+  workLoc: "WA", relocationYear: 2035, stateCode: null,
+  housing: { tenure: "rent", rent: 3800, mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: 2026 }, homeValue: 0, insuranceAnnual: 0, maintenancePct: 0.01, relocation: { action: "sell", saleValue: 0 } },
   retireHousing: null,
   contribMode: "simple",
   contribStreams: [],

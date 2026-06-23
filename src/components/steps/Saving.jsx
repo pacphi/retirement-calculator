@@ -23,7 +23,10 @@ export function Saving({ s, set }) {
   const streams = s.contribStreams ?? [];
   const match = s.employerMatch ?? { pct: 0, capPct: 0 };
   const realRaise = s.realRaise ?? 0;
-  const split = s.bucketSplit ?? { mode: "pct", deferredPct: 70, taxablePct: 30, rothPct: 0 };
+  // When bucketSplit isn't explicitly set, mirror the pre-tax share the engine derives from
+  // tradFrac (Household's "Pre-tax 401(k)/IRA share of savings"), so this control agrees with it.
+  const defaultDeferredPct = Math.round((s.tradFrac ?? 0.7) * 100);
+  const split = s.bucketSplit ?? { mode: "pct", deferredPct: defaultDeferredPct, taxablePct: 100 - defaultDeferredPct, rothPct: 0 };
 
   const setMatch = (field) => (v) =>
     set("employerMatch")({ ...match, [field]: Number(v) || 0 });

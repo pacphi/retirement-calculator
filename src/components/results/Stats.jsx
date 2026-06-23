@@ -11,7 +11,7 @@ export function Stats({ steady, simSS, simNo, horizon, swr }) {
   return (
     <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))", gap:10, marginBottom:16 }}>
       {[
-        { k:"Portfolio at benefit start", v:usd0(steady.FV), s:`@${(swr*100).toFixed(1)}% -> ${usd0(steady.wd)}/yr (incl. later property sales)` },
+        { k:`Portfolio at age ${steady.startAgeA}`, v:usd0(steady.FV), s:`Invested savings + value of later property sales, when all income is flowing (work stopped, Social Security & pension started). @${(swr*100).toFixed(1)}% -> ${usd0(steady.wd)}/yr.` },
         { k:"Lifetime benefits", v:usd0(steady.guaranteed), s:`Social Security + WA pension before tax` },
         { k:"Savings last (tax-aware)", v:lastsTxt(simSS.depAge), s:`without SS: ${lastsTxt(simNo.depAge)}` },
         { k:"Federal tax", v:usd0(steady.tax), s:"Estimated with 2026 federal rules" },
