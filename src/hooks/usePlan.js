@@ -86,6 +86,8 @@ export function usePlan(s, couple, stage) {
     spendDraw: -(r.wdSpend ?? r.wd ?? 0),
     forcedRmd: -(r.forcedRmd || 0),
     rmd: r.rmd || 0,
+    // Wave 3 D2: years where guaranteed income exceeds need; surplus reinvested into taxable.
+    reinvest: r.reinvest || 0,
   })), [simSS]);
 
   const incomeStack = useMemo(() => [

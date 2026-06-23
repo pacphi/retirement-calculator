@@ -389,6 +389,18 @@ export function simulate(i, ssOpt) {
     }
     defBal = Math.max(0, buckets.deferred);
     const wdTotal = wd + forcedRmd;
+    // Wave 3 D2: general surplus reinvest — any RETIREMENT year where guaranteed after-tax
+    // income (pension + SS + rental) already covers the need (no portfolio draw needed),
+    // reinvest the surplus into the taxable bucket. Working years are excluded: wages are
+    // not guaranteed lifetime income and the contrib path already handles that surplus.
+    // Distinct from the RMD forced-surplus path above (forced-draw case); this is the
+    // no-withdrawal, fully-retired surplus case.
+    let reinvest = 0;
+    if (wd === 0 && !workA && !workB) {
+      const surplus = afterTaxBeforeWithdrawal - need;
+      if (surplus > 0) { buckets.taxable += surplus; reinvest = surplus; }
+    }
+    bal = balOf(buckets);
     if (bal < 1) { buckets = { taxable: 0, deferred: 0, roth: 0 }; bal = 0; defBal = 0; }
     if (!workA && !workB && fullyRetAge === null) {
       fullyRetAge = aA;
@@ -413,7 +425,7 @@ export function simulate(i, ssOpt) {
       && prevHousingRentOrPI != null && prevHousingRentOrPI > 0;
     rows.push({
       aA, aB, cal, salA, salB, rent, pens: pensEff, ssA: ssAyEff, ssB: ssByEff, survivor: isSurvivor,
-      wd: Math.round(wdTotal), wdSpend: Math.round(wd), bal: Math.round(bal), need: Math.round(need),
+      wd: Math.round(wdTotal), wdSpend: Math.round(wd), reinvest: Math.round(reinvest), bal: Math.round(bal), need: Math.round(need),
       extraSpend: Math.round(extraSpend),
       tax: Math.round(tax), contrib: Math.round(contrib), sellLump: Math.round(sellLump),
       rmd: Math.round(rmd), forcedRmd: Math.round(forcedRmd), defBal: Math.round(defBal),

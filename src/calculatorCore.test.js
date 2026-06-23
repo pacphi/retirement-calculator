@@ -33,6 +33,7 @@ import {
 } from "./calculatorCore.js";
 import { LOCATIONS, SINGLE_COST_FACTOR, HOME_SELL_NET } from "./retirementData.js";
 import { remainingBalance } from "./finance/housing.js";
+import { makeDefaultPlan } from "./defaultPlan.js";
 
 const baseState = {
   ageA:45, ageB:45, stopA:62, stopB:60, claimA:67, claimB:67, pensionAge:65,
@@ -1500,6 +1501,23 @@ describe("Task 8 — work-vs-retire two-location jurisdiction split", () => {
     // Same ages, same income basis: the only difference is the pre-65 bridge gating.
     // Working → no bridge; retired pre-65 → bridge present, so retired need is higher.
     expect(rRow.need).toBeGreaterThan(wRow.need);
+  });
+});
+
+describe("Wave 3 D2 — general surplus reinvest", () => {
+  it("reinvests an after-tax guaranteed surplus into the taxable bucket", () => {
+    // Arrange: low targetPct so SS+pension after tax already exceeds the need in
+    // some retirement years — guaranteed income covers need without any portfolio draw.
+    const s = { ...makeDefaultPlan(), targetPct: 0.10, contrib: 0 };
+
+    // Act
+    const { simChosen } = calculatePlan(s);
+
+    // Assert: at least one row has reinvest > 0 with no portfolio withdrawal (wd === 0),
+    // and the taxable bucket must have grown (reinvested funds land there).
+    const surplusRow = simChosen.rows.find((r) => r.reinvest > 0 && r.wd === 0);
+    expect(surplusRow).toBeDefined();
+    expect(surplusRow.taxableBal).toBeGreaterThan(0);
   });
 });
 

@@ -255,9 +255,12 @@ describe("Strategy & assumptions controls update the projection", () => {
   });
 
   it("Pre-tax share slider moves the headline", async () => {
+    // D2 note: surplus reinvest neutralises the 0.7→0 delta (both end at the same
+    // taxable balance). Moving to 100% deferred still changes the headline because the
+    // taxable bucket shrinks below the SWR draw, forcing ordinary-income deferred draws.
     await openAssumptions();
     const before = headline();
-    fireEvent.change(screen.getByLabelText(/Pre-tax 401\(k\)\/IRA share/i), { target: { value: "0" } });
+    fireEvent.change(screen.getByLabelText(/Pre-tax 401\(k\)\/IRA share/i), { target: { value: "100" } });
     expect(headline()).not.toBe(before);
   });
 
@@ -268,7 +271,9 @@ describe("Strategy & assumptions controls update the projection", () => {
     // The dollar view shows the share applied to the $670k default savings (70% = $469k).
     const dollarInput = screen.getByLabelText(/Pre-tax 401\(k\)\/IRA share/i);
     expect(Number(dollarInput.value)).toBe(469000);
-    fireEvent.change(dollarInput, { target: { value: "0" } });
+    // D2: use full deferred ($670k) rather than $0 — 100% deferred forces ordinary-income
+    // draws at steady state (taxable bucket too small), which raises tax and moves the net.
+    fireEvent.change(dollarInput, { target: { value: "670000" } });
     expect(headline()).not.toBe(before);
   });
 
