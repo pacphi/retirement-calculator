@@ -33,7 +33,7 @@ Inter / Newsreader / JetBrains Mono).
 ## Decisions taken (confirmed with the user)
 
 1. **Sequence — Wave 2.5 BEFORE Wave 3**, on its own branch (`feat/wave-2.5-ia-housing-events`).
-   Wave 3's plan (`docs/superpowers/plans/2026-06-23-wave-3-engine-depth.md`) slots its new steps
+   Wave 3's plan (`docs/archive/plan-wave-3-engine-depth.md`) slots its new steps
    (Contributions near Step 1, Return-model + Guardrails under Advanced/Spending) into this settled IA.
 2. **Step order — adopt the proposed clean 1–10** (see File structure). Work-state → Step 1; Housing
    → Step 2 (right after Household); a new **Retirement place & taxes** step at position 5 (between
@@ -561,7 +561,7 @@ Run the golden test: the default `targetPct` is still `0.28`, so `steady.net` is
 ## Execution handoff
 
 Plan complete and saved to
-`docs/superpowers/plans/2026-06-23-wave-2.5-ia-housing-events-spending.md`. Recommended execution:
+`docs/archive/plan-wave-2.5-ia-housing-events-spending.md`. Recommended execution:
 **subagent-driven-development** — fresh implementer per task (TDD), independent spec+quality reviewer
 per task (the housing→Places wiring, T3, is the one to review hardest), ledger in
 `.superpowers/sdd/progress.md`, controller verifies the full gate. Then Wave 3.

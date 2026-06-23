@@ -1214,7 +1214,7 @@ git commit -m "feat(wave3): Austria net-of-treaty rate (0→0.05, verify) + docs
 
 ## Execution handoff
 
-Plan complete and saved to `docs/superpowers/plans/2026-06-23-wave-3-engine-depth.md`. Recommended
+Plan complete and saved to `docs/archive/plan-wave-3-engine-depth.md`. Recommended
 execution: **subagent-driven-development** — fresh implementer per task (TDD, test-first), an
 independent spec+quality reviewer per task (opus on T3 and T6), then a final whole-branch review;
 ledger in `.superpowers/sdd/progress.md`; controller verifies the full gate before declaring the wave
