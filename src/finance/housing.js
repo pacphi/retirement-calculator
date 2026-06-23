@@ -1,6 +1,58 @@
 import { TAX_YEAR, HOME_SELL_NET, HOME_RENT_YIELD } from "../retirementData.js";
 
 /**
+ * Annual housing cost at the retirement year, classified by tenure.
+ *
+ * Retirement year rule:
+ *   Use i.relocationYear if it is a meaningful year (> 2000); otherwise derive
+ *   the calendar year from the older spouse reaching their stop age:
+ *     retirementCalYear = TAX_YEAR + (stopOlder - ageOlder)
+ *   where stopOlder = Math.min(i.stopA, i.stopB ?? i.stopA) applied to the
+ *   correspondingly older spouse.
+ *
+ * @param {object} i - Plan inputs (housing, retireHousing, relocationYear,
+ *                     workLoc, stateCode, retireLoc, retLocObj, inher,
+ *                     inflation, activePropertyTaxRate, ageA, ageB, stopA, stopB).
+ * @returns {{ annual: number, basis: "rent"|"own"|"mortgage", note: string }}
+ */
+export function retirementDwellingAnnualCost(i) {
+  // Determine the retirement calendar year.
+  let retYear;
+  const relo = Number(i.relocationYear) || 0;
+  if (relo > 2000) {
+    retYear = relo;
+  } else {
+    // Fall back: year the older spouse stops working.
+    // "Older" means the one with fewer years until their stop age — i.e. lower (stopAge - currentAge).
+    const yearsToStopA = (Number(i.stopA) || 65) - (Number(i.ageA) || 57);
+    const yearsToStopB = i.stopB != null
+      ? (Number(i.stopB) - (Number(i.ageB) || 48))
+      : yearsToStopA;
+    const yearsToFirstStop = Math.min(yearsToStopA, yearsToStopB);
+    retYear = TAX_YEAR + Math.max(0, yearsToFirstStop);
+  }
+
+  const propertyTaxRate = Number(i.activePropertyTaxRate) || 0;
+  const dwelling = resolveDwelling(i, retYear, { inheritedOwnOverride: null, propertyTaxRate });
+  const housing = dwelling.housing;
+  const costs = housingCostForYear(housing, retYear, Number(i.inflation) || 0, propertyTaxRate);
+
+  if (housing.tenure === "rent") {
+    const annual = (Number(housing.rent) || 0) * 12;
+    return { annual, basis: "rent", note: "Tenant — local rent" };
+  }
+
+  if (housing.tenure === "own") {
+    // Own-outright: property tax + insurance + maintenance; no P&I, no rent.
+    const annual = costs.propertyTax + costs.other; // other = insurance + maintenance (rent=0)
+    return { annual, basis: "own", note: "Homeowner — carrying cost" };
+  }
+
+  // mortgage
+  return { annual: costs.total, basis: "mortgage", note: "Mortgaged — P&I + costs" };
+}
+
+/**
  * Outstanding mortgage principal at the start of calendar year `cal`.
  * Formula: P·[(1+r)^n − (1+r)^p] / ((1+r)^n − 1), where r=monthly rate,
  * n=total months, p=months elapsed (clamped to [0,n]). Returns 0 if before

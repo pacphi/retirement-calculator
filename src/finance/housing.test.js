@@ -1,6 +1,6 @@
 // src/finance/housing.test.js
 import { describe, expect, it } from "vitest";
-import { monthlyPI, payoffYear, housingCostForYear, remainingBalance, resolveDwelling } from "./housing.js";
+import { monthlyPI, payoffYear, housingCostForYear, remainingBalance, resolveDwelling, retirementDwellingAnnualCost } from "./housing.js";
 
 describe("housing amortization", () => {
   it("computes the standard monthly P&I", () => {
@@ -289,5 +289,114 @@ describe("resolveDwelling — characterization", () => {
     // Assert — sell+saleValue=0 with no retireHousing → no real transition
     expect(d.transition).toBe("none");
     expect(d.sellLump).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// retirementDwellingAnnualCost — unit tests
+// Verifies basis classification and annual cost computation for each tenure.
+// ---------------------------------------------------------------------------
+
+describe("retirementDwellingAnnualCost", () => {
+  it("should_returnRentBasisAndAnnualRentCost_when_householdIsRenter", () => {
+    // Arrange
+    const rent = 1650;
+    const i = {
+      housing: {
+        tenure: "rent",
+        rent,
+        homeValue: 0,
+        insuranceAnnual: 0,
+        maintenancePct: 0,
+        relocation: { action: "sell", saleValue: 0 },
+      },
+      retireHousing: null,
+      relocationYear: 2046,
+      workLoc: "WA",
+      stateCode: null,
+      retireLoc: null,
+      retLocObj: null,
+      inher: [],
+      inflation: 0.025,
+      activePropertyTaxRate: 0,
+      ageA: 57, ageB: 48, stopA: 65, stopB: 56,
+    };
+
+    // Act
+    const result = retirementDwellingAnnualCost(i);
+
+    // Assert
+    expect(result.basis).toBe("rent");
+    expect(result.annual).toBeCloseTo(rent * 12, 0);
+    expect(typeof result.note).toBe("string");
+  });
+
+  it("should_returnMortgageBasisAndPositiveAnnual_when_householdHasMortgage", () => {
+    // Arrange
+    const i = {
+      housing: {
+        tenure: "mortgage",
+        mortgage: { principal: 300000, ratePct: 6, termYears: 30, startYear: 2026 },
+        homeValue: 375000,
+        insuranceAnnual: 1800,
+        maintenancePct: 0.01,
+        relocation: { action: "sell", saleValue: 0 },
+      },
+      retireHousing: null,
+      relocationYear: 9999, // no relocation — use work home at retirement
+      workLoc: "WA",
+      stateCode: "WA",
+      retireLoc: null,
+      retLocObj: null,
+      inher: [],
+      inflation: 0.025,
+      activePropertyTaxRate: 0.012,
+      ageA: 57, ageB: 48, stopA: 65, stopB: 56,
+    };
+
+    // Act
+    const result = retirementDwellingAnnualCost(i);
+
+    // Assert
+    expect(result.basis).toBe("mortgage");
+    expect(result.annual).toBeGreaterThan(0);
+    expect(typeof result.note).toBe("string");
+  });
+
+  it("should_returnOwnBasisAndCarryingCostOnly_when_householdOwnsOutright", () => {
+    // Arrange — own-outright: annual = propertyTax + insurance + maintenance; no rent, no P&I
+    const homeValue = 400000;
+    const propertyTaxRate = 0.012;
+    const insuranceAnnual = 1500;
+    const maintenancePct = 0.01;
+    const expectedAnnual = propertyTaxRate * homeValue + insuranceAnnual + maintenancePct * homeValue;
+    const i = {
+      housing: {
+        tenure: "own",
+        homeValue,
+        insuranceAnnual,
+        maintenancePct,
+        mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: 2026 },
+        relocation: { action: "sell", saleValue: 0 },
+      },
+      retireHousing: null,
+      relocationYear: 9999,
+      workLoc: "WA",
+      stateCode: "WA",
+      retireLoc: null,
+      retLocObj: null,
+      inher: [],
+      inflation: 0.025,
+      activePropertyTaxRate: propertyTaxRate,
+      ageA: 57, ageB: 48, stopA: 65, stopB: 56,
+    };
+
+    // Act
+    const result = retirementDwellingAnnualCost(i);
+
+    // Assert
+    expect(result.basis).toBe("own");
+    expect(result.annual).toBeCloseTo(expectedAnnual, 1);
+    expect(result.annual).not.toBeCloseTo(0, 0); // no rent, no P&I — but carrying costs present
   });
 });

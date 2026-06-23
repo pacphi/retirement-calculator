@@ -1,6 +1,6 @@
 import { C } from "../theme.js";
 import { Field, NumberInput, Segmented, Section } from "../atoms/index.jsx";
-import { monthlyPI, payoffYear } from "../../finance/housing.js";
+import { monthlyPI, payoffYear, remainingBalance } from "../../finance/housing.js";
 import { LOCATIONS, TAX_YEAR, US_STATE_TAX } from "../../retirementData.js";
 
 /**
@@ -59,6 +59,13 @@ export function Housing({ s, set }) {
   const retireJurisdiction = s.stateCode ?? s.retireLoc;
   const workHomeOwned = h.tenure === "mortgage" || h.tenure === "own";
   const showRelocation = (s.workLoc ?? "WA") !== retireJurisdiction && workHomeOwned;
+
+  // Outstanding balance at relocationYear: when > 0 and selling, the mortgage is netted
+  // from sale proceeds. Make this visible in the sell flow.
+  const reloYear = Number(s.relocationYear) || TAX_YEAR;
+  const balanceAtRelo = h.tenure === "mortgage"
+    ? remainingBalance(h.mortgage, reloYear)
+    : 0;
 
   const reloc = h.relocation ?? { action: "sell", saleValue: 0 };
   const setReloc = (field) => (v) =>
@@ -265,8 +272,9 @@ export function Housing({ s, set }) {
           {reloc.action === "keep" ? (
             <div role="note" style={{ fontSize: 11.5, color: C.slate, lineHeight: 1.55, marginBottom: 12, padding: "8px 10px", background: "#F6F2E8", borderRadius: 8 }}>
               Kept as a rental — rental income is added and the work mortgage continues as a
-              landlord cost. Property tax, insurance, and upkeep on the kept home are not yet
-              modeled (planning-grade).
+              landlord cost. <b style={{ color: C.ink }}>Carrying cost continues in retirement</b>{" "}
+              (property tax, insurance, and upkeep on the kept home are not yet separately
+              modeled — planning-grade).
             </div>
           ) : (
             <>
@@ -284,9 +292,14 @@ export function Housing({ s, set }) {
                 />
               </Field>
               <div role="note" style={{ fontSize: 11.5, color: C.slate, lineHeight: 1.55, marginBottom: 12, padding: "8px 10px", background: "#F6F2E8", borderRadius: 8 }}>
-                You estimate the market value. ~7% selling costs and the remaining mortgage are
-                netted out; the primary-residence capital-gains exclusion (~$500k MFJ) usually
-                covers the gain — confirm with a specialist.
+                You estimate the market value. ~7% selling costs and the remaining mortgage
+                {balanceAtRelo > 0 && (
+                  <> (≈&nbsp;<b style={{ color: C.ink }}>${Math.round(balanceAtRelo).toLocaleString()}</b> balance at {reloYear})</>
+                )}{" "}
+                are netted out; the primary-residence capital-gains exclusion (~$500k MFJ)
+                usually covers the gain —{" "}
+                <b style={{ color: C.brassDeep }}>selling can be a taxable event</b>; confirm
+                with a tax specialist before you move.
               </div>
             </>
           )}

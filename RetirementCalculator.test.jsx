@@ -672,3 +672,16 @@ describe("Task 8 — work-vs-retire jurisdiction split UI", () => {
     expect(workStateSelect.value).toBe("WA");
   });
 });
+
+describe("Places panel — housing caption (Wave 2.5 Part 5)", () => {
+  it("should_renderHousingCostCaption_when_placesAreDisplayed", () => {
+    // Arrange + Act
+    render(<RetirementCalculator />);
+
+    // Assert — the caption is present with its aria-label
+    expect(screen.getByLabelText(/housing cost note/i)).toBeInTheDocument();
+    // Core text confirms owned/mortgage and rent cases are explained
+    expect(screen.getByText(/you bring one home/i)).toBeInTheDocument();
+    expect(screen.getByText(/each location.s local rent is shown/i)).toBeInTheDocument();
+  });
+});
