@@ -1,7 +1,12 @@
 import { C, inputStyle } from "../theme.js";
 import { NumberInput, Segmented, Section } from "../atoms/index.jsx";
 
-const EVENT_TYPES = ["gift", "purchase", "windfall"];
+// Stored values stay as-is ("gift"/"purchase"/"windfall"); only the display labels change.
+const EVENT_TYPES = [
+  { value: "gift",     label: "Gift / support" },
+  { value: "purchase", label: "Purchase / expense" },
+  { value: "windfall", label: "Windfall / income received" },
+];
 
 /**
  * Step eight — Family milestones.
@@ -53,10 +58,11 @@ export function Milestones({ s, set, addEvent, removeEvent }) {
           <div style={{ display:"grid", gridTemplateColumns:"1fr auto", gap:10, alignItems:"center", marginTop:10 }}>
             <div>
               <div style={{ fontSize:10.5, letterSpacing:.5, textTransform:"uppercase", color:C.slate, fontWeight:700, marginBottom:4 }}>Event type</div>
+              {/* Fallback to "gift" to match addEvent's default in RetirementCalculator.jsx */}
               <select aria-label="Event type" value={ev.type ?? "gift"}
                 onChange={(e)=>{ const next=s.events.map((x,i)=> i===idx ? { ...x, type:e.target.value } : x); set("events")(next); }}
                 style={{ ...inputStyle, fontFamily:"'Inter',sans-serif", fontWeight:600, fontSize:13.5, cursor:"pointer" }}>
-                {EVENT_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+                {EVENT_TYPES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
               </select>
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:6, paddingTop:18 }}>
