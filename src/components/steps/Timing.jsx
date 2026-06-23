@@ -6,13 +6,13 @@ import { usd0 } from "../format.js";
 const SSA_FRA_URL = "https://secure.ssa.gov/myssa/bec-plan-prep-ui/bec-home";
 
 /**
- * Step two — When work stops & benefits begin.
+ * Step three — When work stops & benefits begin.
  *
  * @param {{ s: object, set: function, sFull: object }} props
  */
 export function Timing({ s, set, sFull }) {
   return (
-    <Section eyebrow="Step two" title="When work stops & benefits begin">
+    <Section eyebrow="Step three" title="When work stops & benefits begin">
       <div className="rc-inputs">
         <Field label="You stop working at"><NumberInput value={s.stopA} onChange={set("stopA")} /></Field>
         <Field label="Spouse stops at"><NumberInput value={s.stopB} onChange={set("stopB")} /></Field>

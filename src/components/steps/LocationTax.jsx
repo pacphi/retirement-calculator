@@ -3,8 +3,10 @@ import { Field, NumberInput, Section } from "../atoms/index.jsx";
 import { US_STATE_TAX } from "../../retirementData.js";
 
 /**
- * LocationTax step — work-state / retirement-state jurisdiction split + manual
- * stateRate override for power users.
+ * Step five — Where you'll retire & local taxes.
+ *
+ * Work-state / retirement-state jurisdiction split + manual stateRate override
+ * for power users.
  *
  * Sets `workLoc` (US_STATE_TAX key, default "WA"), `relocationYear` (the year the
  * household moves to the retirement jurisdiction), `stateCode` (US_STATE_TAX key or
@@ -54,7 +56,7 @@ export function LocationTax({ s, set }) {
   };
 
   return (
-    <Section eyebrow="Location & Tax" title="Work & retirement state">
+    <Section eyebrow="Step five" title="Where you'll retire & local taxes">
       <Field
         label="Where you live & earn now"
         hint="Your US state while employed. Sets the wage-tax rate applied to employment income before retirement."

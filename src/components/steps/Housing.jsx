@@ -4,8 +4,10 @@ import { monthlyPI, payoffYear } from "../../finance/housing.js";
 import { LOCATIONS, TAX_YEAR, US_STATE_TAX } from "../../retirementData.js";
 
 /**
- * Housing step — tenure selection (Rent / Mortgage / Own) with mode-specific
- * inputs and a live mortgage payoff read-out.
+ * Step two — Your home today.
+ *
+ * Tenure selection (Rent / Mortgage / Own) with mode-specific inputs and a
+ * live mortgage payoff read-out.
  *
  * Wave 2 Task 4: housing cost is now EXPLICIT and DEFAULT-ON in the spending
  * engine.  This component lets the user configure their housing situation so
@@ -80,7 +82,7 @@ export function Housing({ s, set }) {
     set("retireHousing")({ ...rh, mortgage: { ...(rh.mortgage ?? {}), [field]: v } });
 
   return (
-    <Section eyebrow="Housing" title="Housing">
+    <Section eyebrow="Step two" title="Your home today">
       <Field label="Tenure">
         <Segmented
           value={h.tenure}

@@ -219,13 +219,13 @@ export default function RetirementCalculator() {
           <div>
             <div style={{ background:C.panel, border:`1px solid ${C.line}`, borderRadius:14, padding:"20px 20px 6px", marginBottom:18 }}>
               <Household s={s} set={set} deferredMode={deferredMode} onDeferredModeChange={setDeferredMode} incomeHH={incomeHH} />
+              <Housing s={s} set={set} />
               <Timing s={s} set={set} sFull={sFull} />
               <Pension s={s} set={set} afcAuto={afcAuto} afcEff={afcEff} steady={steady} />
-              <InheritanceStep s={s} set={set} setProp={setProp} />
-              <Milestones s={s} set={set} addEvent={addEvent} removeEvent={removeEvent} />
-              <SpendingStrategy s={s} set={set} setProp={setProp} addLifestyleStep={addLifestyleStep} removeLifestyleStep={removeLifestyleStep} setLifestyleStep={setLifestyleStep} />
-              <Housing s={s} set={set} />
               <LocationTax s={s} set={set} />
+              <InheritanceStep s={s} set={set} setProp={setProp} />
+              <SpendingStrategy s={s} set={set} setProp={setProp} addLifestyleStep={addLifestyleStep} removeLifestyleStep={removeLifestyleStep} setLifestyleStep={setLifestyleStep} />
+              <Milestones s={s} set={set} addEvent={addEvent} removeEvent={removeEvent} />
               <TravelLongevity s={s} set={set} />
               <Advanced s={s} set={set} adv={adv} onAdvToggle={() => setAdv(a => !a)} />
             </div>
@@ -392,7 +392,7 @@ export default function RetirementCalculator() {
               future-dollar equivalent. Inheritance outcomes use simplified net factors (Texas ~93% on sale via basis step-up; Austria ~90%
               after transfer + capital-gains tax) and assume the estate stays under the $15M federal exemption — confirm the decedent's
               acquisition history, currency basis, and treaty treatment with a cross-border tax professional. 2026 federal brackets. Inherited-home live-in savings begin the year after inheritance; one-time relocation costs are not modeled.
-              {!s.ltc.on && " Long-term care is not modeled (about 70% of retirees need it; roughly $50k–$200k/yr depending on location) — enable it under Step Five → Advanced to stress-test."}
+              {!s.ltc.on && " Long-term care is not modeled (about 70% of retirees need it; roughly $50k–$200k/yr depending on location) — enable it under Strategy & assumptions (bottom of inputs) to stress-test."}
             </p>
           </div>
         </div>

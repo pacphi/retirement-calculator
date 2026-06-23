@@ -3,7 +3,7 @@ import { Field, NumberInput, Segmented, Section } from "../atoms/index.jsx";
 import { SOURCES } from "../../retirementData.js";
 
 /**
- * Retirement spending strategy step — smile curve shape selector + lifestyle steps.
+ * Step seven — Retirement spending strategy — smile curve shape selector + lifestyle steps.
  *
  * Exposes three modes via a Segmented control:
  *   "flat"   — constant real spending (default; smile multiplier = 1)
@@ -20,7 +20,7 @@ export function SpendingStrategy({ s, setProp, addLifestyleStep, removeLifestyle
   const shape = s.spendingShape ?? { mode: "flat" };
 
   return (
-    <Section eyebrow="Optional" title="Retirement spending">
+    <Section eyebrow="Step seven" title="Retirement spending">
       <Field label="Spending shape">
         <Segmented
           value={shape.mode}

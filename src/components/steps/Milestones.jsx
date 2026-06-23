@@ -4,13 +4,13 @@ import { NumberInput, Segmented, Section } from "../atoms/index.jsx";
 const EVENT_TYPES = ["gift", "purchase", "windfall"];
 
 /**
- * Step five — Family milestones.
+ * Step eight — Family milestones.
  *
  * @param {{ s: object, set: function, addEvent: function, removeEvent: function }} props
  */
 export function Milestones({ s, set, addEvent, removeEvent }) {
   return (
-    <Section eyebrow="Step five" title="Family milestones">
+    <Section eyebrow="Step eight" title="Family milestones">
       <p style={{ margin:"0 0 10px", fontSize:12.5, color:C.slate, lineHeight:1.5 }}>One-time gifts (weddings, home help, a grandchild's seed) and recurring costs (a new car every ~10 years, home upkeep). Set <b>Every</b> to repeat; leave it blank for a one-time event. Amounts are in today's dollars.</p>
       {s.events.map((ev, idx) => (
         <div key={ev.id} style={{ border:`1px solid ${C.line}`, borderRadius:9, padding:"10px 12px 12px", marginBottom:10, background:C.panel }}>

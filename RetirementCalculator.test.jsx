@@ -640,6 +640,15 @@ describe("DualTaxExposure panel (Wave 2 Task 6)", () => {
   });
 });
 
+describe("Wave 2.5 — step order and numbering", () => {
+  it("renders steps in the Wave 2.5 order with consistent numbering", () => {
+    render(<RetirementCalculator />);
+    const eyebrows = screen.getAllByText(/^Step (one|two|three|four|five|six|seven|eight|nine)$/i)
+      .map((el) => el.textContent.trim().toLowerCase());
+    expect(eyebrows).toEqual(["step one","step two","step three","step four","step five","step six","step seven","step eight","step nine"]);
+  });
+});
+
 describe("Task 8 — work-vs-retire jurisdiction split UI", () => {
   it("renders the Work state selector with an accessible label", () => {
     render(<RetirementCalculator />);
