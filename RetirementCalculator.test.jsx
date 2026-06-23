@@ -332,17 +332,22 @@ describe("year-by-year navigator", () => {
 });
 
 describe("spending basis toggle", () => {
-  it("defaults to the income-share basis and shows the share slider", () => {
+  it("defaults to the income-share basis and shows the total-replacement slider", () => {
     render(<RetirementCalculator />);
     expect(screen.getByRole("button", { name: "% of income" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText(/Retire on this share of income/i)).toBeInTheDocument();
+    expect(screen.getByText(/Replace this share of income in retirement/i)).toBeInTheDocument();
   });
 
-  it("switches to the location-cost basis, hiding the income share and revealing the lifestyle slider", () => {
+  it("switches to the location-cost basis, hiding the total-replacement slider and revealing the lifestyle slider", () => {
     render(<RetirementCalculator />);
     fireEvent.click(screen.getByRole("button", { name: "Location cost" }));
-    expect(screen.queryByText(/Retire on this share of income/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Replace this share of income in retirement/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Lifestyle —/i)).toBeInTheDocument();
+  });
+
+  it("shows the total-replacement spending control with an accessible label", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByLabelText("Replace this share of income in retirement")).toBeInTheDocument();
   });
 });
 

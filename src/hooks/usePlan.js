@@ -100,6 +100,12 @@ export function usePlan(s, couple, stage) {
     [simSS, s.stopA, s.ageA, s.stopB, s.ageB],
   );
 
+  // Year-1 retirement housing annual cost — used by the total-replacement slider.
+  const retireHousingAnnual = useMemo(
+    () => retirementDwellingAnnualCost(buildPlanInputs(s)).annual,
+    [s],
+  );
+
   return {
     calc,
     // calc destructure — exposed with identical names
@@ -116,5 +122,6 @@ export function usePlan(s, couple, stage) {
     sFactor,
     headroom,
     accumulation,
+    retireHousingAnnual,
   };
 }

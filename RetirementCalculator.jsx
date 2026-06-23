@@ -127,6 +127,7 @@ export default function RetirementCalculator() {
     headroom,
     accumulation,
     hasEmergent,
+    retireHousingAnnual,
   } = usePlan(s, couple, stage);
 
   // Monte Carlo worker lifecycle
@@ -218,7 +219,7 @@ export default function RetirementCalculator() {
           {/* INPUTS */}
           <div>
             <div style={{ background:C.panel, border:`1px solid ${C.line}`, borderRadius:14, padding:"20px 20px 6px", marginBottom:18 }}>
-              <Household s={s} set={set} deferredMode={deferredMode} onDeferredModeChange={setDeferredMode} incomeHH={incomeHH} />
+              <Household s={s} set={set} deferredMode={deferredMode} onDeferredModeChange={setDeferredMode} incomeHH={incomeHH} retireHousingAnnual={retireHousingAnnual} />
               <Housing s={s} set={set} />
               <Timing s={s} set={set} sFull={sFull} />
               <Pension s={s} set={set} afcAuto={afcAuto} afcEff={afcEff} steady={steady} />
