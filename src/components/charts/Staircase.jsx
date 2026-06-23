@@ -2,10 +2,11 @@ import {
   ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceDot, ReferenceLine,
 } from "recharts";
-import { LOCATIONS } from "../../retirementData.js";
+import { LOCATIONS, TAX_YEAR } from "../../retirementData.js";
 import { C, SRC } from "../theme.js";
 import { Select } from "../atoms/index.jsx";
 import { usd0, usdK } from "../format.js";
+import { monthlyPI, payoffYear } from "../../finance/housing.js";
 
 /**
  * Staircase chart panel — income by source, year by year.
@@ -40,8 +41,24 @@ export function Staircase({
   onSelectYear,
   compTip,
   spendingShape,
+  housing,
+  relocationYear,
+  workLoc,
 }) {
   const locByName = (n) => LOCATIONS.find(l => l.name === n);
+
+  // Relocation boundary: convert calendar year to age for the x-axis.
+  const relocAge = (relocationYear != null && ageA != null)
+    ? ageA + (relocationYear - TAX_YEAR)
+    : null;
+
+  // Housing band caption — compute payoff cliff year for mortgage tenure.
+  const housingTenure = housing?.tenure;
+  const isMortgage = housingTenure === "mortgage";
+  const m = housing?.mortgage;
+  const mpiMo = isMortgage ? monthlyPI(m?.principal, m?.ratePct, m?.termYears) : 0;
+  const pOff = isMortgage ? payoffYear(m) : null;
+  const pOffAge = pOff != null ? ageA + (pOff - TAX_YEAR) : null;
 
   return (
     <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 14, padding: "16px 14px 12px", marginBottom: 16 }}>
@@ -85,6 +102,8 @@ export function Staircase({
           ))}
           {depAge != null && <ReferenceLine x={depAge} stroke={C.clay} strokeWidth={1.4} strokeDasharray="2 2"
             label={{ value: `savings gone · age ${depAge}`, position: "insideTopRight", fontSize: 10.5, fill: C.clay }} />}
+          {relocAge != null && <ReferenceLine x={relocAge} stroke={C.viridian} strokeWidth={1.2} strokeDasharray="4 3"
+            label={{ value: `leave ${workLoc ?? "work"} · age ${relocAge}`, position: "insideTopLeft", fontSize: 10, fill: C.viridian }} />}
         </ComposedChart>
       </ResponsiveContainer>
       <div style={{ display: "flex", gap: "6px 14px", flexWrap: "wrap", padding: "8px 6px 2px" }}>
@@ -98,6 +117,24 @@ export function Staircase({
           Need line follows a retirement spending smile (
           <a href="https://retirementresearcher.com/retirement-spending-smile/" target="_blank" rel="noreferrer" style={{ color: C.brassDeep }}>Blanchett</a>
           ) — real spending eases through the active years, then rises late.
+        </p>
+      )}
+      {housingTenure && housingTenure !== "own" && (
+        <p style={{ margin: "6px 6px 0", fontSize: 11, color: C.slate, lineHeight: 1.5 }}>
+          <b>Housing band:</b>{" "}
+          {housingTenure === "rent" && <>
+            Rent is included in the spending-need line as a real-flat obligation outside the 35% floor.
+          </>}
+          {isMortgage && mpiMo > 0 && <>
+            Mortgage P&amp;I of <b style={{ color: C.ink }}>${Math.round(mpiMo).toLocaleString()}/mo</b> is
+            included in the need line and deflates in real terms each year.
+            {pOff != null && pOffAge != null && (
+              <> The need line steps <b style={{ color: C.viridian }}>down</b> at payoff in{" "}
+              <b style={{ color: C.ink }}>{pOff}</b>{" "}
+              (your age <b style={{ color: C.ink }}>{Math.round(pOffAge)}</b>) as P&amp;I drops to zero —
+              only property tax, insurance, and maintenance remain.</>
+            )}
+          </>}
         </p>
       )}
     </div>

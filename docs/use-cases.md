@@ -1027,3 +1027,303 @@ The read-out is debounced (~300ms) to avoid re-running on every keystroke.
 **Scenario.** *"After enabling the spending smile (UC‑21) and a −$8,000 lifestyle step (UC‑22), the couple wants to know how much annual spending they could still add — perhaps a more generous travel budget — before their plan breaks."* The headroom read-out shows $14,200/yr of additional capacity. They add a travel event of $10,000/yr and watch the headroom drop to $4,200, confirming there is still a buffer. They then enable a $25,000 emergent roof replacement (UC‑23) in the shock scenario: the headroom panel updates automatically, showing how the buffer shrinks under the shock.
 
 **Edge cases.** If the base plan has no depletion age (balance positive at 95 with zero extra spend), headroom is the maximum spend increase before the first depletion. If the plan already depletes at or before the current year, `annualShortfall` is the amount by which guaranteed income falls short of the modeled need. Headroom ignores Monte Carlo variability — users should cross-check against the p10 band (UC‑19) for a stress-adjusted floor.
+
+---
+
+## 8. Wave 2 Use Cases (H1–H4, T1–T3, L1–L3)
+
+The following use cases document the Wave 2 "Place & Housing" features. Each follows the same template as Section 3.
+
+---
+
+### UC-26 Housing and Mortgage Module (H1)
+
+**Purpose.** Model the household's primary housing cost as an explicit engine flow — rent, amortizing mortgage, or paid-off carrying cost — separate from the lifestyle spending percentage.
+
+**Implements.** FR‑MORT‑01..06.
+
+**Inputs.** `housing.tenure` (`"rent"` | `"mortgage"` | `"own"`); for `mortgage`: `homeValue`, `downPct`, `loanTermYears`, `annualRate`, `originationYear`; `s.inflation` (now a real engine input).
+
+**Logic** (`src/finance/housing.js`).
+
+```js
+// Monthly P&I (standard amortization)
+principal = homeValue * (1 - downPct)
+monthlyRate = annualRate / 12
+n = loanTermYears * 12
+monthlyPI = principal * monthlyRate * (1 + monthlyRate)^n
+           / ((1 + monthlyRate)^n - 1)
+annualPI_nominal = monthlyPI * 12
+
+// Real deflation each simulation year y (y=0 is origination year)
+annualPI_real(y) = annualPI_nominal / (1 + s.inflation)^y
+
+// Zero at payoff
+payoffYear = originationYear + loanTermYears
+housingCostForYear(y, cal) =
+  tenure === "rent"     ? rentAmount                          // real-flat
+  tenure === "own"      ? homeValue * ownRate                 // real-flat carrying cost
+  cal < payoffYear      ? annualPI_real(cal - originationYear) // deflated P&I
+                        : homeValue * ownRate                  // carrying cost post-payoff
+```
+
+**Outputs.** `housingCostForYear` — the real housing cost for each simulation year; `payoffYear`; `remainingBalance(cal)` for the relocation transition (UC‑28).
+
+**Scenario.** *"The couple is currently renting but plans to buy a $650,000 home with 20% down on a 30-year mortgage at 6.5% before retiring. They want to see the housing-cost cliff when the mortgage is paid off at age 77."* They set tenure to `mortgage` and enter the loan parameters. The staircase chart shows real P&I declining each year (nominal payment constant, but worth less in real terms) and a sharp drop at `payoffYear` to carrying-cost only (~$7,000/yr property tax + insurance). The headroom figure improves noticeably after payoff.
+
+**Edge cases.** `annualRate = 0` is guarded (returns equal principal payments). `downPct = 1.0` (fully paid off at origination) behaves as `own` from year 0. `s.inflation = 0` leaves P&I flat in real terms (matching the nominal payment exactly).
+
+---
+
+### UC-27 Non-Housing Floor Policy and Housing-Explicit Need (H2, H3)
+
+**Purpose.** Apply the 35% spending floor to non-housing essentials only; add housing as its own line outside the floor; reframe `targetPct` as the non-housing lifestyle share.
+
+**Implements.** FR‑FLOOR‑01..03, FR‑HEXP‑01..03.
+
+**Inputs.** `targetPct` (non-housing lifestyle, default 0.28); `housing.tenure` and cost from UC‑26; `spendBasis`; existing healthcare and floor logic.
+
+**Logic** (`src/finance/simulate.js` — `composeNeed`).
+
+```js
+// Non-housing base (lifestyle only)
+nonHousingBase = incomeHH * targetPct   // income basis
+               | locationBasket * lifestyle/100  // location basis (rent excluded from basket)
+
+// Floor applies to non-housing only
+floored = max(0.35 * nonHousingBase, nonHousingBase + hcBump)
+
+// Housing added outside the floor — always paid in full
+need = floored + housingCostForYear(y, cal)
+```
+
+**Outputs.** `need` decomposed into `nonHousingNeed` and `housingCost` — both visible in the staircase chart and monthly navigator.
+
+**Scenario.** *"The couple wants to understand what happens to their spending need when they switch from the old 40% income target to the new housing-explicit model with a 28% non-housing lifestyle share and a separate mortgage line."* With the new defaults, the staircase shows two components stacked on the need line: a lower lifestyle floor and a housing P&I band above it. Total need is similar at first; after payoff the housing band drops away entirely, revealing the floor-only need in their late 70s.
+
+**Edge cases.** A very low `targetPct` (e.g. 0.15) may push `nonHousingBase` below `0.35 × nonHousingBase` — the floor clamps it. Housing is added after the clamp, so a $2,000/mo mortgage is always in the need regardless of lifestyle level.
+
+---
+
+### UC-28 Inherited Live-In to Owned Tenure (H4)
+
+**Purpose.** When an inherited home is set to "Live in," switch housing tenure to owned carrying cost rather than applying a stacked rent-avoided credit.
+
+**Implements.** FR‑LIVEIN‑01..03.
+
+**Inputs.** Inherited property with `strategy = "live"`, `value`, `ownRate` (from `PROP` constants), `year` received.
+
+**Logic.**
+
+```js
+// From the year the property is received, tenure overrides to "own"
+if (prop.strategy === "live" && cal >= prop.year) {
+  housing.tenure = "own"
+  housing.homeValue = prop.value
+  housing.ownRate = PROP[prop.key].ownRate
+  // no liveSaving credit applied — carrying cost IS the housing line
+}
+```
+
+**Outputs.** Housing cost = `ownRate × value` from `prop.year`; no rent-avoided credit in the spending need.
+
+**Scenario.** *"The couple inherits the Klagenfurt home in 2038 and chooses to live in it. Under Wave 2 the housing line switches from their prior rent amount to the Austrian carrying cost (~€3,900/yr ≈ $4,200/yr at the model's fixed rate) — a large drop from US rent levels. The staircase shows the housing band shrinking sharply at inheritance year."* They compare this to the "Rent" strategy ($6,480/yr net income) and the "Sell" lump sum (~$291,600 added to the portfolio). The carrying-cost path is far cheaper than US housing but yields no rental income — the right choice depends on their lifestyle preferences.
+
+**Edge cases.** If both properties are set to "Live in," the engine uses the later-received property's `ownRate` (only one primary home at a time). The Texas live-in path produces a positive carrying cost (~$21,300/yr) because property tax exceeds the equivalent rent saving — the UI flags this in a warning color.
+
+---
+
+### UC-29 Typed Residence Tax — US States (T1)
+
+**Purpose.** Apply income-type-aware state income tax rates from the curated ~14-state picker, composing on the federal engine.
+
+**Implements.** FR‑RES‑01..04.
+
+**Inputs.** `retireLoc` (or `workLoc` for working years); the year's income breakdown (ordinary, pension, SS, Roth); `residenceTax.js` state table.
+
+**Logic** (`src/finance/residenceTax.js`).
+
+```js
+residenceTaxForYear(profile, base) {
+  // profile = { ordinaryRate, pensionExempt, ssExempt, rothExempt }
+  // base = { ordinary, pension, ss, roth }
+  taxable = base.ordinary * (1 - profile.ordinaryRate_exempt_frac)
+          + (profile.pensionExempt ? 0 : base.pension)
+          + (profile.ssExempt      ? 0 : base.ss)
+  // Roth always exempt
+  return taxable * profile.ordinaryRate
+}
+```
+
+**Outputs.** Annual residence-tax amount added to the year's total tax; shown as a separate line in the monthly breakdown.
+
+**Scenario.** *"The couple is deciding between retiring in Texas (no state income tax) versus California (up to 13.3% on ordinary income). They enter the same income profile for each and compare the after-tax income."* Selecting CA as `retireLoc` reduces net sustainable income by roughly $8,000–$12,000/yr on a $120,000 gross income, making several locations drop one lifestyle tier. Switching to TX or NV shows zero state tax and immediately improves the headline. The staircase chart shows the residence-tax wedge as a distinct colored band between gross income and the spending need.
+
+**Edge cases.** When `retireLoc` is WA or TX (no income tax), `profile.ordinaryRate = 0` and the layer is inert — identical to the pre-Wave-2 behavior. The `addlTaxRate` manual override path bypasses the per-type logic and applies a flat rate to ordinary income, preserving backward compatibility.
+
+---
+
+### UC-30 Typed Residence Tax — International and Treaty (T2)
+
+**Purpose.** Apply planning-grade treaty-aware effective rates by income type for international retirement locations.
+
+**Implements.** FR‑TREATY‑01..04.
+
+**Inputs.** International `retireLoc`; per-year income breakdown; treaty profile for the selected country (`pensionExclusion`, `iraEffectiveRate`, `ssExempt`, `rothExempt`).
+
+**Logic.**
+
+```js
+// Government DRS pension: taxable only by the US (source rule) — 0 residence tax
+pensionResidenceTax = 0   // pensionExclusion === "full"
+
+// IRA/401(k) draws: residence-taxed at effective net-of-treaty rate (after FTC)
+iraResidenceTax = base.ordinary * profile.iraEffectiveRate
+
+// Social Security: per treaty flag
+ssResidenceTax = profile.ssExempt ? 0 : base.ss * profile.ssRate
+
+// Roth: never taxed
+// Total residence tax:
+residenceTax = pensionResidenceTax + iraResidenceTax + ssResidenceTax
+```
+
+**Outputs.** Per-type residence-tax breakdown; effective rate caption in the UI; "Consult a cross-border specialist" disclaimer.
+
+**Scenario.** *"The couple is considering retiring to Klagenfurt, Austria. They want to see the combined US worldwide tax and Austrian residence tax on their income mix (DRS pension, IRA draws, Social Security, Roth)."* The model shows: DRS pension — 0 Austrian tax (government-pension source rule), full US tax; IRA draws — small Austrian residual after the FTC (~0–3% effective); SS — exempt under the US-Austria treaty; Roth — 0 in both jurisdictions. The dual-tax panel (UC‑31) then reconciles the FTC to show net US liability. Austria's effective rate is flagged "verify" in the UI (L11).
+
+**Edge cases.** A country with no US tax treaty has no `ssExempt` flag and no FTC-offsetting rate; IRA draws are taxed at the full local marginal rate. With `iraEffectiveRate = 0` and `ssExempt = true` (e.g. a treaty-favorable country), the residence layer is near-zero and the plan resembles a WA-resident scenario.
+
+---
+
+### UC-31 Dual-Tax Exposure Panel (T3)
+
+**Purpose.** For international retirees, surface worldwide US taxation, the Foreign Tax Credit, government-pension source rule, and cross-border filing flags in a planning-grade panel.
+
+**Implements.** FR‑DTAX‑01..03.
+
+**Inputs.** International `retireLoc`; the year's federal tax (UC‑6); residence tax (UC‑30); income breakdown.
+
+**Logic.**
+
+```js
+// US worldwide tax = federal tax on all global income (computed by existing engine)
+usTax = federalTaxYear(income, status)
+
+// FTC = residence tax paid abroad (capped at the US tax on the same income)
+ftc = min(residenceTax, usTax * foreignIncomeShare)
+
+// Net US tax after FTC
+netUSTax = usTax - ftc
+
+// Filing flags (informational only)
+flags = [
+  hasForeignAccounts > 10000 ? "FBAR (FinCEN 114)" : null,
+  hasForeignAssets > threshold ? "FATCA (Form 8938)" : null,
+  hasForeignTrustGifts ? "Form 3520" : null,
+].filter(Boolean)
+```
+
+**Outputs.** Panel with: US worldwide tax, FTC, net US tax, government-pension source-rule note, filing flags. Persistent disclaimer: "Planning-grade estimate only. Consult a cross-border tax specialist."
+
+**Scenario.** *"The couple has moved to Austria and wants to understand their full US tax picture — they know US citizens are taxed worldwide and want to see how the Foreign Tax Credit reduces their US bill."* The panel shows US tax of ~$18,000 on their $120,000 gross income; FTC of ~$3,000 from Austrian tax paid on IRA draws; net US tax ~$15,000. The DRS pension note explains it is taxable only by the US — the Austrian side is zero. FBAR and FATCA flags appear because they have Austrian bank accounts. The disclaimer directs them to a cross-border specialist for binding figures.
+
+**Edge cases.** If the FTC equals or exceeds the US tax on foreign-source income, net US tax on that income is zero (but the FTC cannot create a US tax refund). The panel is hidden when `retireLoc` is a US state (no dual-tax exposure for domestic retirees).
+
+---
+
+### UC-32 Work-vs-Retire Two-Location Split (L1)
+
+**Purpose.** Apply the correct tax jurisdiction each year: work-location rates during earning years, retirement-location rates after relocation.
+
+**Implements.** FR‑RELO‑01..04.
+
+**Inputs.** `workLoc`, `retireLoc`, `relocationYear`; per-year simulation calendar.
+
+**Logic** (`activeJurisdiction` in `src/finance/residenceTax.js`).
+
+```js
+activeJurisdiction(i, cal) {
+  // i = simulation year index, cal = calendar year
+  return cal < relocationYear ? jurisdictionFor(workLoc)
+                              : jurisdictionFor(retireLoc)
+}
+
+// ACA bridge gates on not-working, not age alone (post-Wave-2)
+acaBridgeActive(y) = !working(y) && spouseAge(y) < 65
+```
+
+**Outputs.** Per-year jurisdiction record used by `residenceTaxForYear`; correct ACA bridge trigger.
+
+**Scenario.** *"The couple earns income in California but plans to retire to Nevada in 2032. They want to confirm that their wages are taxed at CA rates before the move and that Nevada's zero income tax applies from 2032 onward — and that the ACA bridge fires when they stop working, not when they turn 65."* With `workLoc = CA` and `retireLoc = NV`, the staircase shows a CA residence-tax band on wage years and a zero band from 2032. The ACA bridge appears the year the last spouse retires (2032), regardless of age, and drops at 65 as before.
+
+**Edge cases.** `workLoc === retireLoc` (no relocation): `activeJurisdiction` always returns the same record; behavior is identical to pre-Wave-2 single-location path. `relocationYear` before the current year: the work-loc tax phase is never shown (already past); the engine uses `retireLoc` for all years.
+
+---
+
+### UC-33 Relocation Home Transition (L2)
+
+**Purpose.** At relocation, sell the work home (default) or keep it as a rental, and switch to retirement-location housing.
+
+**Implements.** FR‑HTRANS‑01..05.
+
+**Inputs.** `workLoc ≠ retireLoc`; work-home tenure (`mortgage` or `own`); `homeTransition` (`"sell"` | `"keep"`); `homeValue`, `remainingBalance(relocationYear)`.
+
+**Logic.**
+
+```js
+// Sell path (default)
+if (homeTransition === "sell") {
+  sellNet = homeValue * 0.93 - remainingBalance(relocationYear)
+  portfolio += sellNet                    // added to balance in relocationYear
+  workPI = 0                              // work-home P&I zeroed from relocationYear
+  // switch to retireLoc housing tenure
+}
+
+// Keep as rental path
+if (homeTransition === "keep") {
+  rentalIncome += homeValue * workLocRentYield   // net rental income
+  landlordCost  = remainingBalance > 0 ? annualPI : ownRate * homeValue
+  // property tax / insurance / upkeep on retained home NOT modeled (L13)
+}
+```
+
+**Outputs.** Portfolio bump (sell path) or rental income + landlord cost (keep path); "Home sold at relocation" milestone badge; work-home P&I zero from `relocationYear`.
+
+**Scenario.** *"The couple owns their Seattle home (worth $900,000 with $320,000 remaining on the mortgage) and plans to retire to Tucson, AZ in 2031. They want to see the effect of selling at the move: net proceeds of ~$837,000 − $320,000 = ~$517,000 added to the portfolio, eliminating the $2,800/mo mortgage payment and freeing up the balance sheet for the Tucson housing cost."* The balance chart shows a step up at 2031; the staircase drops the P&I band and replaces it with the Tucson rent or mortgage line. They also explore the "keep as rental" path: rental income offsets the remaining P&I, but the net is small ($1,200/yr surplus) and they note that property tax and upkeep on the Seattle home are not modeled (L13) — the real-world economics are worse than shown.
+
+**Edge cases.** `workLoc === retireLoc`: no transition is triggered; the mortgage continues unchanged. `sellNet < 0` (underwater mortgage): the portfolio decreases by the shortfall — the UI flags this. `homeTransition = "keep"` with no remaining mortgage: the landlord cost is `ownRate × homeValue`; rental income net of that cost is the relevant figure.
+
+---
+
+### UC-34 Month-View Housing Itemization (L3)
+
+**Purpose.** Show housing costs as distinct sub-lines in the monthly breakdown navigator, separate from core living expenses.
+
+**Implements.** FR‑MHOUSING‑01..03.
+
+**Inputs.** The year's `housingCostForYear` (from UC‑26); `tenure`; `payoffYear`; `monthlyBreakdown` row.
+
+**Logic** (`src/finance/breakdown.js`).
+
+```js
+// Expense side of the monthly mirrored bar
+expenses = {
+  housing: housingCostForYear(y, cal) / 12,   // Rent -or- P&I + property tax
+  coreLiving: (need - housingCost - extraSpend) / 12,
+  extra: extraSpend / 12,
+  taxes: tax / 12,
+}
+
+// Milestone badge
+milestones = [
+  ...existingMilestones,
+  cal === payoffYear ? { label: "Mortgage paid off", type: "housing" } : null,
+].filter(Boolean)
+```
+
+**Outputs.** Monthly breakdown with Housing as a named sub-line; "Mortgage paid off" badge at `payoffYear`.
+
+**Scenario.** *"The couple wants to see their month-by-month housing cost alongside core living in their early retirement years — and to confirm that the navigator flags the year their mortgage is paid off."* In the navigator for age 65 (pre-payoff), the expense bar shows three segments: Housing ($2,400/mo P&I), Core living ($1,800/mo non-housing lifestyle), and Taxes ($1,200/mo). In the payoff year (age 77), a "Mortgage paid off" badge appears and the Housing segment drops to $580/mo (property tax + insurance only). The headroom figure improves noticeably from that year onward.
+
+**Edge cases.** `tenure = "rent"`: the Housing sub-line shows the rent amount; no payoff badge. `tenure = "own"` (paid off from the start): Housing shows carrying cost only; no payoff badge (payoffYear is undefined). Zero-value sub-lines are suppressed from the bar and legend consistent with existing behavior (UC‑18).

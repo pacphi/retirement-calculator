@@ -468,3 +468,180 @@ describe("accumulation summary read-out (A3)", () => {
     expect(screen.getAllByText(/blended return/i).length).toBeGreaterThan(0);
   });
 });
+
+describe("Housing step (Wave 2 Task 4)", () => {
+  it("renders the Housing section and shows the monthly rent input by default", () => {
+    render(<RetirementCalculator />);
+    // Section heading — at least eyebrow + title
+    expect(screen.getAllByText(/housing/i).length).toBeGreaterThan(0);
+    // Monthly rent label is unique to the Housing step; confirms rent mode is default
+    expect(screen.getByLabelText(/monthly rent/i)).toBeInTheDocument();
+  });
+
+  it("switches to mortgage mode and reveals mortgage-specific inputs", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    // "Mortgage" button exists in Housing Segmented; click the first unpressed one
+    const mortgageBtns = screen.getAllByRole("button", { name: /^mortgage$/i });
+    const unpressed = mortgageBtns.find(b => b.getAttribute("aria-pressed") === "false");
+    await user.click(unpressed);
+    expect(screen.getByLabelText(/mortgage principal/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/mortgage rate/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/mortgage term/i)).toBeInTheDocument();
+  });
+
+  it("switches to own-outright mode and hides rent input", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    // Click the "Own outright" button (unique label, first unpressed instance)
+    const ownBtns = screen.getAllByRole("button", { name: /own outright/i });
+    const unpressed = ownBtns.find(b => b.getAttribute("aria-pressed") === "false");
+    await user.click(unpressed);
+    expect(screen.queryByLabelText(/monthly rent/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/mortgage principal/i)).not.toBeInTheDocument();
+  });
+
+  it("shows the housing-outside-floor disclosure note", () => {
+    render(<RetirementCalculator />);
+    // At least one paragraph must contain the floor policy explanation
+    expect(screen.getAllByText(/outside.*35%.*floor|hard.*obligation/i).length).toBeGreaterThan(0);
+  });
+});
+
+describe("LocationTax step (Wave 2 Task 6)", () => {
+  it("renders the Retirement state select with accessible label", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByLabelText(/retirement state/i)).toBeInTheDocument();
+  });
+
+  it("shows the state rate override input with accessible label", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByLabelText(/state rate override/i)).toBeInTheDocument();
+  });
+
+  it("shows a plain-language note when a no-tax state is selected", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    const select = screen.getByLabelText(/retirement state/i);
+    await user.selectOptions(select, "TX");
+    expect(screen.getByText(/Texas.*no state income tax/i)).toBeInTheDocument();
+  });
+
+  it("shows a typed-rate note when CA is selected", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    const select = screen.getByLabelText(/retirement state/i);
+    await user.selectOptions(select, "CA");
+    expect(screen.getByText(/California.*effective state income tax/i)).toBeInTheDocument();
+  });
+
+  it("renders the work-state select and relocation-year input with accessible labels", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByLabelText(/where you live and earn now|work state/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/relocation year/i)).toBeInTheDocument();
+  });
+
+  it("shows the simplified-transition / Pension Source Tax Act note near relocation year", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByText(/transition year is simplified/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Pension Source Tax Act/i })).toBeInTheDocument();
+  });
+});
+
+describe("relocation home disposition (Wave 2 Task 8)", () => {
+  // The default persona works in WA and retires to Austria (jurisdictions differ), so
+  // switching the work home to an owned tenure reveals the disposition controls.
+  const ownTheWorkHome = async (user) => {
+    // Switch the (main) work-home tenure to "own outright". Segmented buttons share an
+    // accessible name, so match the option by exact button text.
+    const ownBtn = screen
+      .getAllByRole("button")
+      .find((b) => b.textContent.trim() === "Own outright");
+    await user.click(ownBtn);
+  };
+
+  // Note: the app mounts the Housing step in more than one responsive layout, so the
+  // controls can appear more than once — assert on counts, not single-element queries.
+  it("hides the disposition controls while the work home is a rental", () => {
+    render(<RetirementCalculator />);
+    // Default persona rents → no relocation home transition is offered.
+    expect(screen.queryAllByLabelText(/work home at relocation/i).length).toBe(0);
+  });
+
+  it("reveals the work-home disposition control when the work home is owned in a different state", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    await ownTheWorkHome(user);
+    expect(screen.getAllByLabelText(/work home at relocation/i).length).toBeGreaterThan(0);
+  });
+
+  it("offers an estimated-sale-value input with a planning-grade caption for the sell action", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    await ownTheWorkHome(user);
+    // Sell is the default action → the estimated sale value field is shown.
+    expect(screen.getAllByLabelText(/estimated sale value/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/selling costs.*capital-gains exclusion|~?7% selling costs/i).length).toBeGreaterThan(0);
+  });
+
+  it("exposes a retirement-home control labeled for the post-relocation dwelling", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    await ownTheWorkHome(user);
+    // The "Retirement home" sub-config (tenure Segmented) appears once revealed.
+    expect(screen.getAllByText(/^Retirement home$/i).length).toBeGreaterThan(0);
+  });
+
+  it("shows the keep-as-rental caption when that disposition is chosen", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    await ownTheWorkHome(user);
+    // Segmented buttons share an accessible name (the Field wraps all options), so select
+    // the keep option by its exact button text rather than the fuzzy accessible name.
+    const keepBtn = screen
+      .getAllByRole("button")
+      .find((b) => b.textContent.trim() === "Keep as rental");
+    await user.click(keepBtn);
+    expect(screen.getAllByText(/Kept as a rental.*work mortgage continues/i).length).toBeGreaterThan(0);
+  });
+});
+
+describe("DualTaxExposure panel (Wave 2 Task 6)", () => {
+  it("renders cross-border tax exposure for the default international location (Austria)", () => {
+    render(<RetirementCalculator />);
+    // The accessible label marks the section.
+    expect(screen.getByRole("region", { name: /cross-border tax exposure/i })).toBeInTheDocument();
+  });
+
+  it("shows the worldwide taxation and government pension notes", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getAllByText(/worldwide income/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/government-service pension|WA DRS pension/i).length).toBeGreaterThan(0);
+  });
+
+  it("hides the panel when a US state is selected", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    const select = screen.getByLabelText(/retirement state/i);
+    await user.selectOptions(select, "TX");
+    expect(screen.queryByRole("region", { name: /cross-border tax exposure/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("Task 8 — work-vs-retire jurisdiction split UI", () => {
+  it("renders the Work state selector with an accessible label", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByLabelText(/where you live and earn now/i)).toBeInTheDocument();
+  });
+
+  it("renders the Relocation year input with an accessible label", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByLabelText(/relocation year/i)).toBeInTheDocument();
+  });
+
+  it("defaults the work state to Washington (WA)", () => {
+    render(<RetirementCalculator />);
+    const workStateSelect = screen.getByLabelText(/where you live and earn now/i);
+    expect(workStateSelect.value).toBe("WA");
+  });
+});

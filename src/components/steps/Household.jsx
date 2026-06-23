@@ -38,7 +38,7 @@ export function Household({ s, set, deferredMode, onDeferredModeChange, incomeHH
         <span style={{ display:"block", fontSize:11, color:C.mut, marginTop:4, lineHeight:1.4 }}>Estimate retirement spending as a share of income, or from the cost of living where you'll retire.</span>
       </div>
       {s.spendBasis === "income" ? (
-        <Field label={`Retire on this share of income — ${Math.round(s.targetPct*100)}%`} hint={`Base spending goal: ${usd0(incomeHH*s.targetPct)}/yr. The timeline adds the pre-65 healthcare gap on top.`}>
+        <Field label={`Retire on this share of income — ${Math.round(s.targetPct*100)}%`} hint={`Non-housing spending goal: ${usd0(incomeHH*s.targetPct)}/yr (housing added separately). The timeline adds the pre-65 healthcare gap on top.`}>
           <input type="range" min={20} max={80} step={5} value={s.targetPct*100} onChange={(e)=>set("targetPct")(Number(e.target.value)/100)} style={{ width:"100%", accentColor:C.brass }} />
         </Field>
       ) : (() => {

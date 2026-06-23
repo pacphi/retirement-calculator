@@ -1,4 +1,4 @@
-import { LOCATIONS, PROP, TAX_YEAR, TIERS } from "../retirementData.js";
+import { LOCATIONS, PROP, TAX_YEAR, TIERS, US_STATE_TAX } from "../retirementData.js";
 import { resolveReturn } from "./returns.js";
 import { simulate, steadyState } from "./simulate.js";
 
@@ -38,8 +38,27 @@ export function buildInheritanceInputs(s) {
   for (const key of ["tx", "at"]) {
     const p = s[key];
     if (!p.on) continue;
-    const e = propEcon(key, Number(p.value) || 0);
-    out.push({ key, year: Number(p.year) || 2038, type: p.strategy, sell: e.sell, rent: e.rent, live: e.live });
+    const value = Number(p.value) || 0;
+    const e = propEcon(key, value);
+    const m = PROP[key];
+    // Task 5 (Wave 2): carry the home value and property-tax rate into "live" entries
+    // so simulate.js can build an inheritedOwnOverride (owned carrying cost) for that year.
+    // US properties use ownRate as a combined carrying-cost rate (property tax + insurance +
+    // maintenance) — we model it as maintenance for the override since property tax is
+    // handled separately via activePropertyTaxRate. International properties (e.g. "at")
+    // carry 0 property-tax rate because the retirement jurisdiction is international and
+    // its carrying cost is captured entirely in ownRate.
+    out.push({
+      key,
+      year: Number(p.year) || 2038,
+      type: p.strategy,
+      sell: e.sell,
+      rent: e.rent,
+      live: e.live,
+      // Fields used only when type === "live" (Task 5 tenure override):
+      homeValue: value,
+      ownRate: m.ownRate,
+    });
   }
   return out;
 }
@@ -77,6 +96,38 @@ export function buildPlanInputs(s) {
     volatility: (s.volatility != null && s.volatility !== "") ? Number(s.volatility) : 0.12,
     spendingShape: s.spendingShape ?? { mode: "flat" },
     lifestyleSteps: s.lifestyleSteps ?? [],
+    workLoc: s.workLoc ?? "WA",
+    relocationYear: Number(s.relocationYear) || (TAX_YEAR + 20),
+    stateCode: s.stateCode ?? null,
+    // Wave 2 (Task 4): resolve the effective property-tax rate for the retirement
+    // jurisdiction. US states carry it in US_STATE_TAX; international locations
+    // model it as 0. Falls back to 0 when stateCode is absent or unknown.
+    activePropertyTaxRate: (s.stateCode && US_STATE_TAX[s.stateCode]?.propertyTaxRate) || 0,
+    housing: (() => {
+      const base = s.housing ?? {
+        tenure: "rent",
+        rent: null,
+        mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: TAX_YEAR },
+        homeValue: 0,
+        insuranceAnnual: 0,
+        maintenancePct: 0.01,
+      };
+      // Seed default rent from the retire location's basket when tenure is "rent"
+      // and no explicit rent has been entered (Wave 2, Task 4).
+      const withRent = (base.tenure === "rent" && base.rent == null)
+        ? { ...base, rent: retLocObj.m.rent }
+        : base;
+      // Seed housing.relocation defaults (Task 8): action="sell", saleValue=0.
+      if (!withRent.relocation) {
+        return { ...withRent, relocation: { action: "sell", saleValue: 0 } };
+      }
+      return withRent;
+    })(),
+    // Retirement housing: the dwelling after relocation. When the user has explicitly
+    // set retireHousing, use it. Otherwise fall back to i.housing itself (same dwelling
+    // — covers the single-location case where work and retire residence are the same home).
+    // Task 8: simulate.js will switch to retireHousing from relocationYear onward.
+    retireHousing: s.retireHousing ?? null,
   };
 }
 

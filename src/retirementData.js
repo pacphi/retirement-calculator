@@ -65,6 +65,14 @@ export const SOURCES = {
   smileRR: "https://retirementresearcher.com/retirement-spending-smile/",
   smileKitces: "https://www.kitces.com/blog/estimating-changes-in-retirement-expenditures-and-the-retirement-spending-smile/",
   blanchett2026: "https://onlinelibrary.wiley.com/doi/full/10.1002/cfp2.70032",
+  kiplingerStateTax: "https://www.kiplinger.com/retirement/601819/states-that-wont-tax-your-pension",
+  taxFoundationProperty: "https://taxfoundation.org/data/all/state/property-taxes-by-state-county/",
+  incomeLabStates: "https://incomelaboratory.com/state-retirement-taxes-guide/",
+  pensionSourceTaxAct: "https://www.law.cornell.edu/uscode/text/4/114",
+  usModelTreaty: "https://home.treasury.gov/policy-issues/tax-policy/international-tax",
+  irsFtc: "https://www.irs.gov/individuals/international-taxpayers/foreign-tax-credit",
+  irsForm3520: "https://www.irs.gov/forms-pubs/about-form-3520",
+  fbar: "https://www.irs.gov/businesses/small-businesses-self-employed/report-of-foreign-bank-and-financial-accounts-fbar",
 };
 
 /* 2026 reference data. Tax constants are from the IRS 2026 inflation release.
@@ -153,3 +161,93 @@ export const TIERS = [
   { max:2.6, label:"Affluent", color:"#14302E" },
   { max:Infinity, label:"Luxurious", color:"#7A4FA0" },
 ];
+
+// --- Wave 2: location tax + housing ------------------------------------------
+
+// Curated planning-grade US state income-tax profiles (2026). Rates are EFFECTIVE
+// approximations on the relevant base, not statutory brackets — state income/property
+// tax is county-local and varies; captioned in-app. `wageRate` applies to wages
+// (working years); `retireRate` applies to the retirement taxable base after the
+// per-type rules (taxesSS, pensionExclusion, taxesTradWithdrawal); Roth is always exempt.
+// Sources: SOURCES.kiplingerStateTax, SOURCES.taxFoundationProperty, SOURCES.incomeLabStates.
+export const US_STATE_TAX = {
+  WA: { name: "Washington",   wageRate: 0,     taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: false, retireRate: 0,     propertyTaxRate: 0.0087 },
+  TX: { name: "Texas",        wageRate: 0,     taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: false, retireRate: 0,     propertyTaxRate: 0.0163 },
+  FL: { name: "Florida",      wageRate: 0,     taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: false, retireRate: 0,     propertyTaxRate: 0.0082 },
+  NV: { name: "Nevada",       wageRate: 0,     taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: false, retireRate: 0,     propertyTaxRate: 0.0048 },
+  WY: { name: "Wyoming",      wageRate: 0,     taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: false, retireRate: 0,     propertyTaxRate: 0.0056 },
+  SD: { name: "South Dakota", wageRate: 0,     taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: false, retireRate: 0,     propertyTaxRate: 0.0108 },
+  TN: { name: "Tennessee",    wageRate: 0,     taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: false, retireRate: 0,     propertyTaxRate: 0.0066 },
+  IL: { name: "Illinois",     wageRate: 0.0495, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: false, retireRate: 0.0495, propertyTaxRate: 0.0208 },
+  PA: { name: "Pennsylvania", wageRate: 0.0307, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: false, retireRate: 0.0307, propertyTaxRate: 0.0149 },
+  MS: { name: "Mississippi",  wageRate: 0.044,  taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: false, retireRate: 0.044,  propertyTaxRate: 0.0079 },
+  CO: { name: "Colorado",     wageRate: 0.044,  taxesSS: true,  pensionExclusion: 24000,  taxesTradWithdrawal: true,  retireRate: 0.044,  propertyTaxRate: 0.0049 },
+  CA: { name: "California",   wageRate: 0.08,   taxesSS: false, pensionExclusion: 0,      taxesTradWithdrawal: true,  retireRate: 0.08,   propertyTaxRate: 0.0068 },
+  NY: { name: "New York",     wageRate: 0.065,  taxesSS: false, pensionExclusion: 20000,  taxesTradWithdrawal: true,  retireRate: 0.065,  propertyTaxRate: 0.0172 },
+  NJ: { name: "New Jersey",   wageRate: 0.06,   taxesSS: false, pensionExclusion: 100000, taxesTradWithdrawal: true,  retireRate: 0.06,   propertyTaxRate: 0.0223 },
+  MN: { name: "Minnesota",    wageRate: 0.068,  taxesSS: true,  pensionExclusion: 0,      taxesTradWithdrawal: true,  retireRate: 0.068,  propertyTaxRate: 0.0102 },
+};
+
+// Treaty-aware international residence-tax profiles, keyed by LOCATIONS name. SAME typed
+// shape as US_STATE_TAX so residenceTax.js doesn't fork. Planning-grade EFFECTIVE
+// net-of-treaty residence rates — NOT statutory treaty articles. Conventions for a US
+// citizen abroad (US federal worldwide tax is modeled separately by the engine):
+//   - Government pension (the engine's `pension` = WA DRS) is US-only under the treaty's
+//     government-service article ⇒ pensionExclusion:"full" (residence does not tax it).
+//   - Private/IRA deferred withdrawals are residence-taxed net of the US FTC ⇒
+//     taxesTradWithdrawal per location, at the effective `retireRate`.
+//   - Social Security per treaty (taxesSS per location). Roth is exempt everywhere.
+// exposureNotes drive the DualTaxExposure panel. Sources: SOURCES.usModelTreaty,
+// SOURCES.irsFtc, SOURCES.irsForm3520, SOURCES.fbar.
+export const INTL_TAX = {
+  // Austria: addlTaxRate 0.05 in LOCATIONS; net-of-FTC effective rate modeled 0.0 (brief spec).
+  "Austria": { name: "Austria", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0.0, propertyTaxRate: 0,
+    exposureNotes: { worldwide: "As a US citizen you stay liable for US federal tax on worldwide income; the US–Austria treaty + Foreign Tax Credit prevent double taxation.", govtPension: "Her WA DRS pension is a government-service pension — taxable only by the US under the treaty, not by Austria.", residenceTaxed: "Austria can tax IRA/401(k) distributions as a resident; the US FTC generally offsets the US tax on the same dollars (effective added rate modeled ~0 here — verify).", filing: "Inheriting the Klagenfurt home over $100k triggers IRS Form 3520 (report-only); foreign accounts may trigger FBAR/FATCA." } },
+  // Bulgaria / Romania: addlTaxRate 0 in LOCATIONS → retireRate 0.
+  "Bulgaria / Romania": { name: "Bulgaria / Romania", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0, propertyTaxRate: 0,
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; a US–Bulgaria or US–Romania treaty + Foreign Tax Credit generally prevents double taxation.", govtPension: "Her WA DRS pension is a government-service pension — taxable only by the US under treaty, not by the residence country.", residenceTaxed: "Bulgaria/Romania may tax IRA/401(k) distributions as a resident; the US FTC typically offsets the US tax on the same dollars (effective added rate modeled 0 — verify).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+  // Greece: addlTaxRate 0 in LOCATIONS → retireRate 0.
+  "Greece": { name: "Greece", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0, propertyTaxRate: 0,
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US–Greece treaty + Foreign Tax Credit generally prevent double taxation.", govtPension: "Her WA DRS pension is a government-service pension — taxable only by the US under the treaty, not by Greece.", residenceTaxed: "Greece may tax IRA/401(k) distributions as a resident; the US FTC typically offsets the US tax on the same dollars (effective added rate modeled 0 — verify with Greece's 7% flat-rate regime eligibility).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+  // Portugal: addlTaxRate 0.03 in LOCATIONS → retireRate 0.03.
+  "Portugal": { name: "Portugal", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0.03, propertyTaxRate: 0,
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; a US–Portugal tax treaty + Foreign Tax Credit generally prevent double taxation.", govtPension: "Her WA DRS pension is a government-service pension — taxable only by the US under the treaty, not by Portugal.", residenceTaxed: "Portugal can tax IRA/401(k) distributions as a resident; an effective incremental rate of ~3% is modeled after treaty/FTC offsets (verify — the old NHR regime closed in 2024).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+  // Spain: addlTaxRate 0.04 in LOCATIONS → retireRate 0.04.
+  "Spain": { name: "Spain", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0.04, propertyTaxRate: 0,
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US–Spain treaty + Foreign Tax Credit generally prevent double taxation.", govtPension: "Her WA DRS pension is a government-service pension — taxable only by the US under the treaty, not by Spain.", residenceTaxed: "Spain can tax IRA/401(k) distributions as a resident; an effective incremental rate of ~4% is modeled after treaty/FTC offsets (verify with your cross-border tax advisor).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+  // Italy: addlTaxRate 0 in LOCATIONS → retireRate 0.
+  "Italy": { name: "Italy", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0, propertyTaxRate: 0,
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US–Italy treaty + Foreign Tax Credit generally prevent double taxation.", govtPension: "Her WA DRS pension is a government-service pension — taxable only by the US under the treaty, not by Italy.", residenceTaxed: "Italy can tax IRA/401(k) distributions as a resident; the US FTC typically offsets the US tax on the same dollars (effective added rate modeled 0 — verify; some southern towns offer a 7% flat-rate option).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+  // France: addlTaxRate 0 in LOCATIONS → retireRate 0.
+  "France": { name: "France", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0, propertyTaxRate: 0,
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US–France treaty + Foreign Tax Credit generally prevent double taxation.", govtPension: "Her WA DRS pension is a government-service pension — taxable only by the US under the treaty, not by France.", residenceTaxed: "France can tax IRA/401(k) distributions as a resident; the US FTC typically offsets the US tax on the same dollars (effective added rate modeled 0 — verify with a cross-border advisor).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+  // Netherlands: addlTaxRate 0.08 in LOCATIONS → retireRate 0.08.
+  "Netherlands": { name: "Netherlands", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0.08, propertyTaxRate: 0,
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US–Netherlands treaty + Foreign Tax Credit generally prevent double taxation.", govtPension: "Her WA DRS pension is a government-service pension — taxable only by the US under the treaty, not by the Netherlands.", residenceTaxed: "The Netherlands can tax IRA/401(k) distributions as a resident under the box system; an effective incremental rate of ~8% is modeled after treaty/FTC offsets (verify with a cross-border advisor).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+  // Bahamas: addlTaxRate 0 in LOCATIONS → retireRate 0 (no income tax).
+  "Bahamas": { name: "Bahamas", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0, propertyTaxRate: 0,
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the Bahamas has no income tax so US federal is the only income tax layer.", govtPension: "Her WA DRS pension is a government-service pension — taxable only by the US; the Bahamas imposes no residence income tax on it.", residenceTaxed: "The Bahamas imposes no income tax on IRA/401(k) distributions as a resident; US federal tax applies as normal (effective added rate modeled 0).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+};
+
+// Net sale proceeds factor for a primary residence sold at relocation: ~7% selling
+// costs (agent commission, transfer, closing) are kept aside, planning-grade. The
+// primary-residence capital-gains exclusion (~$500k MFJ) is assumed to cover the gain,
+// so no cap-gains tax is modeled here — captioned in-app. Mirrors PROP.tx.sellNet.
+export const HOME_SELL_NET = 0.93;
+
+// Net annual rental yield for a work home KEPT as a rental after relocation (planning-grade,
+// % of home value, net of vacancy/management). Mirrors PROP.tx.rentYield (~3.5%). The kept
+// home's mortgage P&I continues as a cost; this is the offsetting gross rental income.
+export const HOME_RENT_YIELD = 0.035;
+
+// Primary-residence housing. Mortgage P&I is the engine's ONE nominal flow (deflated
+// each year, zeroed after payoff). Rent / property tax / insurance / maintenance are
+// real-flat. maintenancePct is an annual % of home value. Source: SOURCES.taxFoundationProperty.
+export const DEFAULT_HOUSING = {
+  tenure: "rent",                 // "rent" | "mortgage" | "own"
+  rent: null,                     // null ⇒ seed from active location's m.rent
+  mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: TAX_YEAR },
+  homeValue: 0,
+  insuranceAnnual: 0,
+  maintenancePct: 0.01,
+};

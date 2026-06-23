@@ -8,6 +8,7 @@ import {
   SENIOR_BONUS_SUNSET,
   STD,
 } from "../retirementData.js";
+import { residenceTaxForYear } from "./residenceTax.js";
 
 export const fedTax = (taxableIncome, status) => {
   const brackets = FED[status];
@@ -70,6 +71,6 @@ export const calculateFederalTaxYear = ({
   const federalTax = fedTax(taxableIncome, status);
   // Additional effective state (US) / net-of-treaty foreign income tax on the
   // same taxable base. See docs/sources.md for the per-location rates.
-  const stateTax = (Number(stateRate) || 0) * taxableIncome;
+  const stateTax = residenceTaxForYear(null, { taxableIncome, flatRate: stateRate });
   return { ordinary, taxableSocialSecurity, agi, deduction, taxableIncome, federalTax, stateTax, tax: federalTax + stateTax };
 };

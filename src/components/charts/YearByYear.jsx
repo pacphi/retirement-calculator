@@ -55,8 +55,18 @@ export function YearByYear({
     ["SS (you)", sc(mb.income.ssA), SRC.ssA], ["SS (spouse)", sc(mb.income.ssB), SRC.ssB],
     ["Portfolio draw", sc(mb.draw), SRC.wd],
   ].filter(([, v]) => v > 0) : [];
+  // Task 9: housing label — "Rent (Location)" for renters, "Mortgage P&I" for owners.
+  const housingTenure = inputs?.housing?.tenure;
+  const retireLoc = inputs?.retireLoc ?? "";
+  const housingLabel = housingTenure === "rent"
+    ? `Rent${retireLoc ? ` (${retireLoc})` : ""}`
+    : housingTenure === "mortgage"
+    ? "Mortgage P&I + Property tax"
+    : "Housing";
   const mbExp = mb ? [
-    ["Living", sc(mb.expenses.living), C.slate], ["Travel / one-time", sc(mb.expenses.extra), "#A98B5A"],
+    ["Living", sc(mb.expenses.living), C.slate],
+    [housingLabel, sc(mb.expenses.housing), "#6B7FA3"],
+    ["Travel / one-time", sc(mb.expenses.extra), "#A98B5A"],
     ["Taxes", sc(mb.expenses.tax), C.clay],
   ].filter(([, v]) => v > 0) : [];
   const monthBar = mb ? [{ name: "mo",

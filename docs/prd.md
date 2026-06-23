@@ -4,7 +4,7 @@
 >
 > **Tagline:** This is about your money, your home, and what comes next.
 
-**Version:** 1.1 (Wave 1) · **Status:** Delivered · **Document type:** Product Requirements Document (capabilities)
+**Version:** 1.2 (Wave 2) · **Status:** Delivered · **Document type:** Product Requirements Document (capabilities)
 
 ---
 
@@ -39,6 +39,16 @@
   - [6.19 Accumulation Summary Card (Wave 1 — A3)](#619-accumulation-summary-card-wave-1--a3)
   - [6.20 Live Headroom Read-Out (Wave 1 — E1)](#620-live-headroom-read-out-wave-1--e1)
   - [6.21 Guidance, Notes and Disclaimers](#621-guidance-notes-and-disclaimers)
+  - [6.22 Housing and Mortgage Module (Wave 2 — H1)](#622-housing-and-mortgage-module-wave-2--h1)
+  - [6.23 Non-Housing Spending Floor Policy (Wave 2 — H2)](#623-non-housing-spending-floor-policy-wave-2--h2)
+  - [6.24 Housing-Explicit Spending Need (Wave 2 — H3)](#624-housing-explicit-spending-need-wave-2--h3)
+  - [6.25 Inherited Live-In to Owned Tenure (Wave 2 — H4)](#625-inherited-live-in-to-owned-tenure-wave-2--h4)
+  - [6.26 Typed Residence Tax — US States (Wave 2 — T1)](#626-typed-residence-tax--us-states-wave-2--t1)
+  - [6.27 Typed Residence Tax — International and Treaty (Wave 2 — T2)](#627-typed-residence-tax--international-and-treaty-wave-2--t2)
+  - [6.28 Dual-Tax Exposure Panel (Wave 2 — T3)](#628-dual-tax-exposure-panel-wave-2--t3)
+  - [6.29 Work-vs-Retire Two-Location Split (Wave 2 — L1)](#629-work-vs-retire-two-location-split-wave-2--l1)
+  - [6.30 Relocation Home Transition (Wave 2 — L2)](#630-relocation-home-transition-wave-2--l2)
+  - [6.31 Month-View Housing Itemization (Wave 2 — L3)](#631-month-view-housing-itemization-wave-2--l3)
 - [7. Reference Data and Assumptions](#7-reference-data-and-assumptions)
 - [8. UX and Design Requirements](#8-ux-and-design-requirements)
 - [9. Non-Functional Requirements](#9-non-functional-requirements)
@@ -94,7 +104,7 @@ The product is intentionally **planning‑grade, not advice‑grade**: it is tra
 - **NG1** — Not a tax return, filing tool, or a substitute for a CPA, attorney, or financial advisor.
 - **NG2** — ~~Not a Monte‑Carlo / sequence‑of‑returns simulator~~ — Monte Carlo with p10–p90 bands is now built (B1); sequence-of-returns stress is also built (B2). A single deterministic steady-state path remains the default entry point.
 - **NG3** — Not a multi‑household or multi‑scenario saver; it models one household at a time and holds no persistent storage.
-- **NG4** — Not a state‑income‑tax engine for all 50 states; state tax is summarized qualitatively per location, with Washington (no income tax) handled precisely for the resident case.
+- **NG4** — Not a state‑income‑tax engine for all 50 states; Wave 2 adds typed residence tax for ~14 curated US states and planning‑grade treaty‑aware international rates; the remaining ~36 states remain qualitative.
 - **NG5** — Not an estate‑planning or probate tool; it covers the tax economics of inherited real estate, not the legal mechanics of transfer.
 
 ---
@@ -173,7 +183,7 @@ Each capability area below lists functional requirements (FR‑*) and, where use
 - **FR‑TAX‑03** — Apply the temporary senior "bonus" deduction (2025–2028) with its modified‑AGI phase‑out.
 - **FR‑TAX‑04** — Treat a configurable share of portfolio withdrawals as ordinary (pre‑tax 401(k)/IRA) income; the remainder as non‑taxable (Roth/basis).
 - **FR‑TAX‑05** — Include the taxable portion of Social Security and the full pension and rental income as ordinary income.
-- **FR‑TAX‑06** — Note that Washington has no state income tax, so the resident case omits state tax; other locations summarize state/national income tax qualitatively.
+- **FR‑TAX‑06** — Washington has no state income tax; the resident case omits state tax. Wave 2 adds a typed residence‑tax layer (FR‑RES‑01..04 below) that **composes on top of the federal engine** — `calculateFederalTaxYear` is never forked; the residence layer is applied as a separate post‑federal computation in `residenceTax.js`. For unconfigured or override paths the layer reduces to the prior flat `addlTaxRate` behavior, preserving backward compatibility.
 
 ### 6.6 Portfolio Projection and Withdrawal Engine
 
@@ -343,6 +353,105 @@ Each capability area below lists functional requirements (FR‑*) and, where use
 - **FR‑NOTE‑01** — Provide a "Planner's notes" section with contextual guidance (Texas sell/rent vs. hold; Klagenfurt live‑in advantage; pre‑65 healthcare cliff; Social Security as a sizable but bounded risk; foreign‑inheritance paperwork; treaty/foreign‑tax‑credit caution; sticky high‑tax states).
 - **FR‑NOTE‑02** — Provide a persistent disclaimer that outputs are planning estimates, not financial/tax/legal advice, and direct the user to SSA, DRS, and a cross‑border specialist for binding figures.
 - **FR‑NOTE‑03** — All Wave 1 controls (Monte Carlo bands, spending smile, lifestyle steps, emergent events, accumulation summary, headroom) are **planning-grade** additions; their source citations appear in the UI near each control and in `docs/sources.md`.
+- **FR‑NOTE‑04** — All Wave 2 housing, residence-tax, and relocation features are **planning-grade**. International residence tax uses effective net-of-treaty estimates, not statutory treaty computations. The transition year uses a clean jurisdiction switch (Federal Pension Source Tax Act convention), not a 183-day apportionment. Users should consult a cross-border specialist for binding figures.
+
+### 6.22 Housing and Mortgage Module (Wave 2 — H1)
+
+**Description.** Model the household's primary housing cost explicitly — as rent, mortgage, or owned carrying cost — so it is tracked as a separate engine flow rather than buried in the spending-need percentage.
+
+- **FR‑MORT‑01** — Accept a housing **tenure** selector: `rent`, `mortgage`, or `own` (paid-off).
+- **FR‑MORT‑02** — For `mortgage` tenure, accept: home value, down-payment percentage, loan term (years), annual interest rate, and origination year. Compute the fixed monthly P&I via the standard amortization formula; expose `payoffYear` = origination year + term.
+- **FR‑MORT‑03** — Mortgage P&I is the engine's **sole nominal cash flow**. It is deflated each year by `(1 + s.inflation)^y` to convert to real dollars and zeroed at `payoffYear`, producing a "housing-cost cliff" that is visible on the staircase chart. `s.inflation` is a real engine input for this purpose — not merely a display label.
+- **FR‑MORT‑04** — Rent and `own` carrying costs (property tax, insurance, maintenance) are modeled as **real-flat** amounts, consistent with the rest of the engine.
+- **FR‑MORT‑05** — For `mortgage` and `own` tenure, surface a **location property tax** line: `propertyTaxRate × homeValue`, using the county-level rate for the selected retirement location (planning-grade approximation, L14).
+- **FR‑MORT‑06** — Display a "Mortgage paid off" milestone badge in the year-by-year navigator at `payoffYear`.
+- **AC** — Switching tenure from `rent` to `mortgage` moves rent out of the spending need and replaces it with the amortizing P&I line; the staircase chart shows the cliff when P&I drops to zero at payoff.
+
+### 6.23 Non-Housing Spending Floor Policy (Wave 2 — H2)
+
+**Description.** Refine the 35% spending floor so it applies only to non-housing essentials; housing is always paid in full outside the floor calculation.
+
+- **FR‑FLOOR‑01** — The 35% floor (`0.35 × _floorBase`) applies to **non-housing** spending only. `_floorBase` never includes housing costs.
+- **FR‑FLOOR‑02** — Housing (P&I, or rent, or carrying cost) is added to the spending need **after** the floor is applied, so it is always funded in full regardless of how low non-housing costs fall.
+- **FR‑FLOOR‑03** — The Wave-0 floor note in `seams.js` is updated to record this Wave 2 decision.
+- **AC** — A scenario with a very low non-housing targetPct still pays the full mortgage P&I; the floor cannot suppress housing.
+
+### 6.24 Housing-Explicit Spending Need (Wave 2 — H3)
+
+**Description.** Reframe `targetPct` as a **non-housing lifestyle** percentage (default retuned from 0.40 to 0.28) and add housing as its own explicit line in the spending need, resolving the prior double-count (L8 — RESOLVED).
+
+- **FR‑HEXP‑01** — `targetPct` (and its location-basis equivalent) now represents the **non-housing** lifestyle share. Housing cost is computed separately by FR‑MORT‑01..05 and added outside the lifestyle base.
+- **FR‑HEXP‑02** — The default `targetPct` is retuned to 0.28 (from 0.40) to reflect the narrower non-housing scope. Existing plans that have not saved a custom value receive the new default; the UI surfaces this change with an explanatory note.
+- **FR‑HEXP‑03** — When the location spending basis is active, the location basket **excludes the rent line** (to avoid double-counting when housing-explicit mode is on); housing is supplied by the tenure module instead.
+- **AC** — With housing-explicit mode on and `mortgage` tenure, the staircase shows two distinct need components: non-housing lifestyle and housing P&I. No rent appears in the basket.
+
+### 6.25 Inherited Live-In to Owned Tenure (Wave 2 — H4)
+
+**Description.** When an inherited home is set to "Live in," treat it as an owned-tenure transition rather than applying a generic housing-saving credit.
+
+- **FR‑LIVEIN‑01** — An inherited property with strategy `live` switches the household's housing tenure to `own` (carrying cost only) from the year the property is received. No rent-avoided credit is stacked on top of the housing line.
+- **FR‑LIVEIN‑02** — The carrying cost for the inherited home uses the property's `ownRate` constant (Austria: 1.2% of value; Texas: 2.7%). This is the same rate used in UC-9, now routed through the tenure module rather than applied as a spending-need reduction.
+- **FR‑LIVEIN‑03** — The old double-count (live-in credit applied inside the spending need while housing was also charged) is eliminated. L8 is marked RESOLVED.
+- **AC** — Selecting "Live in" for the Klagenfurt home shows carrying cost (~$3,900/yr on €300k) as the housing line, not a negative spending credit.
+
+### 6.26 Typed Residence Tax — US States (Wave 2 — T1)
+
+**Description.** Replace the flat `addlTaxRate` override with an income-type-aware residence-tax layer for ~14 curated US states, composing on the federal engine without forking it.
+
+- **FR‑RES‑01** — Provide a **US state picker** covering ~14 states with meaningful retirement-income tax profiles (e.g. WA — no income tax; TX — no income tax; CA — highest marginal rate; FL — no income tax; NV — no income tax; OR, MN, VT — tax most retirement income; IL, PA — flat rate, exempt pension; and others).
+- **FR‑RES‑02** — For each state, hold per-income-type rates or exemptions: ordinary income rate, pension exemption flag, Social Security exemption flag, and capital-gains treatment.
+- **FR‑RES‑03** — The residence-tax layer (`residenceTax.js`) receives the same income breakdown used by the federal engine and applies state rates **after** federal tax is computed. `calculateFederalTaxYear` is never modified; the federal engine is the single source of truth for federal liability.
+- **FR‑RES‑04** — For the untyped / override path (`addlTaxRate` set manually), the layer reduces to `ordinaryIncome × addlTaxRate`, matching prior behavior exactly. No existing plan is broken.
+- **AC** — Switching from WA to CA raises the residence-tax line by the CA marginal rate on ordinary retirement income; switching to FL returns the layer to zero.
+
+### 6.27 Typed Residence Tax — International and Treaty (Wave 2 — T2)
+
+**Description.** Extend the residence-tax layer to international retirement locations with treaty-aware per-income-type effective rates, keeping the computation planning-grade (no statutory treaty article citations).
+
+- **FR‑TREATY‑01** — For international locations, apply effective net-of-treaty rates per income type: (a) **WA DRS government pension** — excluded from foreign residence tax under the government-employee pension source rule (modeled as `pensionExclusion: "full"`); (b) **IRA/401(k) draws** — residence-taxed at an effective net-of-treaty rate (after a modeled Foreign Tax Credit offset); (c) **Social Security** — per the bilateral treaty flag for the selected country; (d) **Roth withdrawals** — never taxed by the residence country.
+- **FR‑TREATY‑02** — The engine does not compute any specific treaty article; it applies **planning-grade effective rates** only. Austria's effective rate is modeled at approximately 0% after the FTC and is explicitly captioned "verify with a cross-border specialist" in the UI.
+- **FR‑TREATY‑03** — The `activeJurisdiction(i, cal)` function returns the correct residence-country record for each simulation year, switching at `relocationYear` (FR‑RELO‑01).
+- **FR‑TREATY‑04** — The dual-tax exposure panel (FR‑DTAX‑01) surfaces the worldwide US taxation obligation, FTC estimate, and filing flags separately from the residence-tax computation.
+- **AC** — Selecting Austria as retirement location: pension line shows 0 residence tax (government-pension exclusion); IRA draws show a small residual after the FTC; Roth shows 0. Selecting a country with no US treaty shows a higher effective rate on IRA draws.
+
+### 6.28 Dual-Tax Exposure Panel (Wave 2 — T3)
+
+**Description.** For international retirement, surface the worldwide US tax obligation, Foreign Tax Credit, government-pension source rule, and cross-border filing flags as a planning-grade informational panel.
+
+- **FR‑DTAX‑01** — When the retirement location is outside the US, display a **Dual-Tax Exposure** panel showing: (a) estimated US worldwide tax on all income (US citizens taxed globally); (b) estimated Foreign Tax Credit from residence-country tax paid; (c) net US tax after FTC; (d) the government-pension source rule note (WA DRS pension taxable only by the US under treaty); (e) applicable filing flags — Form 3520 (foreign trusts/gifts), FBAR (foreign accounts > $10k), FATCA (foreign assets > threshold).
+- **FR‑DTAX‑02** — The panel is **planning-grade only**. It carries a persistent "Consult a cross-border tax specialist" disclaimer and does not produce a tax return or binding liability estimate.
+- **FR‑DTAX‑03** — Filing flags are informational; the engine does not model penalties or compliance costs.
+- **AC** — With an Austrian retirement location, the panel shows the FTC largely offsetting US tax on Austrian-source income; the government-pension line shows zero Austrian tax and full US tax; Form 3520 / FBAR flags appear if the user has indicated foreign accounts.
+
+### 6.29 Work-vs-Retire Two-Location Split (Wave 2 — L1)
+
+**Description.** Allow the household to specify separate work and retirement locations with a relocation year, so the correct tax jurisdiction is applied in each life phase.
+
+- **FR‑RELO‑01** — Accept `workLoc`, `retireLoc`, and `relocationYear`. Before `relocationYear`, wages are taxed at `workLoc`'s residence-tax rate; from `relocationYear` onward, retirement income is taxed at `retireLoc`'s rate.
+- **FR‑RELO‑02** — `workLoc` is a **tax jurisdiction only** — it does not change the cost-of-living basket or spending need (L12).
+- **FR‑RELO‑03** — The pre-65 ACA healthcare bridge gates on **not working** (i.e. both spouses retired), not on age alone, from `relocationYear` onward. This fixes the prior bug where wages were taxed at the retirement state's rate and the ACA bridge fired at the wrong age.
+- **FR‑RELO‑04** — When `workLoc === retireLoc` (no relocation), behavior is identical to the pre-Wave-2 single-location path.
+- **AC** — A CA → NV move at `relocationYear` shows CA income-tax rates on wages before the move and zero NV income tax on retirement income after; the staircase shows a visible residence-tax cliff at the relocation year.
+
+### 6.30 Relocation Home Transition (Wave 2 — L2)
+
+**Description.** At relocation, handle the work-location home (if owned or mortgaged) — default sell with net proceeds to portfolio, or keep as rental — and switch to the retirement-location housing.
+
+- **FR‑HTRANS‑01** — When `workLoc ≠ retireLoc` and the work-home tenure is `mortgage` or `own`, offer a **home transition** selector at relocation: `sell` (default) or `keep as rental`.
+- **FR‑HTRANS‑02** — **Sell (default):** net proceeds = estimated sale value × 0.93 − remaining mortgage balance. The net amount is added to the portfolio in `relocationYear`; work-home P&I is zeroed from that year; housing switches to `retireLoc` tenure.
+- **FR‑HTRANS‑03** — **Keep as rental:** the work-home mortgage P&I continues as a landlord cost; net rental income (work-home `rentYield × value`) is added to the income stream. Property tax, insurance, and upkeep on the retained home are not modeled (L13).
+- **FR‑HTRANS‑04** — Sale value is user-estimated and captioned as a planning-grade figure; the 93% net factor encodes typical selling costs (~6–7%) and assumes no capital-gains tax for a primary residence (§121 exclusion, subject to the 2-of-5-year use test).
+- **FR‑HTRANS‑05** — When `workLoc === retireLoc` and the home is mortgaged, the mortgage spans the work-to-retire boundary unchanged; no transition is triggered.
+- **AC** — Selling the work home at relocation adds the net proceeds to the portfolio balance visible on the balance chart; a "Home sold at relocation" milestone badge appears in the navigator for `relocationYear`.
+
+### 6.31 Month-View Housing Itemization (Wave 2 — L3)
+
+**Description.** Show housing costs as distinct labeled sub-lines in the monthly breakdown navigator, separate from core living expenses.
+
+- **FR‑MHOUSING‑01** — In the year-by-year monthly breakdown (FR‑VIZ‑06), display housing as its own expense sub-line: **Rent** (for `rent` tenure) or **Mortgage P&I** + **Property tax** (for `mortgage`/`own` tenure), labeled accordingly.
+- **FR‑MHOUSING‑02** — Housing sub-lines are separate from the "Core living" expense bar; the month view shows three expense categories: Housing, Core living (non-housing lifestyle), and Taxes.
+- **FR‑MHOUSING‑03** — A **"Mortgage paid off"** milestone badge appears in the navigator for `payoffYear` (see FR‑MORT‑06).
+- **AC** — In a mortgage year, the expense side of the mirrored bar shows both a "Mortgage P&I" segment and a "Core living" segment; in the payoff year a milestone badge appears; after payoff only "Property tax / carrying cost" remains under Housing.
 
 ---
 
@@ -361,7 +470,7 @@ All constants are 2026 values. The companion Sources document links each to its 
 | Cost of living | Fourteen locations, monthly couple line items in USD, with VAT and income‑tax notes |
 | Inheritance — US/TX | Basis step‑up to date‑of‑death value; no Texas estate/inheritance/income tax; federal estate exemption $15M/person ($30M couple); Texas property tax ~1.7%/yr |
 | Inheritance — Austria | No inheritance tax (abolished 2008); transfer tax + registration ≈ 1.85% on inheriting; later sale taxed 30% of gain or 4.2% of price (pre‑2002), no step‑up; 5‑of‑10‑year primary‑residence exemption |
-| Macro | Configurable real return (default 5%), inflation (default 2.5%), taxable share of withdrawals (default 70%); single‑household scaling ≈ 64% of couple costs |
+| Macro | Configurable real return (default 5%), inflation (default 2.5%), taxable share of withdrawals (default 70%); single‑household scaling ≈ 64% of couple costs. **Wave 2 note:** `s.inflation` graduates from a display‑only label to a real engine input: mortgage P&I is the engine's sole nominal cash flow, deflated each year by `(1 + inflation)^y` and zeroed at payoff. All other costs remain real‑flat. |
 
 ---
 
@@ -397,8 +506,13 @@ All constants are 2026 values. The companion Sources document links each to its 
 - **L5** — Inheritance outcomes use **simplified net factors**; the Austrian sale tax in particular depends on the decedent's acquisition date (Altvermögen vs. Neuvermögen) and currency‑basis effects, which require a specialist.
 - **L6** — Cost‑of‑living figures are aggregated planning estimates that vary by city, neighborhood, and lifestyle.
 - **L7** — Single‑person scaling is a flat factor, not a re‑costed budget.
-- **L8** — The "live‑in" housing saving is applied to the spending need generically; for full fidelity the healthcare basis should be matched to the live‑in country.
+- **L8** — ~~The "live‑in" housing saving is applied to the spending need generically; for full fidelity the healthcare basis should be matched to the live‑in country.~~ **RESOLVED (Wave 2):** the housing‑explicit spending model (FR‑HEXP‑01) separates housing from the non‑housing lifestyle base; live‑in tenure uses owned carrying cost, not a generic saving credit. The old double‑count is eliminated.
 - **L9** — RMDs use a **commingled‑account simplification**: a single tax‑deferred pool driven by the **older** spouse's age and first‑RMD age, rather than per‑owner accounts. Roth balances are assumed to be the non‑deferred share (exempt). The steady‑state "sustainable income" headline is left on the SWR basis and does not re‑apply the RMD floor — at the steady‑state age a 4% SWR draw already meets or exceeds the ~4.1% RMD, so the floor is non‑binding there.
+- **L10** — The relocation transition year is simplified: income, tax, and costs are not apportioned within the year (no 183‑day partial‑year split). The Federal Pension Source Tax Act convention (clean jurisdiction switch at the year boundary) is the modeling license for this simplification; a cross‑border specialist should be consulted for binding residency determinations.
+- **L11** — International residence tax is an **effective net‑of‑treaty planning‑grade estimate**, not a statutory treaty computation. No treaty article is cited as authoritative; the engine applies per‑income‑type flags (government pension excluded abroad, IRA/401(k) draws at an effective net rate, Social Security per treaty flag, Roth never taxed). Austria's effective rate is modeled optimistically (~0 after the Foreign Tax Credit) and is explicitly flagged "verify with a cross‑border specialist."
+- **L12** — The working‑years cost‑of‑living basket does **not** switch to the work location; `workLoc` is a tax jurisdiction only, not a cost basket. Spending need during working years continues to reflect the retirement location (or the income‑basis default).
+- **L13** — "Keep as rental" at relocation: only the work‑home mortgage P&I is charged as a landlord cost; property tax, insurance, and maintenance on the retained home are not yet modeled.
+- **L14** — Property tax and local income tax rates are county‑level approximations and may not match the filer's exact municipality.
 
 ---
 
@@ -418,6 +532,8 @@ All constants are 2026 values. The companion Sources document links each to its 
 | Term | Meaning |
 | --- | --- |
 | **AFC** | Average Final Compensation — average of the teacher's highest 60 consecutive months of pay; the pension base |
+| **Amortization cliff** | The drop in monthly housing cost when the last mortgage payment is made and P&I falls to zero |
+| **activeJurisdiction** | Engine function returning the correct residence-country tax record for a given simulation year |
 | **AGI / MAGI** | (Modified) Adjusted Gross Income — drives deduction phase‑outs and benefit taxation |
 | **Altvermögen / Neuvermögen** | Austrian "old"/"new" real estate (acquired before / after 31 March 2002), determining the capital‑gains method on sale |
 | **Bend points** | Income breakpoints in the Social Security PIA formula |
@@ -433,6 +549,17 @@ All constants are 2026 values. The companion Sources document links each to its 
 | **Steady state** | The long‑run period after both spouses have retired and all benefits flow |
 | **SWR** | Safe Withdrawal Rate |
 | **TRS / SERS** | Washington Teachers' / School Employees' Retirement Systems |
+| **FTC** | Foreign Tax Credit — US tax credit for income tax paid to a foreign residence country |
+| **FBAR** | FinCEN Report 114 — required when foreign financial accounts exceed $10,000 at any point in the year |
+| **FATCA** | Foreign Account Tax Compliance Act — Form 8938 filing threshold for foreign financial assets |
+| **Government-pension source rule** | Treaty convention under which a government-employer pension (e.g. WA DRS) is taxable only by the country of the government that paid it (the US), not the country of residence |
+| **Housing-explicit need** | Wave 2 spending model where mortgage/rent/carrying cost is a separate engine line outside the lifestyle percentage |
+| **Net-of-treaty rate** | Planning-grade effective residence-tax rate on a given income type after accounting for treaty exemptions and the Foreign Tax Credit; not a statutory treaty article computation |
+| **P&I** | Principal and Interest — the fixed monthly mortgage payment computed by the amortization formula |
+| **payoffYear** | The calendar year in which the last mortgage payment is made and P&I drops to zero |
+| **residenceTax.js** | Module implementing the typed residence-tax layer that composes on the federal engine without forking it |
+| **retireLoc / workLoc** | The retirement-location and work-location jurisdiction selectors introduced in Wave 2 |
+| **Tenure** | Housing arrangement: `rent`, `mortgage`, or `own` (paid-off carrying cost) |
 
 ---
 
