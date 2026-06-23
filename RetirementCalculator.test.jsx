@@ -420,6 +420,18 @@ describe("B1 return preset and variability controls", () => {
     expect(growth).toHaveAttribute("aria-pressed", "false");
   });
 
+  it("the headline return caption tracks the selected preset, not the raw slider", async () => {
+    const user = await openAssumptions();
+    // Default preset is Balanced (5.0%).
+    expect(screen.getByText(/assumes a steady 5\.0% real return every year/i)).toBeInTheDocument();
+    // Switching to Growth must move the caption to 6.5% (it previously stayed at the raw slider 5.0%).
+    await user.click(screen.getAllByText(/Growth ~6\.5%/i)[0].closest("button"));
+    expect(screen.getByText(/assumes a steady 6\.5% real return every year/i)).toBeInTheDocument();
+    // ...and Conservative to 3.5%.
+    await user.click(screen.getAllByText(/Conservative ~3\.5%/i)[0].closest("button"));
+    expect(screen.getByText(/assumes a steady 3\.5% real return every year/i)).toBeInTheDocument();
+  });
+
   it("switching to Custom reveals the custom real return input", async () => {
     const user = await openAssumptions();
     expect(screen.queryByLabelText(/Custom real return/i)).not.toBeInTheDocument();

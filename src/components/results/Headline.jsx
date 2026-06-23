@@ -1,5 +1,6 @@
 import { C } from "../theme.js";
 import { usd0 } from "../format.js";
+import { resolveReturn } from "../../finance/returns.js";
 
 /**
  * Headline result panel — sustainable income after benefits start.
@@ -7,6 +8,9 @@ import { usd0 } from "../format.js";
  * @param {{ steady: object, s: object, mc: object|null, onTrack: boolean, effHaircut: number, effCutYear: number }} props
  */
 export function Headline({ steady, s, mc, onTrack, effHaircut, effCutYear }) {
+  // Use the preset-resolved return the engine actually projects with (a chosen
+  // preset overrides the raw realReturn slider), so the caption matches the numbers.
+  const effReturn = resolveReturn(s.returnPreset, s.realReturn);
   return (
     <div className="rc-stat" style={{ background:C.ink, borderRadius:14, padding:"22px 24px", color:"#F4F1E8", marginBottom:16 }}>
       <div style={{ fontSize:11, letterSpacing:1.5, textTransform:"uppercase", color:C.brass, fontWeight:700, marginBottom:6 }}>Sustainable income after benefits start</div>
@@ -28,7 +32,7 @@ export function Headline({ steady, s, mc, onTrack, effHaircut, effCutYear }) {
         Social Security modeled at {s.ssMode==="full" ? "100% (assumes Congress acts)" : `${Math.round(effHaircut*100)}% from ${effCutYear}${s.ssMode==="trustees"?" (2025 Trustees projection)":""}`} · change it under Step two
       </div>
       <div style={{ marginTop:8, fontSize:11.5, color:"#9FB0AB", lineHeight:1.5 }}>
-        This figure assumes a steady {(s.realReturn*100).toFixed(1)}% real return every year — a best-case-within-average, not a median outcome.{mc ? ` Monte Carlo median (P50): ${usd0(mc.sustainableIncome.p50)}/yr; 10th–90th pct ${usd0(mc.sustainableIncome.p10)}–${usd0(mc.sustainableIncome.p90)}/yr.` : ` Run Monte Carlo (below) for the realistic range.`}
+        This figure assumes a steady {(effReturn*100).toFixed(1)}% real return every year — a best-case-within-average, not a median outcome.{mc ? ` Monte Carlo median (P50): ${usd0(mc.sustainableIncome.p50)}/yr; 10th–90th pct ${usd0(mc.sustainableIncome.p10)}–${usd0(mc.sustainableIncome.p90)}/yr.` : ` Run Monte Carlo (below) for the realistic range.`}
       </div>
     </div>
   );
