@@ -26,7 +26,7 @@
 
 - Create: `src/finance/breakdown.test.js` — characterization tests for `monthlyBreakdown` / `yearMilestones`.
 - Modify: `src/calculatorCore.test.js` — add seam-contract tests for location-basis `spendingNeed` and recurring events.
-- Create: `docs/superpowers/specs/2026-06-21-exploration-verdict.md` — keep/rework/scrap verdict.
+- Create: `docs/archive/spec-exploration-verdict.md` — keep/rework/scrap verdict.
 
 **0A (theme + atoms):**
 
@@ -262,7 +262,7 @@ git commit -m "test: pin recurring-event cadence contract for Wave 1 C3"
 
 **Files:**
 
-- Create: `docs/superpowers/specs/2026-06-21-exploration-verdict.md`
+- Create: `docs/archive/spec-exploration-verdict.md`
 
 - [ ] **Step 1: Write the verdict doc**
 
@@ -276,7 +276,7 @@ Expected: PASS (all green, count ≥ 178 + new tests).
 - [ ] **Step 3: Commit**
 
 ```bash
-git add docs/superpowers/specs/2026-06-21-exploration-verdict.md
+git add docs/archive/spec-exploration-verdict.md
 git commit -m "docs(spec): exploration keep/rework/scrap verdict (Wave 0c)"
 ```
 
@@ -556,7 +556,7 @@ git commit -m "refactor(engine): add yearReturn seam (no behavior change)"
 
 **Files:**
 
-- Modify: `docs/superpowers/specs/2026-06-21-two-arcs-roadmap-design.md` (tick Wave 0 done; note any seam deltas discovered).
+- Modify: `docs/archive/spec-two-arcs-roadmap-design.md` (tick Wave 0 done; note any seam deltas discovered).
 
 - [ ] **Step 1: Run the full gate**
 
@@ -571,7 +571,7 @@ Expected: substantially reduced (target ≤ ~250 lines). If not, note which pane
 - [ ] **Step 3: Commit the wave close-out**
 
 ```bash
-git add docs/superpowers/specs/2026-06-21-two-arcs-roadmap-design.md
+git add docs/archive/spec-two-arcs-roadmap-design.md
 git commit -m "docs(spec): close out Wave 0 foundation"
 ```
 

@@ -109,11 +109,11 @@ Severity key: **P0** = wrong numbers in plausible configs, fix before trusting o
 ---
 
 ## Individual audit reports
-- [01 — Property-based invariants](01-property-based.md) — 31/31 pass; 2 minor
-- [02 — Mutation testing](02-mutation.md) — 47% score; 34 important / 5 minor
-- [03 — Sherlock correctness](03-sherlock-correctness.md) — math matches to the cent; 1 medium, 3 low/info
-- [04 — Assumption soundness](04-assumptions.md) — 15 reviewed, 12 optimistic/misleading; 3 critical
-- [05 — Coverage](05-coverage.md) — 13 risk-ranked gaps; 5 important
-- [06 — Correctness & boundary risk](06-correctness-review.md) — 15 findings; 3 critical, 6 important
+- [01 — Property-based invariants](audit-01-property-based.md) — 31/31 pass; 2 minor
+- [02 — Mutation testing](audit-02-mutation.md) — 47% score; 34 important / 5 minor
+- [03 — Sherlock correctness](audit-03-sherlock-correctness.md) — math matches to the cent; 1 medium, 3 low/info
+- [04 — Assumption soundness](audit-04-assumptions.md) — 15 reviewed, 12 optimistic/misleading; 3 critical
+- [05 — Coverage](audit-05-coverage.md) — 13 risk-ranked gaps; 5 important
+- [06 — Correctness & boundary risk](audit-06-correctness-review.md) — 15 findings; 3 critical, 6 important
 
 *Audit tooling (`@vitest/coverage-v8`, `fast-check`, Stryker) and scratch test files under `audits/` are uncommitted working-tree changes; revert or keep at your discretion.*

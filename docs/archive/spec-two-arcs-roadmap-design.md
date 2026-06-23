@@ -1,7 +1,7 @@
 # Two Arcs Roadmap — Design Spec
 
-_Date: 2026-06-21 · Branch: `feat/two-arcs-roadmap` · Source: `docs/ideas/enhancement-plan.md`,
-`enhancement-plan-v2.md`, `enhancement-plan-v3-addendum.md`_
+_Date: 2026-06-21 · Branch: `feat/two-arcs-roadmap` · Source: `idea-enhancement-plan.md`,
+`idea-enhancement-plan-v2.md`, `idea-enhancement-plan-v3-addendum.md`_
 
 ## 1. Goal
 
