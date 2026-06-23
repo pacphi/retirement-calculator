@@ -63,4 +63,16 @@ describe("contributionPlan — Simple vs Detailed", () => {
     expect(p.byBucket.deferred).toBe(7500); // clamped to IRA base
     expect(p.flags.some((f) => /limit/i.test(f))).toBe(true);
   });
+
+  it("HSA stream routes to deferred (pre-tax; planning-grade simplification — no dedicated HSA bucket)", () => {
+    const i = {
+      contribMode: "detailed",
+      contribStreams: [{ id: "1", vehicle: "hsaFamily", owner: "A", amount: 8750, roth: false }],
+      realRaise: 0,
+    };
+    const p = contributionPlan(i, { ageA: 45, ageB: 45, year: 2026 });
+    expect(p.byBucket.deferred).toBe(8750);
+    expect(p.byBucket.taxable).toBe(0);
+    expect(p.byBucket.roth).toBe(0);
+  });
 });

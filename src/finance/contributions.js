@@ -62,7 +62,9 @@ export function contributionPlan(i, ctx) {
     const limit = vehicleLimit(s.vehicle, ownerAge(s.owner, ctx));
     const capped = Math.min(amount, limit);
     if (capped < amount) flags.push(`${s.vehicle} (${s.owner}) over 2026 limit — clamped to $${limit.toLocaleString()}`);
-    const bucket = s.roth ? "roth" : (s.vehicle === "ira" || s.vehicle === "401k" ? "deferred" : "taxable");
+    // HSA contributions are pre-tax; route to deferred (planning-grade simplification —
+    // no dedicated HSA bucket in the 3-bucket model; HSA is treated as tax-deferred).
+    const bucket = s.roth ? "roth" : (s.vehicle === "ira" || s.vehicle === "401k" || s.vehicle === "hsaSelf" || s.vehicle === "hsaFamily" ? "deferred" : "taxable");
     byBucket[bucket] += capped;
     // Employer match applies to pre-tax 401k streams only.
     if (s.vehicle === "401k" && !s.roth && i.employerMatch) {
