@@ -23,3 +23,21 @@ export const derivedTradFrac = (b) => {
   const total = (b.taxable || 0) + (b.deferred || 0) + (b.roth || 0);
   return total > 0 ? (b.deferred || 0) / total : 0;
 };
+
+export const DEFAULT_WITHDRAWAL_ORDER = ["taxable", "deferred", "roth"];
+
+// Split a gross draw D across buckets in `order`. ordinaryShare = deferred portion / total
+// (this is the per-draw tradFrac passed to calculateFederalTaxYear — Roth/taxable principal
+// is not ordinary income). taxable-bucket capital-gains tax is out of scope (planning-grade).
+export function splitWithdrawal(D, balances, order = DEFAULT_WITHDRAWAL_ORDER) {
+  let remaining = Math.max(0, Number(D) || 0);
+  const out = { taxable: 0, deferred: 0, roth: 0 };
+  for (const bucket of order) {
+    const avail = Math.max(0, Number(balances[bucket]) || 0);
+    const take = Math.min(remaining, avail);
+    out[bucket] = take;
+    remaining -= take;
+  }
+  const total = out.taxable + out.deferred + out.roth;
+  return { ...out, total, ordinaryShare: total > 0 ? out.deferred / total : 0 };
+}

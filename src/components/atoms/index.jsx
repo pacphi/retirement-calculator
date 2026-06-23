@@ -86,8 +86,8 @@ export function Select({ value, onChange, options }) {
     {options.map(o => <option key={o} value={o}>{o}</option>)}
   </select>);
 }
-export function Segmented({ value, onChange, options }) {
-  return (<div style={{ display:"flex", flex:"1 1 auto", minWidth:0, gap:4, background:"#F1EEE5", padding:4, borderRadius:9 }}>
+export function Segmented({ value, onChange, options, "aria-label": ariaLabel }) {
+  return (<div role={ariaLabel ? "group" : undefined} aria-label={ariaLabel} style={{ display:"flex", flex:"1 1 auto", minWidth:0, gap:4, background:"#F1EEE5", padding:4, borderRadius:9 }}>
     {options.map(o => { const on=value===o.value; return (
       <button key={String(o.value)} type="button" aria-pressed={on} onClick={()=>onChange(o.value)} style={{ flex:1, minWidth:0, padding:"7px 8px", border:"none", borderRadius:6, cursor:"pointer", whiteSpace:"normal", textAlign:"center", lineHeight:1.2, fontSize:12, fontWeight:600, fontFamily:"inherit", background:on?C.ink:"transparent", color:on?"#fff":C.slate, transition:"all .15s" }}>{o.label}</button>
     ); })}

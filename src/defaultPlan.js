@@ -30,6 +30,8 @@ export const DEFAULT_PLAN = {
   contribStreams: [],
   employerMatch: { pct: 0, capPct: 0 },
   realRaise: 0,
+  // Wave 3 D1: tax-smart withdrawal order (taxable→deferred→roth defers ordinary income).
+  withdrawalOrder: ["taxable", "deferred", "roth"],
   // bucketSplit is intentionally absent from the default — plan.js derives it from
   // tradFrac when not explicitly set. Once a user adjusts the bucket controls in
   // Saving.jsx, bucketSplit is stored in state and takes precedence over tradFrac.
@@ -47,4 +49,5 @@ export const makeDefaultPlan = () => ({
   housing: { ...DEFAULT_PLAN.housing, mortgage: { ...DEFAULT_PLAN.housing.mortgage }, relocation: { ...DEFAULT_PLAN.housing.relocation } },
   contribStreams: [],
   employerMatch: { ...DEFAULT_PLAN.employerMatch },
+  withdrawalOrder: [...DEFAULT_PLAN.withdrawalOrder],
 });

@@ -139,6 +139,8 @@ export function buildPlanInputs(s) {
     realRaise: Number(s.realRaise) || 0,
     bucketSplit,
     initialBuckets,
+    // Wave 3 D1: tax-smart withdrawal order (default taxable→deferred→roth).
+    withdrawalOrder: s.withdrawalOrder ?? ["taxable", "deferred", "roth"],
   };
 }
 

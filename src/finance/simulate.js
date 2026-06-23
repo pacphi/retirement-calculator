@@ -9,6 +9,7 @@ import { ltcSpendForYear, oneTimeSpendForYear, travelSpendForYear } from "./even
 import { requiredMinimum, rmdStartAge } from "./rmd.js";
 import { activeJurisdiction } from "./jurisdiction.js";
 import { contributionPlan, realRaiseFactor } from "./contributions.js";
+import { seedBuckets, splitWithdrawal, DEFAULT_WITHDRAWAL_ORDER } from "./buckets.js";
 
 export function benefits(i) {
   const piaA = i.ssModeA === "statement" ? (Number(i.ssFraA) || 0) / 12 : piaFromIncome(i.incomeA);
@@ -33,7 +34,12 @@ export function benefits(i) {
 // residence layer on top. The federal engine is NEVER forked.
 // flatStateRate: optional per-year override for the flat-path stateRate (used in
 // working years to apply the work-state wageRate instead of i.taxRate).
-const taxForYear = (i, aA, aB, wages, pens, rent, ss, grossWithdrawal, statusOverride, year, profile, flatStateRate = null) => {
+// tradFracForDraw: the per-draw ordinary share. Wave 3 D1 makes this order-dependent —
+// callers pass a function of the gross draw (deferred portion / total under the active
+// withdrawal order). Working-year/flat callers (wd=0) pass a constant i.tradFrac so their
+// behavior is unchanged. Defaults to i.tradFrac when not supplied.
+const taxForYear = (i, aA, aB, wages, pens, rent, ss, grossWithdrawal, statusOverride, year, profile, flatStateRate = null, tradFracForDraw = null) => {
+  const tradFrac = tradFracForDraw ? tradFracForDraw(grossWithdrawal) : (Number(i.tradFrac) || 0);
   if (profile) {
     // Typed retirement path: federal (stateRate:0) + residence layer composed separately.
     const fedResult = calculateFederalTaxYear({
@@ -45,13 +51,13 @@ const taxForYear = (i, aA, aB, wages, pens, rent, ss, grossWithdrawal, statusOve
       rental: rent,
       socialSecurity: ss,
       grossWithdrawal,
-      tradFrac: i.tradFrac,
+      tradFrac,
       year,
       stateRate: 0,
     });
     // Thread the deferred-withdrawal share into the residence base so income-type
     // rules (taxesTradWithdrawal, pensionExclusion) apply to the correct slice.
-    const deferredWithdrawal = grossWithdrawal * (Number(i.tradFrac) || 0);
+    const deferredWithdrawal = grossWithdrawal * tradFrac;
     const residenceTax = residenceTaxForYear(profile, {
       isRetirement: true,
       ss,
@@ -71,28 +77,28 @@ const taxForYear = (i, aA, aB, wages, pens, rent, ss, grossWithdrawal, statusOve
     rental: rent,
     socialSecurity: ss,
     grossWithdrawal,
-    tradFrac: i.tradFrac,
+    tradFrac,
     year,
     stateRate: flatStateRate ?? i.taxRate,
   }).tax;
 };
 
-const solveWithdrawal = (i, aA, aB, wages, pens, rent, ss, need, bal, statusOverride, year, profile, flatStateRate = null) => {
+const solveWithdrawal = (i, aA, aB, wages, pens, rent, ss, need, bal, statusOverride, year, profile, flatStateRate = null, tradFracForDraw = null) => {
   const income = wages + pens + rent + ss;
-  const taxNoWithdrawal = taxForYear(i, aA, aB, wages, pens, rent, ss, 0, statusOverride, year, profile, flatStateRate);
+  const taxNoWithdrawal = taxForYear(i, aA, aB, wages, pens, rent, ss, 0, statusOverride, year, profile, flatStateRate, tradFracForDraw);
   if (income - taxNoWithdrawal >= need) return { withdrawal: 0, tax: taxNoWithdrawal };
   let lo = 0;
   let hi = Math.max(0, bal);
   const covers = (withdrawal) =>
-    income + withdrawal - taxForYear(i, aA, aB, wages, pens, rent, ss, withdrawal, statusOverride, year, profile, flatStateRate) >= need;
-  const taxAtHi = taxForYear(i, aA, aB, wages, pens, rent, ss, hi, statusOverride, year, profile, flatStateRate);
+    income + withdrawal - taxForYear(i, aA, aB, wages, pens, rent, ss, withdrawal, statusOverride, year, profile, flatStateRate, tradFracForDraw) >= need;
+  const taxAtHi = taxForYear(i, aA, aB, wages, pens, rent, ss, hi, statusOverride, year, profile, flatStateRate, tradFracForDraw);
   if (income + hi - taxAtHi < need) return { withdrawal: hi, tax: taxAtHi };
   for (let n = 0; n < 32; n++) {
     const mid = (lo + hi) / 2;
     if (covers(mid)) hi = mid;
     else lo = mid;
   }
-  return { withdrawal: hi, tax: taxForYear(i, aA, aB, wages, pens, rent, ss, hi, statusOverride, year, profile, flatStateRate) };
+  return { withdrawal: hi, tax: taxForYear(i, aA, aB, wages, pens, rent, ss, hi, statusOverride, year, profile, flatStateRate, tradFracForDraw) };
 };
 
 export function spendingNeed(i, ageA, ageB, liveSav = 0, isSurvivor = false, survivorAge = null, ctx = {}) {
@@ -106,11 +112,15 @@ export function simulate(i, ssOpt) {
   const { ssA: ssAfull, ssB: ssBfull, pension: pensFull } = benefits(i);
   const horizon = Number(i.horizonAge) || 95;
   const end = Math.max(0, Math.max(horizon - i.ageA, horizon - i.ageB));
-  let bal = Number(i.savings) || 0;
-  // Track the pre-tax (tax-deferred) sub-balance separately so RMDs can be computed off
-  // the IRS "prior year-end" base. Commingled-account simplification: one deferred pool,
-  // RMDs driven by the older spouse's age (documented in docs/prd.md).
-  let defBal = Math.min(bal, Number(i.taxDeferred) || 0);
+  // Wave 3 D1: three real sub-balances {taxable, deferred, roth}, drawn in a tax-smart
+  // withdrawal order (default taxable→deferred→roth). RMDs act on the deferred bucket only.
+  // The deferred bucket is still the IRS "prior year-end" RMD base. `bal` is a derived
+  // mirror (sum of buckets) refreshed after every mutation so depletion/rows read it.
+  const balOf = (b) => b.taxable + b.deferred + b.roth;
+  const order = i.withdrawalOrder || DEFAULT_WITHDRAWAL_ORDER;
+  let buckets = i.initialBuckets ? { ...i.initialBuckets } : seedBuckets(Number(i.savings) || 0, i.bucketSplit);
+  let bal = balOf(buckets);
+  let defBal = buckets.deferred;
   const olderAgeNow = Math.max(i.ageA, i.ageB);
   const rmdStart = rmdStartAge(TAX_YEAR - olderAgeNow);
   let depAge = null;
@@ -242,11 +252,17 @@ export function simulate(i, ssOpt) {
       workingB: workB,
     }) + extraSpend;
     const yr = yearReturn(i, y, ssOpt);
-    // The deferred pool's prior year-end value is the IRS base for this year's RMD.
-    const defBalStart = defBal;
+    // The deferred pool's prior year-end value is the IRS base for this year's RMD,
+    // captured BEFORE growth (Wave 3 D1: this is buckets.deferred).
+    const defBalStart = buckets.deferred;
     const growth = bal * yr; // investment growth this year (excludes the sale lump)
-    bal = bal * (1 + yr) + sellLump;
-    defBal = defBal * (1 + yr); // sale proceeds are taxable savings, not deferred
+    // Grow each bucket by the year return; sale proceeds land in taxable (sale proceeds
+    // are taxable savings, not deferred).
+    buckets.taxable = buckets.taxable * (1 + yr) + sellLump;
+    buckets.deferred = buckets.deferred * (1 + yr);
+    buckets.roth = buckets.roth * (1 + yr);
+    bal = balOf(buckets);
+    defBal = buckets.deferred;
 
     // Compute the authoritative per-bucket split on the rrf-scaled streams BEFORE applying
     // the affordability cap. In Simple mode the plan just carries `i.contrib` (the
@@ -282,21 +298,38 @@ export function simulate(i, ssOpt) {
       taxable:  plannedSplit.byBucket.taxable  * capFrac,
       roth:     plannedSplit.byBucket.roth     * capFrac,
     };
-    bal += contrib;
-    defBal += contribByBucket.deferred;
+    // Wave 3 D1: deposit each bucket's share (employer match already folded into
+    // deferred by Task 1). `bal`/`defBal` mirrors refresh from the buckets afterward.
+    buckets.taxable += contribByBucket.taxable;
+    buckets.deferred += contribByBucket.deferred;
+    buckets.roth += contribByBucket.roth;
+    bal = balOf(buckets);
+    defBal = buckets.deferred;
 
     const olderAge = olderAgeNow + y;
     const rmd = (defBalStart > 0 && olderAge >= rmdStart) ? requiredMinimum(defBalStart, olderAge) : 0;
 
-    let { withdrawal: wd, tax } = solveWithdrawal(i, aA, aB, wages, pensEff, rent, ssAyEff + ssByEff, need, bal, yearStatus, cal, yearProfile, flatStateRate);
-    bal -= wd;
+    // Wave 3 D1: the per-draw ordinary share is order-dependent — the deferred PORTION of
+    // the draw (under the active withdrawal order) is the only ordinary income. Roth and
+    // taxable principal are not ordinary. The solver computes its tax with this same split.
+    const tradFracForDraw = (D) => splitWithdrawal(D, buckets, order).ordinaryShare;
+    let { withdrawal: wd, tax } = solveWithdrawal(i, aA, aB, wages, pensEff, rent, ssAyEff + ssByEff, need, bal, yearStatus, cal, yearProfile, flatStateRate, tradFracForDraw);
+    // Split the solved spending draw across buckets in order and decrement each.
+    const wdSplit = splitWithdrawal(wd, buckets, order);
+    buckets.taxable -= wdSplit.taxable;
+    buckets.deferred -= wdSplit.deferred;
+    buckets.roth -= wdSplit.roth;
+    bal = balOf(buckets);
     // RMD floor: a required distribution can only raise the year's draw. Any forced
     // amount beyond the need-based deferred draw is fully taxable ordinary income; the
-    // after-tax surplus is reinvested into the taxable bucket.
-    const needDeferredDraw = wd * i.tradFrac;
+    // after-tax surplus is reinvested into the taxable bucket. The need-based deferred
+    // draw is the deferred PORTION of the spending draw under the active order.
+    const needDeferredDraw = wdSplit.deferred;
     let forcedRmd = 0;
     if (rmd > needDeferredDraw) {
-      forcedRmd = Math.min(Math.min(rmd, defBal), Math.max(0, bal)) - needDeferredDraw;
+      // Mirror the pre-Wave-3 cap exactly: deferred-pre-spending = buckets.deferred (now
+      // post-spending) + needDeferredDraw; total = current `bal` (post-spending draw).
+      forcedRmd = Math.min(Math.min(rmd, buckets.deferred + needDeferredDraw), Math.max(0, bal)) - needDeferredDraw;
       if (forcedRmd < 0) forcedRmd = 0;
       if (forcedRmd > 0) {
         // The forced amount is fully-taxable ordinary income. Recompute the year's tax
@@ -347,13 +380,16 @@ export function simulate(i, ssOpt) {
           }).tax;
         }
         const afterTaxForced = Math.max(0, forcedRmd - Math.max(0, tax - taxOld));
-        bal -= forcedRmd;
-        bal += afterTaxForced;
+        // Wave 3 D1: the forced gross leaves the deferred bucket; the after-tax remainder
+        // is reinvested into the taxable bucket (the gross leaves the tax-deferred pool).
+        buckets.deferred = Math.max(0, buckets.deferred - forcedRmd);
+        buckets.taxable += afterTaxForced;
+        bal = balOf(buckets);
       }
     }
-    defBal = Math.max(0, defBal - (needDeferredDraw + forcedRmd));
+    defBal = Math.max(0, buckets.deferred);
     const wdTotal = wd + forcedRmd;
-    if (bal < 1) bal = 0;
+    if (bal < 1) { buckets = { taxable: 0, deferred: 0, roth: 0 }; bal = 0; defBal = 0; }
     if (!workA && !workB && fullyRetAge === null) {
       fullyRetAge = aA;
       balAtFullRet = bal;
@@ -381,6 +417,11 @@ export function simulate(i, ssOpt) {
       extraSpend: Math.round(extraSpend),
       tax: Math.round(tax), contrib: Math.round(contrib), sellLump: Math.round(sellLump),
       rmd: Math.round(rmd), forcedRmd: Math.round(forcedRmd), defBal: Math.round(defBal),
+      // Wave 3 D1: explicit per-bucket composition so steadyState + the chart can read
+      // the same buckets the rows drew from (SINGLE-TAX-SOURCE). defBal === deferredBal.
+      taxableBal: Math.round(buckets.taxable),
+      deferredBal: Math.round(buckets.deferred),
+      rothBal: Math.round(buckets.roth),
       growth: Math.round(growth),
       // Housing breakdown (Task 9): annual total + non-overlapping parts for itemized view.
       housing: Math.round(housingBreakdown.total),
@@ -438,6 +479,15 @@ export function steadyState(i, sim) {
   // for any reasonable plan), so use activeJurisdiction at row.cal for the profile.
   // When null (manual override / no INTL entry), keep the flat i.taxRate path (unchanged).
   const retireProf = activeJurisdiction(i, row.cal).profile;
+  // SINGLE-TAX-SOURCE (Wave 3 D1): the headline withdrawal draws from the SAME buckets in
+  // the SAME order as the simulated row, so its ordinary share is order-dependent — not the
+  // legacy flat i.tradFrac. Read the row's per-bucket composition and split the headline draw.
+  const order = i.withdrawalOrder || DEFAULT_WITHDRAWAL_ORDER;
+  const wdTradFrac = splitWithdrawal(
+    wd,
+    { taxable: row.taxableBal ?? 0, deferred: row.deferredBal ?? 0, roth: row.rothBal ?? 0 },
+    order,
+  ).ordinaryShare;
   // Compose federal-only details + the typed residence layer into a tax-details-shaped
   // object whose .tax is federalTax + residence tax (mirrors taxForYear in the rows).
   const composeTyped = (fedResult, deferredWithdrawal) => {
@@ -454,13 +504,13 @@ export function steadyState(i, sim) {
     ? composeTyped(
         calculateFederalTaxYear({
           status: yearStatus, ageA, ageB, pension, rental: rentInc, socialSecurity: ssHouse,
-          grossWithdrawal: wd, tradFrac: i.tradFrac, year: row.cal, stateRate: 0,
+          grossWithdrawal: wd, tradFrac: wdTradFrac, year: row.cal, stateRate: 0,
         }),
-        wd * (Number(i.tradFrac) || 0),
+        wd * wdTradFrac,
       )
     : calculateFederalTaxYear({
         status: yearStatus, ageA, ageB, pension, rental: rentInc, socialSecurity: ssHouse,
-        grossWithdrawal: wd, tradFrac: i.tradFrac, year: row.cal, stateRate: i.taxRate,
+        grossWithdrawal: wd, tradFrac: wdTradFrac, year: row.cal, stateRate: i.taxRate,
       });
   const guaranteedTaxDetails = retireProf
     ? composeTyped(

@@ -289,6 +289,8 @@ export default function RetirementCalculator() {
               firstRmdAge={firstRmdAge}
               view={invView}
               onViewChange={setInvView}
+              withdrawalOrder={s.withdrawalOrder}
+              onWithdrawalOrderChange={set("withdrawalOrder")}
             />
 
             {/* Balance with vs without SS */}

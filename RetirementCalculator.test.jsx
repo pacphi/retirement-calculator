@@ -47,6 +47,11 @@ describe("RetirementCalculator UI", () => {
     expect(screen.getByRole("button", { name:/add event/i })).toBeInTheDocument();
   });
 
+  it("exposes the withdrawal-order control", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByLabelText("Withdrawal order")).toBeInTheDocument();
+  });
+
   it("collapses and expands the header via its toggle button", async () => {
     const user = userEvent.setup();
     render(<RetirementCalculator />);

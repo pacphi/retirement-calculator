@@ -699,8 +699,15 @@ describe("location-aware additional income tax", () => {
   });
 
   it("applies a higher modeled tax in a high-tax locale than a no-tax one", () => {
-    const nl = calculatePlan({ ...baseState, retireLoc: "Netherlands" });   // addlTaxRate 0.08
-    const tx = calculatePlan({ ...baseState, retireLoc: "US -- Texas / Florida" }); // 0%
+    // Wave 3 D1: the residence layer only taxes the deferred PORTION of a draw. Under the
+    // default tax-smart order (taxable→deferred→roth) the modest steady-state draw comes
+    // entirely from the taxable bucket (ordinaryShare 0), so the locale differential
+    // vanishes — both locales tax only pension+SS, identically. To exercise the
+    // locale-differential-on-deferred-withdrawal behavior this test asserts, draw from the
+    // deferred bucket first so there IS a deferred withdrawal for the residence layer to tax.
+    const order = ["deferred", "taxable", "roth"];
+    const nl = calculatePlan({ ...baseState, retireLoc: "Netherlands", withdrawalOrder: order });   // addlTaxRate 0.08
+    const tx = calculatePlan({ ...baseState, retireLoc: "US -- Texas / Florida", withdrawalOrder: order }); // 0%
     expect(nl.steady.tax).toBeGreaterThan(tx.steady.tax);
   });
 
