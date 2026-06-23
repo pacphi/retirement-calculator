@@ -4,7 +4,7 @@
 >
 > **Tagline:** This is about your money, your home, and what comes next.
 
-**Version:** 1.3 (Wave 2.5 — UX/IA) · **Status:** Delivered · **Document type:** Product Requirements Document (capabilities)
+**Version:** 2.0 (Wave 3 — Engine Depth) · **Status:** Delivered · **Document type:** Product Requirements Document (capabilities)
 
 ---
 
@@ -54,6 +54,11 @@
   - [6.34 Housing → Places Cost Substitution (Wave 2.5 — IA3)](#634-housing--places-cost-substitution-wave-25--ia3)
   - [6.35 Event Taxonomy Fix (Wave 2.5 — IA4)](#635-event-taxonomy-fix-wave-25--ia4)
   - [6.36 Spending-Basis Reframe — Total Income-Replacement Ratio (Wave 2.5 — IA5)](#636-spending-basis-reframe--total-income-replacement-ratio-wave-25--ia5)
+  - [6.37 Multi-Vehicle Contributions, 2026 Limits, and Real Raise (Wave 3 — A1/A2)](#637-multi-vehicle-contributions-2026-limits-and-real-raise-wave-3--a1a2)
+  - [6.38 Three-Bucket Portfolio and Tax-Smart Withdrawal Order (Wave 3 — D1)](#638-three-bucket-portfolio-and-tax-smart-withdrawal-order-wave-3--d1)
+  - [6.39 Generalized Surplus Reinvest (Wave 3 — D2)](#639-generalized-surplus-reinvest-wave-3--d2)
+  - [6.40 Opt-In Glidepath and By-Bucket Return Model (Wave 3 — Advanced)](#640-opt-in-glidepath-and-by-bucket-return-model-wave-3--advanced)
+  - [6.41 Opt-In Guyton-Klinger Guardrails (Wave 3 — E2)](#641-opt-in-guyton-klinger-guardrails-wave-3--e2)
 - [7. Reference Data and Assumptions](#7-reference-data-and-assumptions)
 - [8. UX and Design Requirements](#8-ux-and-design-requirements)
 - [9. Non-Functional Requirements](#9-non-functional-requirements)
@@ -414,7 +419,7 @@ Each capability area below lists functional requirements (FR‑*) and, where use
 **Description.** Extend the residence-tax layer to international retirement locations with treaty-aware per-income-type effective rates, keeping the computation planning-grade (no statutory treaty article citations).
 
 - **FR‑TREATY‑01** — For international locations, apply effective net-of-treaty rates per income type: (a) **WA DRS government pension** — excluded from foreign residence tax under the government-employee pension source rule (modeled as `pensionExclusion: "full"`); (b) **IRA/401(k) draws** — residence-taxed at an effective net-of-treaty rate (after a modeled Foreign Tax Credit offset); (c) **Social Security** — per the bilateral treaty flag for the selected country; (d) **Roth withdrawals** — never taxed by the residence country.
-- **FR‑TREATY‑02** — The engine does not compute any specific treaty article; it applies **planning-grade effective rates** only. Austria's effective rate is modeled at approximately 0% after the FTC and is explicitly captioned "verify with a cross-border specialist" in the UI.
+- **FR‑TREATY‑02** — The engine does not compute any specific treaty article; it applies **planning-grade effective rates** only. Austria's effective rate is modeled at approximately 5% net of treaty/FTC on IRA/401(k) draws (Wave 3 T7; `INTL_TAX.Austria.retireRate = 0.05`) and is explicitly captioned "verify with a cross-border specialist" in the UI.
 - **FR‑TREATY‑03** — The `activeJurisdiction(i, cal)` function returns the correct residence-country record for each simulation year, switching at `relocationYear` (FR‑RELO‑01).
 - **FR‑TREATY‑04** — The dual-tax exposure panel (FR‑DTAX‑01) surfaces the worldwide US taxation obligation, FTC estimate, and filing flags separately from the residence-tax computation.
 - **AC** — Selecting Austria as retirement location: pension line shows 0 residence tax (government-pension exclusion); IRA draws show a small residual after the FTC; Roth shows 0. Selecting a country with no US treaty shows a higher effective rate on IRA draws.
@@ -508,6 +513,58 @@ Each capability area below lists functional requirements (FR‑*) and, where use
 - **FR‑SPEND‑05** — The projection, headline sustainable income, and all chart outputs are numerically identical to the pre-Wave-2.5 result for the same underlying inputs. This requirement is non-negotiable: Wave 2.5 is a UX/presentation wave; the financial engine default is unchanged.
 - **AC** — A user who was previously confused by "28% spending goal" now sees "~40% income replacement" as the headline, with a breakdown showing housing and non-housing components. Changing the slider moves the non-housing `targetPct` in the engine; the displayed total ratio updates live to reflect the new composition.
 
+### 6.37 Multi-Vehicle Contributions, 2026 Limits, and Real Raise (Wave 3 — A1/A2)
+
+**Description.** Model contributions to multiple account types (401k, IRA, Roth IRA) with 2026 IRS limits, catch-up provisions, employer match, Roth phase-out, and a real (inflation-adjusted) raise on the salary base.
+
+- **FR‑CONTRIB‑01** — Accept per-vehicle contribution amounts for 401(k)/403(b), Traditional IRA, and Roth IRA. Each is constrained to its 2026 IRS annual limit (`CONTRIB_LIMITS_2026`): $23,500 / $7,000 base; $31,000 / $8,000 with age-50+ catch-up; $34,750 / $8,000 with age-60–63 "super catch-up" (SECURE 2.0).
+- **FR‑CONTRIB‑02** — Accept an employer 401(k) match (match rate × employee contribution, up to a match ceiling % of salary). Employer contributions do not count against the employee limit.
+- **FR‑CONTRIB‑03** — Apply the Roth IRA income phase-out for 2026 ($236,000–$246,000 MFJ): reduce the allowable Roth contribution proportionally; zero above the ceiling.
+- **FR‑CONTRIB‑04** — Accept a `realRaise` percentage (default 0%). Each working year the salary base grows by `realRaise` in real terms, compounding before the next year's contribution and SS-PIA calculation.
+- **FR‑CONTRIB‑05** — The "Saving" step in the UI exposes a Simple mode (total contribution slider, same as Wave 0) and a Detailed mode (per-vehicle inputs with limit enforcement and match fields).
+- **AC** — In Detailed mode, entering an employee 401(k) contribution above the catch-up limit clamps it to the limit and shows the cap. With a 3% employer match and 6% employee contribution on $100,000 salary, the engine credits $3,000 of employer match to the deferred bucket each year.
+
+### 6.38 Three-Bucket Portfolio and Tax-Smart Withdrawal Order (Wave 3 — D1)
+
+**Description.** Split the portfolio into taxable, deferred (pre-tax 401k/IRA), and Roth sub-accounts; derive `tradFrac` from actual bucket balances at the time of each withdrawal; apply a configurable tax-smart ordering (default taxable → deferred → Roth).
+
+- **FR‑BUCKET‑01** — Seed the three buckets at plan start using either a percentage split (deferredPct / taxablePct / rothPct, default 70/30/0) or explicit dollar amounts (`amt` mode). The three always sum to total savings.
+- **FR‑BUCKET‑02** — Each year's contribution flows into its target bucket (employee 401k/IRA → deferred; Roth → Roth; taxable savings → taxable). Employer match always flows into deferred.
+- **FR‑BUCKET‑03** — Each year's gross withdrawal is drawn across the three buckets in the configured order (`withdrawalOrder`, default `["taxable", "deferred", "roth"]`). `tradFrac` is **derived** from the resulting deferred share — it is no longer a user input for the withdrawal engine.
+- **FR‑BUCKET‑04** — RMDs are applied to the deferred bucket only. When the RMD exceeds the need-based deferred draw, the after-tax surplus is reinvested into the taxable bucket (FR‑SURPLUS‑01 below).
+- **FR‑BUCKET‑05** — The headline "sustainable income" (`steadyState`) respects the same bucket balances and ordering as the simulation rows (single-tax-source invariant).
+- **AC** — With all savings in the deferred bucket and a large spend target, the full withdrawal is ordinary income; with all savings in Roth, the ordinary share is zero.
+
+### 6.39 Generalized Surplus Reinvest (Wave 3 — D2)
+
+**Description.** In any year where guaranteed income exceeds spending need (no portfolio draw needed), any after-tax surplus from IRA/RMD mechanics is captured and reinvested into the taxable bucket, growing the future base.
+
+- **FR‑SURPLUS‑01** — When guaranteed income covers the full spending need (`wd === 0`), and the engine forces an RMD from the deferred bucket, the after-tax RMD remainder is added to the taxable bucket for the next year.
+- **FR‑SURPLUS‑02** — The reinvest mechanic generalizes the prior RMD-only path: any year where the deferred bucket produces a forced distribution that exceeds the need feeds back into taxable.
+- **FR‑SURPLUS‑03** — The default plan headline re-baselined from 146,353 (D1) to 148,312 (D2) as surplus reinvest raises the steady-state taxable balance and future-value base.
+- **AC** — Enabling surplus reinvest on a plan with significant deferred savings and strong guaranteed income raises the FV figure and the headline net income; disabling it (zero pre-tax share) leaves the plan unchanged.
+
+### 6.40 Opt-In Glidepath and By-Bucket Return Model (Wave 3 — Advanced)
+
+**Description.** Allow a glidepath that shifts portfolio allocation from growth to bonds over time, with per-bucket return modeling so taxable, deferred, and Roth earn blended real returns consistent with their target allocation.
+
+- **FR‑GLIDEPATH‑01** — Accept an opt-in glidepath toggle in the Advanced step. When active, the equity allocation steps down from `startEquity` (default 80%) at retirement toward `endEquity` (default 40%) at age 85, linearly.
+- **FR‑GLIDEPATH‑02** — The blended real return for each simulation year is computed as `equity% × equityReturn + bond% × bondReturn`, using the configured return presets for each asset class.
+- **FR‑GLIDEPATH‑03** — Monte Carlo samples draw from the blended mean at each year's allocation, so the variance also shifts with the glidepath.
+- **FR‑GLIDEPATH‑04** — When the glidepath is off (default), the engine uses the single `realReturn` for all years and all buckets — behavior is identical to pre-Wave-3.
+- **AC** — Enabling the glidepath with default settings produces a visibly lower return assumption in later years; the balance chart shifts down in the post-85 range. With variability = 0 the band collapses to the blended deterministic line.
+
+### 6.41 Opt-In Guyton-Klinger Guardrails (Wave 3 — E2)
+
+**Description.** Provide a dynamic spending strategy that adjusts withdrawals up or down when the portfolio drifts outside guardrail bands, and surface the realized spending distribution from Monte Carlo.
+
+- **FR‑GUARD‑01** — Accept a `spendingStrategy` selector: `"swr"` (default, fixed SWR) or `"guardrails"` (Guyton-Klinger dynamic).
+- **FR‑GUARD‑02** — In guardrail mode, the withdrawal rate is capped and floored by ±20% bands around the initial withdrawal rate. When the current rate drifts above the upper band, spending is cut by 10%; when it falls below the lower band, spending is raised by 10%.
+- **FR‑GUARD‑03** — Monte Carlo runs with guardrails record the per-year realized spending for each path. The p10–p90 realized-spending band is displayed alongside the portfolio band, so users can see both the range of portfolio outcomes and the range of spending outcomes.
+- **FR‑GUARD‑04** — The deterministic (non-MC) path with guardrails follows the same band logic using the configured `realReturn` — it is not stochastic.
+- **FR‑GUARD‑05** — When `spendingStrategy = "swr"` (default) the guardrail engine is inert; all prior SWR behavior is preserved exactly.
+- **AC** — Switching to guardrails with a 5.7% initial rate shows the engine cutting spending in bad years and raising it in good years; the realized-spending band is wider than the fixed-SWR band in the same scenario.
+
 ---
 
 ## 7. Reference Data and Assumptions
@@ -526,6 +583,11 @@ All constants are 2026 values. The companion Sources document links each to its 
 | Inheritance — US/TX | Basis step‑up to date‑of‑death value; no Texas estate/inheritance/income tax; federal estate exemption $15M/person ($30M couple); Texas property tax ~1.7%/yr |
 | Inheritance — Austria | No inheritance tax (abolished 2008); transfer tax + registration ≈ 1.85% on inheriting; later sale taxed 30% of gain or 4.2% of price (pre‑2002), no step‑up; 5‑of‑10‑year primary‑residence exemption |
 | Macro | Configurable real return (default 5%), inflation (default 2.5%), taxable share of withdrawals (default 70%); single‑household scaling ≈ 64% of couple costs. **Wave 2 note:** `s.inflation` graduates from a display‑only label to a real engine input: mortgage P&I is the engine's sole nominal cash flow, deflated each year by `(1 + inflation)^y` and zeroed at payoff. All other costs remain real‑flat. |
+| Contributions (Wave 3) | 2026 IRS limits: 401(k) $23,500 / catch-up (50+) $31,000 / super catch-up (60–63) $34,750; IRA $7,000 / $8,000 catch-up. Roth IRA phase-out $236,000–$246,000 MFJ. Employer match is additive. Source: `CONTRIB_LIMITS_2026` in `retirementData.js`. |
+| Buckets (Wave 3) | Three sub-accounts: taxable, deferred (pre-tax 401k/IRA), Roth. Default split 70/30/0. Withdrawal order default: taxable → deferred → Roth. `tradFrac` is a derived output, not a user input for the withdrawal engine. |
+| Glidepath (Wave 3) | Equity allocation steps from `startEquity` (default 80%) at retirement to `endEquity` (default 40%) at age 85, linearly. Blended real return = equity% × equityReturn + bond% × bondReturn. Sources: `SOURCES.cfa6040`, `SOURCES.carson6040`. |
+| Guardrails (Wave 3) | Guyton-Klinger ±20% bands with 10% spending adjustments. MC realized-spending p10–p90 band surfaced alongside the portfolio band. Sources: `SOURCES.kitcesGuardrails`, `SOURCES.morningstarGuardrails`. |
+| Austria treaty rate (Wave 3 T7) | `INTL_TAX.Austria.retireRate` = 0.05 — effective net-of-treaty rate on IRA/401(k) distributions (~5% after FTC). Government pension (WA DRS) remains excluded under the government-service article. Verify with a cross-border specialist. |
 
 ---
 
@@ -545,7 +607,7 @@ All constants are 2026 values. The companion Sources document links each to its 
 
 - **NFR‑01 — Self‑contained.** A single `.jsx` file with no external state services; renders in the target artifact environment.
 - **NFR‑02 — No browser storage.** No `localStorage`/`sessionStorage`; all state is in‑memory for the session.
-- **NFR‑03 — Deterministic.** Identical inputs always produce identical outputs (no randomness).
+- **NFR‑03 — Deterministic.** The default (non-MC) simulation path is fully deterministic: identical inputs always produce identical outputs. Monte Carlo paths use a seeded PRNG so the p10–p90 band is also reproducible; guardrail MC uses the same seeded approach. Randomness is confined to `monteCarlo.js`.
 - **NFR‑04 — Performant.** All projections (multiple full‑life simulations) recompute within an interaction frame on a typical device.
 - **NFR‑05 — Maintainable.** 2026 constants are centralized and labeled with their source domain for annual updates.
 - **NFR‑06 — Accessible.** Honors reduced‑motion preferences; controls are keyboard/tap friendly.
@@ -564,7 +626,7 @@ All constants are 2026 values. The companion Sources document links each to its 
 - **L8** — ~~The "live‑in" housing saving is applied to the spending need generically; for full fidelity the healthcare basis should be matched to the live‑in country.~~ **RESOLVED (Wave 2):** the housing‑explicit spending model (FR‑HEXP‑01) separates housing from the non‑housing lifestyle base; live‑in tenure uses owned carrying cost, not a generic saving credit. The old double‑count is eliminated.
 - **L9** — RMDs use a **commingled‑account simplification**: a single tax‑deferred pool driven by the **older** spouse's age and first‑RMD age, rather than per‑owner accounts. Roth balances are assumed to be the non‑deferred share (exempt). The steady‑state "sustainable income" headline is left on the SWR basis and does not re‑apply the RMD floor — at the steady‑state age a 4% SWR draw already meets or exceeds the ~4.1% RMD, so the floor is non‑binding there.
 - **L10** — The relocation transition year is simplified: income, tax, and costs are not apportioned within the year (no 183‑day partial‑year split). The Federal Pension Source Tax Act convention (clean jurisdiction switch at the year boundary) is the modeling license for this simplification; a cross‑border specialist should be consulted for binding residency determinations.
-- **L11** — International residence tax is an **effective net‑of‑treaty planning‑grade estimate**, not a statutory treaty computation. No treaty article is cited as authoritative; the engine applies per‑income‑type flags (government pension excluded abroad, IRA/401(k) draws at an effective net rate, Social Security per treaty flag, Roth never taxed). Austria's effective rate is modeled optimistically (~0 after the Foreign Tax Credit) and is explicitly flagged "verify with a cross‑border specialist."
+- **L11** — International residence tax is an **effective net‑of‑treaty planning‑grade estimate**, not a statutory treaty computation. No treaty article is cited as authoritative; the engine applies per‑income‑type flags (government pension excluded abroad, IRA/401(k) draws at an effective net rate, Social Security per treaty flag, Roth never taxed). Austria's effective rate is modeled at ~5% net of treaty/FTC on IRA draws (Wave 3 T7) and is explicitly flagged "verify with a cross‑border specialist."
 - **L12** — The working‑years cost‑of‑living basket does **not** switch to the work location; `workLoc` is a tax jurisdiction only, not a cost basket. Spending need during working years continues to reflect the retirement location (or the income‑basis default).
 - **L13** — "Keep as rental" at relocation: only the work‑home mortgage P&I is charged as a landlord cost; property tax, insurance, and maintenance on the retained home are not yet modeled.
 - **L14** — Property tax and local income tax rates are county‑level approximations and may not match the filer's exact municipality.

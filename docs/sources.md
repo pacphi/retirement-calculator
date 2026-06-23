@@ -4,7 +4,7 @@
 >
 > **Tagline:** This is about your money, your home, and what comes next.
 
-**Version:** 1.1 · **Reference year:** 2026 · **Companion docs:** PRD; Logic & Use‑Case Specification
+**Version:** 2.0 · **Reference year:** 2026 · **Companion docs:** PRD; Logic & Use‑Case Specification
 
 ---
 
@@ -28,7 +28,8 @@
 - [16. Inherited Real Estate — Austria](#16-inherited-real-estate--austria)
 - [17. Long-Term Care Costs by Location](#17-long-term-care-costs-by-location)
 - [18. Income Tax by Location (State & Foreign)](#18-income-tax-by-location-state--foreign)
-- [19. Full URL Index](#19-full-url-index)
+- [19. Wave 3 Engine-Depth Sources](#19-wave-3-engine-depth-sources)
+- [20. Full URL Index](#20-full-url-index)
 
 ---
 
@@ -295,7 +296,32 @@ A US citizen owes **US federal** income tax everywhere (always modeled). On top 
 
 **Treaty & FTC mechanics.** US citizens are taxed on worldwide income regardless of residence, but the Foreign Tax Credit (Form 1116) credits foreign income tax against US liability, and treaties allocate taxing rights — together preventing double taxation. The practical result for retirement income is "pay the higher of the two," which is why most foreign additional rates above are 0. Per-location sources and method notes: `docs/archive/audits/tax-research.md`. **Caveats:** these are single-rate effective simplifications (not marginal); cross-border tax is highly fact-specific — confirm with a qualified cross-border professional. Key sources: IRS FTC/Form 1116 (<https://www.irs.gov/individuals/international-taxpayers/foreign-tax-credit>), PwC Worldwide Tax Summaries (<https://taxsummaries.pwc.com/>), and per-country guides listed in `docs/archive/audits/tax-research.md`.
 
-## 19. Full URL Index
+## 19. Wave 3 Engine-Depth Sources
+
+Sources added for the five Wave 3 features: multi-vehicle contributions, three-bucket model, surplus reinvest, glidepath, and Guyton-Klinger guardrails. The Austria net-of-treaty rate update (T7) uses the existing cross-border sources from Section 14.
+
+### Contribution Limits (A1/A2)
+
+- **[IRS — 401(k) limit increases to $24,500 for 2026; IRA to $7,500](https://www.irs.gov/newsroom/401k-limit-increases-to-24500-for-2026-ira-limit-increases-to-7500)** **(primary)** (`SOURCES.irsContrib2026`) — 2026 employee contribution limits for 401(k)/403(b) ($23,500 base; $31,000 age-50+ catch-up; $34,750 age-60–63 super catch-up per SECURE 2.0) and IRA ($7,000 base; $8,000 catch-up). Also mirrors the existing Section 6 citation for RMDs.
+- **[Fidelity — 401(k) catch-up contributions for high earners](https://www.fidelity.com/learning-center/personal-finance/401k-catch-up-contributions-high-earners)** (`SOURCES.fidelityCatchup`) — SECURE 2.0 super catch-up mechanics and the $34,750 age-60–63 limit cross-check; employer match interaction notes.
+
+### 60/40 Portfolio and Glidepath Returns (Advanced)
+
+- **[CFA Institute — Performance of the 60/40 Portfolio (2025)](https://rpc.cfainstitute.org/research/reports/2025/performance-of-the-60-40-portfolio)** (`SOURCES.cfa6040`) — Long-run real return evidence for a balanced 60/40 allocation; equity and bond component return distributions used to calibrate the glidepath return presets.
+- **[Carson Group — The 60/40 Portfolio: A Historical Powerhouse or a Rate-Dependent Misinterpretation?](https://www.carsongroup.com/insights/blog/the-60-40-portfolio-a-historical-powerhouse-or-a-rate-dependent-misinterpretation/)** (`SOURCES.carson6040`) — Secondary cross-check on 60/40 historical performance; supports the ~5% real blended mean at balanced allocation.
+
+### Guyton-Klinger Guardrails (E2)
+
+- **[Kitces — Guyton-Klinger Guardrails: Retirement Income Rules for Risk-Based Withdrawal Rates](https://www.kitces.com/blog/guyton-klinger-guardrails-retirement-income-rules-risk-based/)** (`SOURCES.kitcesGuardrails`) — **(primary methodology source)** — The original Guyton-Klinger decision rules: ±20% prosperity/capital-preservation bands with 10% spending adjustments; the ceiling/floor interaction with initial withdrawal rate; historical success rates under the rules.
+- **[Morningstar — Want to Boost Your Retirement Income? Guardrails Could Help](https://www.morningstar.com/retirement/want-boost-your-retirement-income-guardrails-could-help)** (`SOURCES.morningstarGuardrails`) — Guardrail strategy in the context of the 5.7% "flexible" withdrawal rate cited in the SWR section (Section 8); confirms the ±20% / 10% parameterization as the canonical reference implementation.
+
+### Austria Net-of-Treaty Rate (T7)
+
+The Austria rate update (`INTL_TAX.Austria.retireRate` 0.0 → 0.05) relies on the existing cross-border sources in Section 14 (Greenback, PBMares, TaxesForExpats, PwC Worldwide Tax Summaries cited via `docs/archive/audits/tax-research.md`) and the Section 18 Income Tax by Location table (Austria row: 5% net-of-treaty, consistent with `LOCATIONS.Austria.addlTaxRate`). No new external sources are required; the change aligns the typed residence-tax path with the flat path already sourced and cited.
+
+---
+
+## 20. Full URL Index
 
 > A flat, alphabetized list of every content source above, for archival and link‑checking. Asset/CDN/favicon URLs are excluded.
 
@@ -415,6 +441,15 @@ A US citizen owes **US federal** income tax everywhere (always modeled). On top 
 - https://www.clearedexpat.com/guides/expat-taxes-for-retirees/
 - https://www.countrytaxcalc.com/tax-guides/international/expat-retirement-tax-guide-2026/
 - https://taxratesbycountry.com/tax-rates-in-austria/
+
+**Wave 3 engine-depth (secondary)**
+
+- https://www.irs.gov/newsroom/401k-limit-increases-to-24500-for-2026-ira-limit-increases-to-7500
+- https://www.fidelity.com/learning-center/personal-finance/401k-catch-up-contributions-high-earners
+- https://rpc.cfainstitute.org/research/reports/2025/performance-of-the-60-40-portfolio
+- https://www.carsongroup.com/insights/blog/the-60-40-portfolio-a-historical-powerhouse-or-a-rate-dependent-misinterpretation/
+- https://www.kitces.com/blog/guyton-klinger-guardrails-retirement-income-rules-risk-based/
+- https://www.morningstar.com/retirement/want-boost-your-retirement-income-guardrails-could-help
 
 **Inheritance — US/Texas and Austria (secondary)**
 

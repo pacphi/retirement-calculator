@@ -725,13 +725,29 @@ describe("typed residence tax — single-tax-source invariant (Task 6)", () => {
   // typed residence layer; the simulated row carries the same composition, so the
   // chosen steady row's tax must match what steadyState reports for guaranteed-only.
 
-  it("zeroes the residence layer for an international treaty location (Austria retireRate 0)", () => {
-    // Austria: pensionExclusion "full", retireRate 0.0 → typed residence tax = 0.
-    // The headline tax must therefore equal the pure federal tax (no phantom 5% flat).
-    const austria = calculatePlan({ ...baseState, retireLoc: "Austria", stateCode: null, stateRate: null });
-    const txState = calculatePlan({ ...baseState, retireLoc: "Austria", stateCode: "TX", stateRate: null });
-    // TX is a no-income-tax US state (retireRate 0) — same zero residence layer as Austria.
-    expect(austria.steady.tax).toBeCloseTo(txState.steady.tax, 6);
+  it("adds a typed residence-tax layer for Austria at net-of-treaty rate (Wave 3 T7: 0→0.05)", () => {
+    // Wave 3 T7: Austria net-of-treaty 0→0.05 (verify with a cross-border specialist).
+    // INTL_TAX.Austria.retireRate changed from 0.0 to 0.05.
+    // The typed residence layer only fires when:
+    //   (a) relocationYear is set so activeJurisdiction returns the INTL_TAX profile, AND
+    //   (b) the steady-state draw includes a deferred portion (ordinaryShare > 0).
+    // Force both: use deferred-first withdrawal order (same as the Netherlands test above)
+    // and set relocationYear before the steady-state year so the typed path is active.
+    // pensionExclusion:"full" → DRS pension excluded; taxesSS:false → SS excluded from base.
+    // Only the deferred withdrawal is residence-taxed at 5%, raising Austria tax above TX (0%).
+    const order = ["deferred", "taxable", "roth"];
+    const austria = calculatePlan({
+      ...baseState, retireLoc: "Austria", stateCode: null, stateRate: null,
+      withdrawalOrder: order, relocationYear: 2026,
+    });
+    const txDomestic = calculatePlan({
+      ...baseState, retireLoc: "US -- Texas / Florida", stateCode: null, stateRate: null,
+      withdrawalOrder: order, relocationYear: 2026,
+    });
+    // Austria retireRate 0.05 on deferred draws → higher total tax than TX (retireRate 0).
+    expect(austria.steady.tax).toBeGreaterThan(txDomestic.steady.tax);
+    // Residence layer (stateTax) must be positive for Austria.
+    expect(austria.steady.taxDetails.stateTax).toBeGreaterThan(0);
   });
 
   it("applies a higher headline tax for a US state that taxes pension+withdrawals (CA) than a no-tax one (TX)", () => {
@@ -741,7 +757,8 @@ describe("typed residence tax — single-tax-source invariant (Task 6)", () => {
   });
 
   it("an explicit stateRate override re-engages the flat path even when a typed location exists", () => {
-    // Austria typed (retireRate 0) → no residence tax; a 10% override must raise the tax.
+    // Austria typed (retireRate 0.05 after Wave 3 T7) → residence tax on deferred draws;
+    // a 10% override must raise the tax further above the typed 5% rate.
     const typed = calculatePlan({ ...baseState, retireLoc: "Austria", stateCode: null, stateRate: null });
     const overridden = calculatePlan({ ...baseState, retireLoc: "Austria", stateCode: null, stateRate: 0.10 });
     expect(overridden.steady.tax).toBeGreaterThan(typed.steady.tax);
