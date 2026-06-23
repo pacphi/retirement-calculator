@@ -4,7 +4,7 @@
 >
 > **Tagline:** This is about your money, your home, and what comes next.
 
-**Version:** 1.2 (Wave 2.5 — UX/IA) · **Reference year:** 2026 · **Companion docs:** PRD; Sources & References
+**Version:** 2.0 (Wave 3 — Engine Depth) · **Reference year:** 2026 · **Companion docs:** PRD; Sources & References
 
 ---
 
@@ -64,6 +64,13 @@
   - [UC-37 Housing → Places Cost Substitution (IA3)](#uc-37-housing--places-cost-substitution-ia3)
   - [UC-38 Event Taxonomy Fix (IA4)](#uc-38-event-taxonomy-fix-ia4)
   - [UC-39 Spending-Basis Reframe (IA5)](#uc-39-spending-basis-reframe-ia5)
+- [10. Wave 3 Use Cases (A1/A2, D1, D2, Advanced, E2, T7)](#10-wave-3-use-cases-a1a2-d1-d2-advanced-e2-t7)
+  - [UC-40 Multi-Vehicle Contributions and Real Raise (A1/A2)](#uc-40-multi-vehicle-contributions-and-real-raise-a1a2)
+  - [UC-41 Three-Bucket Portfolio and Tax-Smart Withdrawal Order (D1)](#uc-41-three-bucket-portfolio-and-tax-smart-withdrawal-order-d1)
+  - [UC-42 Generalized Surplus Reinvest (D2)](#uc-42-generalized-surplus-reinvest-d2)
+  - [UC-43 Opt-In Glidepath and By-Bucket Return Model (Advanced)](#uc-43-opt-in-glidepath-and-by-bucket-return-model-advanced)
+  - [UC-44 Opt-In Guyton-Klinger Guardrails (E2)](#uc-44-opt-in-guyton-klinger-guardrails-e2)
+  - [UC-45 Austria Net-of-Treaty Rate (T7)](#uc-45-austria-net-of-treaty-rate-t7)
 
 ---
 
@@ -1505,3 +1512,217 @@ The mortgage payoff lowers `housingShare` over time, so the displayed total rati
 **Scenario.** *"A user reads that financial planners commonly target 70–80% income replacement. The old 28% figure confused them. The new 40% display makes sense: 28% lifestyle spending + 12% housing ≈ 40% total. They adjust the slider to 45% (targeting a more comfortable retirement): the engine receives `targetPct = 0.33`, the housing component stays fixed, and the staircase spending-need line rises proportionally. The headline updates live."*
 
 **Edge cases.** When `housing.tenure = "rent"` and rent is large relative to income, `housingShare` may push `displayedRatio` above 80% even with a low `targetPct`. The slider is clamped to a sensible display range; the engine `targetPct` is always derived by subtracting the current `housingShare`. With `housingShare = 0` (no housing cost modeled), `displayedRatio === targetPct` and the display is unchanged from the pre-Wave-2.5 behavior.
+
+---
+
+## 10. Wave 3 Use Cases (A1/A2, D1, D2, Advanced, E2, T7)
+
+Wave 3 is an engine-depth wave. The financial engine gains multi-vehicle contributions, three-bucket portfolio tracking, tax-smart withdrawal ordering, surplus reinvest, an opt-in glidepath, and opt-in Guyton-Klinger guardrails. The default (non-Advanced) path is backward-compatible: the steady-state headline re-baselined from 139,316 (Wave 2) to 148,312 (Wave 3 D2).
+
+---
+
+### UC-40 Multi-Vehicle Contributions and Real Raise (A1/A2)
+
+**Purpose.** Model contributions to 401(k)/403(b), Traditional IRA, and Roth IRA separately, enforce 2026 IRS limits with catch-up provisions and Roth phase-out, apply employer match, and grow the salary base by a real raise each year.
+
+**Implements.** FR‑CONTRIB‑01..05.
+
+**Inputs.** `contributions` object: `{ trad401k, tradIRA, rothIRA }` employee amounts; `employerMatch` `{ rate, ceiling }` (ceiling = % of salary); `realRaise` (default 0%); spouse ages (for catch-up eligibility). `CONTRIB_LIMITS_2026` in `retirementData.js`.
+
+**Logic** (`src/finance/contributions.js`).
+
+```js
+// 2026 limits (SECURE 2.0) — from CONTRIB_LIMITS_2026 in retirementData.js
+// 401(k): base 24500; 50+ catch-up adds 8000 → total 32500
+//         60–63 super catch-up adds 11250 → total 35750
+// IRA:    base 7500; 50+ catch-up adds 1100 → total 8600
+// HSA family: base 8750 (+1000 age-55 catch-up); HSA self: 4400 (+1000)
+
+// Roth IRA phase-out 2026
+rothPhaseOut(magi, status) =
+  status === "married"
+    ? clamp((magi - 242000) / 10000, 0, 1)   // MFJ: 242k–252k
+    : clamp((magi - 153000) / 15000, 0, 1)   // single: 153k–168k
+allowedRoth(age, magi, status) =
+  (age >= 50 ? baseIRA + catchUpIRA : baseIRA) * (1 - rothPhaseOut(magi, status))
+
+// Employer match
+matchContrib = min(employee401k * matchRate, salary * matchCeiling)
+
+// Real raise: salary compounds each working year
+salary_y = salary_0 * (1 + realRaise)^y
+```
+
+Each vehicle's contribution flows to its target bucket: `trad401k` + employer match → deferred; `rothIRA` → Roth; `tradIRA` → deferred. The UI exposes Simple mode (single total slider) and Detailed mode (per-vehicle with limit enforcement).
+
+**Outputs.** Per-year bucket contributions; accumulation summary card reflects the higher balances; RMD base grows with the deferred bucket.
+
+**Scenario.** *"The younger spouse is 61 and eligible for the super catch-up. They max their 401(k) at $35,750 (base $24,500 + super catch-up $11,250) and contribute $8,600 to a Traditional IRA (base $7,500 + catch-up $1,100). Their employer matches 4% of salary up to 6% of salary ($6,000/yr). The accumulation card shows $50,350/yr flowing into deferred over the remaining 4 working years, compounding to ~$220,000 additional balance at retirement."*
+
+**Edge cases.** A contribution entered above the IRS limit is silently clamped to the cap and a UI note appears. Roth contributions are reduced proportionally through the phase-out range and zeroed above $252,000 MAGI (MFJ) or $168,000 (single). With `realRaise = 0` (default) salary is flat in real terms — backward-compatible with Wave 2.
+
+---
+
+### UC-41 Three-Bucket Portfolio and Tax-Smart Withdrawal Order (D1)
+
+**Purpose.** Track taxable, deferred, and Roth balances separately; derive the ordinary-income share of each year's withdrawal from actual bucket balances in configured draw order; keep the steady-state headline on the same basis (single-tax-source invariant).
+
+**Implements.** FR‑BUCKET‑01..05.
+
+**Inputs.** `bucketSplit` (`{ mode: "pct", deferredPct, taxablePct, rothPct }` or `{ mode: "amt", deferred, roth }`); `withdrawalOrder` (default `["taxable", "deferred", "roth"]`); `savings`.
+
+**Logic** (`src/finance/buckets.js`, `src/finance/simulate.js`).
+
+```js
+// Seed buckets at plan start
+seedBuckets(savings, bucketSplit) -> { taxable, deferred, roth }
+
+// Each year's draw
+splitWithdrawal(D, { taxable, deferred, roth }, order):
+  for bucket in order:
+    take = min(D_remaining, balance[bucket])
+    out[bucket] = take; D_remaining -= take
+  ordinaryShare = out.deferred / (out.taxable + out.deferred + out.roth)
+  return { ...out, ordinaryShare }
+
+// tradFrac = ordinaryShare fed into calculateFederalTaxYear
+```
+
+The steady-state headline calls `splitWithdrawal` on the chosen row's bucket balances, ensuring the same `ordinaryShare` as the simulation row (single-tax-source invariant).
+
+**Outputs.** Per-year `{ taxableBal, deferredBal, rothBal }` tracked in simulation rows; `ordinaryShare` replacing the flat `tradFrac` for tax computation; headline `taxDetails.stateTax` reflects the residence layer on the deferred portion only.
+
+**Scenario.** *"The couple has $700,000 deferred and $300,000 taxable. Under the default order (taxable first), years 1–6 draw entirely from taxable (`ordinaryShare = 0`), paying only federal tax on SS and pension. Once taxable is exhausted, deferred draws begin and the ordinary share rises. The staircase shows a visible tax step-up in the year taxable runs dry."*
+
+**Edge cases.** With `deferredPct = 0` the ordinary share is always 0 — no change from pre-Wave-3 behavior for an all-taxable/Roth saver. With `deferredPct = 100` the ordinary share is always 1 — equivalent to the prior `tradFrac = 1.0` path. The RMD floor applies only to the deferred bucket; taxable and Roth draws are never subject to RMD.
+
+---
+
+### UC-42 Generalized Surplus Reinvest (D2)
+
+**Purpose.** Capture any after-tax surplus from forced deferred distributions (RMD or guaranteed-income-surplus years where `wd = 0`) and reinvest it into the taxable bucket, compounding the future withdrawal base.
+
+**Implements.** FR‑SURPLUS‑01..03.
+
+**Inputs.** RMD amount for the year; `need`; guaranteed income; current bucket balances.
+
+**Logic** (`src/finance/simulate.js`).
+
+```js
+// In any year where wd === 0 and an RMD fires:
+rmdAfterTax = rmdGross - rmdFederalTax - rmdResidenceTax
+taxableBal  += rmdAfterTax   // reinvest surplus into taxable bucket
+
+// Net effect: taxable bucket grows; FV at steady state is higher
+```
+
+The mechanic is the generalization of the original RMD reinvest path: it fires whenever guaranteed income alone meets the need and the deferred bucket still forces a distribution.
+
+**Outputs.** Higher taxable bucket balance in post-RMD years; higher FV at the steady-state year; headline net re-baselined 146,353 (D1) → 148,312 (D2). `targetNeed` and `startAgeA` are unchanged.
+
+**Scenario.** *"From age 75 the couple's combined SS + pension exceeds their spending need. Each year the RMD fires regardless, forcing ~$10,000 out of deferred. After federal tax (~15%), ~$8,500 flows into taxable each year. Over 10 years this compounds to ~$130,000 additional taxable balance, raising the steady-state FV and the 4% SWR headline by ~$5,200/yr."*
+
+**Edge cases.** With `deferredPct = 0` no RMD fires and the surplus path is inert. With a very high spending need (`wd > 0` always), guaranteed income never fully covers need and the surplus path does not trigger. The reinvest is after-tax: the federal (and any residence) tax on the forced distribution is always charged first.
+
+---
+
+### UC-43 Opt-In Glidepath and By-Bucket Return Model (Advanced)
+
+**Purpose.** De-risk the portfolio allocation linearly during the accumulation phase — from an equity-heavy mix today toward a bond-heavy mix at the retirement year — with per-year blended real returns. Monte Carlo samples around the single blended mean; the variability band is unchanged by the glidepath (intentional planning-grade simplification).
+
+**Implements.** FR‑GLIDEPATH‑01..04.
+
+**Inputs.** `returnModel.mode = "glidepath"`; `GLIDEPATH_DEFAULTS`: `equityPctNow` (default 80%), `equityPctAtRetire` (default 40%), `equityReal` (default 6.5%), `bondReal` (default 2.0%); `totalAccumYears`; `yearsToRetire` (decrements each simulated year).
+
+**Logic** (`src/finance/returns.js`).
+
+```js
+// resolveYearReturn — accumulation-phase de-risking only
+resolveYearReturn(i, y, ctx):
+  if mode !== "glidepath": return i.realReturn   // flat, backward-compatible
+
+  total   = ctx.totalAccumYears ?? 0
+  // progress: 0 at start of plan (full equity tilt) → 1 at retirement (bond tilt)
+  progress = total > 0
+    ? clamp((total - (ctx.yearsToRetire ?? 0)) / total, 0, 1)
+    : 1
+  equityPct = (equityPctNow * (1 - progress) + equityPctAtRetire * progress) / 100
+  return equityPct * equityReal + (1 - equityPct) * bondReal
+
+// blendedMean — scalar used by Monte Carlo (midpoint progress = 0.5)
+blendedMean(i):
+  equityPct = (equityPctNow + equityPctAtRetire) / 2 / 100
+  return equityPct * equityReal + (1 - equityPct) * bondReal
+  // MC samples lognormal(blendedMean, volatility) — variability unchanged by glidepath
+```
+
+**Outputs.** Per-year `realReturn` declines during accumulation as equity share steps from `equityPctNow` to `equityPctAtRetire`; the deterministic accumulation balance grows more slowly than the flat-return path. The MC band uses the midpoint scalar — band width is unchanged. Post-retirement years use the terminal `equityPctAtRetire` allocation.
+
+**Scenario.** *"The couple is 45 with 17 working years remaining. In year 1, progress = 0 → 80% equity → return = 0.8 × 6.5% + 0.2 × 2% = 5.6%. By year 17 (retirement), progress = 1 → 40% equity → return = 0.4 × 6.5% + 0.6 × 2% = 3.8%. The accumulation card shows a steadily declining blended return; the projected retirement balance is lower than with a flat 5% assumption, reflecting the intentional de-risking. The MC band mean = midpoint blend: 0.6 × 6.5% + 0.4 × 2% = 4.7%."*
+
+**Edge cases.** With `mode = "blended"` (default) `resolveYearReturn` returns `i.realReturn` unchanged — byte-identical to pre-Wave-3. With `equityPctNow = equityPctAtRetire` the glidepath is flat (no drift). There is no post-retirement glidepath — `yearsToRetire` reaches 0 at retirement and the allocation stays at `equityPctAtRetire` thereafter. The glidepath only affects the return model; bucket balances, withdrawal order, and tax computation are unchanged.
+
+---
+
+### UC-44 Opt-In Guyton-Klinger Guardrails (E2)
+
+**Purpose.** Provide a dynamic spending strategy that adjusts withdrawals when the current withdrawal rate drifts outside ±20% bands, and surface the realized-spending distribution from Monte Carlo paths.
+
+**Implements.** FR‑GUARD‑01..05.
+
+**Inputs.** `spendingStrategy` (`"swr"` default | `"guardrails"`); `guardrailUpper` (default 1.20); `guardrailLower` (default 0.80); `guardrailCut` (default 0.10); `guardrailRaise` (default 0.10); `initialWR` (the SWR used to set the initial withdrawal amount).
+
+**Logic** (`src/finance/guardrails.js`).
+
+```js
+// Each year's withdrawal (guardrails mode)
+currentWR = withdrawal / portfolioBalance
+if currentWR > initialWR * guardrailUpper:
+  withdrawal *= (1 - guardrailCut)    // spending cut 10%
+elif currentWR < initialWR * guardrailLower:
+  withdrawal *= (1 + guardrailRaise)  // spending raise 10%
+// else: hold withdrawal constant (real-flat)
+
+// MC: run N paths; record realized spending per year per path
+// Surface p10–p90 spending band alongside portfolio band
+```
+
+The seeded PRNG ensures the guardrail MC is reproducible for identical inputs. With `spendingStrategy = "swr"` the guardrail engine is bypassed entirely.
+
+**Outputs.** Per-year withdrawal adjusted by guardrail bands; MC realized-spending p10–p90 band in the UI; deterministic guardrail path follows the same logic using `realReturn`.
+
+**Scenario.** *"The couple uses a 5.7% initial rate with guardrails. In a bad-sequence MC path, the portfolio drops 30% in year 3, pushing the current rate above 7.4% (5.7% × 1.20 + buffer). The engine cuts spending 10% to $51,300/yr. In a good-sequence path the rate drifts below 4.6% (5.7% × 0.80) by year 8, triggering a 10% raise to $62,700/yr. The UI shows the realized-spending p10–p90 band, letting the couple see both the floor and ceiling of what guardrails might deliver."*
+
+**Edge cases.** With `spendingStrategy = "swr"` (default) the guardrail engine is inert and all SWR behavior is preserved exactly — no re-baselining. The guardrail check fires only in retirement years (`cal >= retirementYear`). Working years always use income-based spending regardless of strategy.
+
+---
+
+### UC-45 Austria Net-of-Treaty Rate (T7)
+
+**Purpose.** Update the Austria typed residence-tax profile to reflect a ~5% effective net-of-treaty rate on IRA/401(k) distributions, aligning `INTL_TAX.Austria.retireRate` with the flat `addlTaxRate` already modeled in `LOCATIONS`.
+
+**Implements.** FR‑TREATY‑02 (updated), L11 (updated).
+
+**Inputs.** `INTL_TAX["Austria"].retireRate` (changed from `0.0` to `0.05`); `retireLoc = "Austria"`; `relocationYear` set so the typed profile is active.
+
+**Logic** (`src/retirementData.js`, `src/finance/residenceTax.js`).
+
+```js
+// Austria INTL_TAX profile (Wave 3 T7)
+{ retireRate: 0.05, pensionExclusion: "full", taxesSS: false,
+  taxesTradWithdrawal: true }
+
+// residenceTaxForYear with this profile:
+// stateBase = deferredWithdrawal   (pension excluded, SS excluded, Roth never taxed)
+// residenceTax = 0.05 * deferredWithdrawal
+```
+
+The `LOCATIONS` array's `addlTaxRate: 0.05` for Austria is unchanged; this change aligns the typed path (used when `relocationYear` is set) with the flat path. The change only affects simulation years where `cal >= relocationYear` and the steady-state headline uses the typed path.
+
+**Default plan impact.** The default plan's `startCal` (2043) precedes `relocationYear` (2046), so `activeJurisdiction` returns the working-side profile at the steady-state row. The typed Austria profile is not active for the steady-state computation, and the golden headline is **unchanged at 148,312**.
+
+**Outputs.** `exposureNotes.residenceTaxed` updated to read "effective added rate modeled ~5% net of treaty/FTC here — verify with a cross-border specialist." The typed residence layer adds ~5% to the deferred-withdrawal portion of any retirement-year draw when the Austria typed profile is active.
+
+**Scenario.** *"The couple sets `retireLoc = 'Austria'` and `relocationYear = 2040` (before the steady-state year of 2043). From 2040 onward, each IRA draw incurs a 5% residence-layer charge on top of US federal tax. In the steady-state year, with $56,000 of portfolio draw and `ordinaryShare = 0.7`, the Austria residence tax adds 0.05 × $39,200 = $1,960/yr to the headline tax — visible as `stateTax` in `taxDetails`."*
+
+**Edge cases.** Plans where `startCal < relocationYear` are unaffected (typed profile not yet active at steady state). Plans using `stateRate` override bypass the typed profile entirely (flat path, `addlTaxRate = 0.05` unchanged). The WA DRS pension remains fully excluded under `pensionExclusion: "full"` regardless of this change.

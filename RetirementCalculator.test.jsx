@@ -47,6 +47,11 @@ describe("RetirementCalculator UI", () => {
     expect(screen.getByRole("button", { name:/add event/i })).toBeInTheDocument();
   });
 
+  it("exposes the withdrawal-order control", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByLabelText("Withdrawal order")).toBeInTheDocument();
+  });
+
   it("collapses and expands the header via its toggle button", async () => {
     const user = userEvent.setup();
     render(<RetirementCalculator />);
@@ -250,9 +255,12 @@ describe("Strategy & assumptions controls update the projection", () => {
   });
 
   it("Pre-tax share slider moves the headline", async () => {
+    // D2 note: surplus reinvest neutralises the 0.7→0 delta (both end at the same
+    // taxable balance). Moving to 100% deferred still changes the headline because the
+    // taxable bucket shrinks below the SWR draw, forcing ordinary-income deferred draws.
     await openAssumptions();
     const before = headline();
-    fireEvent.change(screen.getByLabelText(/Pre-tax 401\(k\)\/IRA share/i), { target: { value: "0" } });
+    fireEvent.change(screen.getByLabelText(/Pre-tax 401\(k\)\/IRA share/i), { target: { value: "100" } });
     expect(headline()).not.toBe(before);
   });
 
@@ -263,7 +271,9 @@ describe("Strategy & assumptions controls update the projection", () => {
     // The dollar view shows the share applied to the $670k default savings (70% = $469k).
     const dollarInput = screen.getByLabelText(/Pre-tax 401\(k\)\/IRA share/i);
     expect(Number(dollarInput.value)).toBe(469000);
-    fireEvent.change(dollarInput, { target: { value: "0" } });
+    // D2: use full deferred ($670k) rather than $0 — 100% deferred forces ordinary-income
+    // draws at steady state (taxable bucket too small), which raises tax and moves the net.
+    fireEvent.change(dollarInput, { target: { value: "670000" } });
     expect(headline()).not.toBe(before);
   });
 
@@ -348,6 +358,11 @@ describe("spending basis toggle", () => {
   it("shows the total-replacement spending control with an accessible label", () => {
     render(<RetirementCalculator />);
     expect(screen.getByLabelText("Replace this share of income in retirement")).toBeInTheDocument();
+  });
+
+  it("exposes the spending-strategy control", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByLabelText("Spending strategy")).toBeInTheDocument();
   });
 });
 
@@ -446,6 +461,38 @@ describe("B1 return preset and variability controls", () => {
     const customBtn = allCustom[allCustom.length - 1].closest("button");
     await user.click(customBtn);
     expect(screen.getByLabelText(/Custom real return/i)).toBeInTheDocument();
+  });
+
+  it("exposes the Return model label in the advanced panel", async () => {
+    await openAssumptions();
+    expect(screen.getByText(/Return model/i)).toBeInTheDocument();
+  });
+
+  it("Return model defaults to Blended with aria-pressed true", async () => {
+    await openAssumptions();
+    const blended = screen.getAllByText(/^Blended$/i)[0].closest("button");
+    expect(blended).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("switching to Glidepath reveals Equity % now and Equity % at retirement inputs", async () => {
+    const user = await openAssumptions();
+    expect(screen.queryByLabelText(/Equity % now/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Equity % at retirement/i)).not.toBeInTheDocument();
+    const glidepath = screen.getAllByText(/^Glidepath$/i)[0].closest("button");
+    await user.click(glidepath);
+    expect(screen.getByLabelText(/Equity % now/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Equity % at retirement/i)).toBeInTheDocument();
+  });
+
+  it("Glidepath inputs are hidden when Blended is re-selected", async () => {
+    const user = await openAssumptions();
+    const glidepath = screen.getAllByText(/^Glidepath$/i)[0].closest("button");
+    await user.click(glidepath);
+    expect(screen.getByLabelText(/Equity % now/i)).toBeInTheDocument();
+    const blended = screen.getAllByText(/^Blended$/i)[0].closest("button");
+    await user.click(blended);
+    expect(screen.queryByLabelText(/Equity % now/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Equity % at retirement/i)).not.toBeInTheDocument();
   });
 });
 
@@ -690,3 +737,15 @@ describe("Places panel — housing caption (Wave 2.5 Part 5)", () => {
     expect(screen.getByText(/each location.s local rent is shown/i)).toBeInTheDocument();
   });
 });
+
+describe("Saving step — accessible controls (Wave 3 Task 1)", () => {
+  it("exposes the contributions controls", () => {
+    // Arrange + Act
+    render(<RetirementCalculator />);
+
+    // Assert — both labelled controls are present in Simple mode (default)
+    expect(screen.getByLabelText("Contribution mode")).toBeInTheDocument();
+    expect(screen.getByLabelText("Real raise")).toBeInTheDocument();
+  });
+});
+

@@ -38,6 +38,7 @@ import { SINGLE_COST_FACTOR, STRESS_EARLY_DROP } from "../retirementData.js";
 import { smileMultiplier } from "./spending/smile.js";
 import { lifestyleStepDelta } from "./spending/lifestyle.js";
 import { housingCostForYear } from "./housing.js";
+import { resolveYearReturn } from "./returns.js";
 
 /**
  * ctx shape accepted by spendingComponents:
@@ -53,9 +54,9 @@ import { housingCostForYear } from "./housing.js";
  * @param {object} i             - Inputs (same object passed to spendingNeed)
  * @param {number} ageA          - Person A's age in the projection year
  * @param {number} ageB          - Person B's age in the projection year
- * @param {{ isSurvivor: boolean, survivorAge: number|null }} ctx
+ * @param {{ isSurvivor: boolean, survivorAge: number|null, spendMult?: number }} ctx
  * @returns {{
- *   nonHousingBase: number,   // living / income portion (no healthcare)
+ *   nonHousingBase: number,   // living / income portion (no healthcare), scaled by spendMult
  *   healthcare:     number,   // age-based healthcare annual amount
  *   housing:        number,   // Annual housing cost (rent / P&I / property tax / insurance / maintenance)
  *   lifestyleSteps: number,   // Wave 0: always 0 (seam for smile/step curve)
@@ -76,6 +77,10 @@ export function spendingComponents(i, ageA, ageB, ctx = {}) {
     // preserves pre-Task-8 behaviour for callers that don't pass these (e.g. headline/steady).
     workingA = false,
     workingB = false,
+    // Task 6 (Wave 3): Guyton-Klinger guardrail multiplier. Scales nonHousingBase ONLY
+    // (discretionary). Housing and healthcare are hard obligations — never scaled.
+    // Default 1 → byte-identical to pre-Task-6 behaviour (fixed strategy).
+    spendMult = 1,
   } = ctx;
 
   // Preserve the survivor-age fallback from the original spendingNeed.
@@ -105,7 +110,7 @@ export function spendingComponents(i, ageA, ageB, ctx = {}) {
     const scale = single ? SINGLE_COST_FACTOR : 1;
     const lifestyle = (Number(i.lifestyle) || 100) / 100;
     const smile = smileMultiplier(ageA, retireAgeA, i.spendingShape);
-    const nonHousingBase = livingMo * 12 * scale * lifestyle * smile;
+    const nonHousingBase = livingMo * 12 * scale * lifestyle * smile * spendMult;
 
     // Task 8: the pre-65 ACA figure (hcPre) applies to a person only when under 65 AND not
     // working; a still-working pre-65 person uses the post-65/Medicare figure (employer-insured).
@@ -124,7 +129,7 @@ export function spendingComponents(i, ageA, ageB, ctx = {}) {
   // targetPct is reframed as the NON-HOUSING share of income (Wave 2, Task 4).
   // Default changed: 0.40 → 0.28 in RetirementCalculator.jsx.
   const smile = smileMultiplier(ageA, retireAgeA, i.spendingShape);
-  const nonHousingBase = i.incomeHH * i.targetPct * smile;
+  const nonHousingBase = i.incomeHH * i.targetPct * smile * spendMult;
   const perPersonHC = Math.max(0, (i.hcPre - i.hcPost)) / 2;
   // Task 8: count a person in the pre-65 ACA bridge only if under 65 AND not working
   // (a still-working spouse carries employer insurance). A survivor is retired.
@@ -188,27 +193,31 @@ export function stressReturnForYear(realReturn, yearIndex) {
 /**
  * Resolve the per-year portfolio return for a simulation step.
  *
- * Resolution order (mirrors the inline expression previously in simulate.js):
+ * Resolution order:
  *   1. If ssOpt.returns is provided, use ssOpt.returns[y] (falling back to
- *      i.realReturn if the array has no entry at y).
+ *      i.realReturn if the array has no entry at y). MC paths win — always first.
  *   2. Else if ssOpt.stress is set, apply the stress schedule via
- *      stressReturnForYear(realReturn, y).
- *   3. Else return i.realReturn.
+ *      stressReturnForYear(realReturn, y). Stress wins over the return model.
+ *   3. Else delegate to resolveYearReturn(i, y, ctx) which applies the
+ *      returnModel (blended / glidepath / byBucket). Blended default returns
+ *      i.realReturn — byte-identical to pre-Task-5 behavior.
  *
- * Wave 1 (B1: return presets / variability / glidepath) swaps the body of
- * this function without touching simulate.js.
+ * Wave 3 Task 5: extended signature to accept ctx = { yearsToRetire,
+ * totalAccumYears, buckets } so glidepath and byBucket can resolve per-year.
+ * ctx defaults to {} so every existing call site without ctx still compiles.
  *
- * @param {{ realReturn: number }} i   - Inputs object
+ * @param {{ realReturn: number, returnModel?: object }} i   - Inputs object
  * @param {number} y                   - Year index (0-based) within the simulation
  * @param {{ returns?: number[], stress?: boolean }} ssOpt - Scenario options
+ * @param {{ yearsToRetire?: number, totalAccumYears?: number, buckets?: object }} [ctx]
  * @returns {number}
  */
-export function yearReturn(i, y, ssOpt) {
+export function yearReturn(i, y, ssOpt, ctx = {}) {
   if (ssOpt.returns) {
     return ssOpt.returns[y] ?? i.realReturn;
   }
   if (ssOpt.stress) {
     return stressReturnForYear(i.realReturn, y);
   }
-  return i.realReturn;
+  return resolveYearReturn(i, y, ctx);
 }

@@ -15,6 +15,7 @@ import { Staircase } from "./src/components/charts/Staircase.jsx";
 import { YearByYear } from "./src/components/charts/YearByYear.jsx";
 import { PortfolioFlows } from "./src/components/charts/PortfolioFlows.jsx";
 import { LongRun } from "./src/components/charts/LongRun.jsx";
+import { RealizedSpending } from "./src/components/charts/RealizedSpending.jsx";
 import { Places } from "./src/components/charts/Places.jsx";
 import { Compare } from "./src/components/charts/Compare.jsx";
 import { IncomeMix } from "./src/components/charts/IncomeMix.jsx";
@@ -25,6 +26,7 @@ import { Stats } from "./src/components/results/Stats.jsx";
 import { RiskTable } from "./src/components/results/RiskTable.jsx";
 import { Inheritance as InheritanceResult } from "./src/components/results/Inheritance.jsx";
 import { Household } from "./src/components/steps/Household.jsx";
+import { Saving } from "./src/components/steps/Saving.jsx";
 import { Timing } from "./src/components/steps/Timing.jsx";
 import { Pension } from "./src/components/steps/Pension.jsx";
 import { Inheritance as InheritanceStep } from "./src/components/steps/Inheritance.jsx";
@@ -220,6 +222,7 @@ export default function RetirementCalculator() {
           <div>
             <div style={{ background:C.panel, border:`1px solid ${C.line}`, borderRadius:14, padding:"20px 20px 6px", marginBottom:18 }}>
               <Household s={s} set={set} deferredMode={deferredMode} onDeferredModeChange={setDeferredMode} incomeHH={incomeHH} retireHousingAnnual={retireHousingAnnual} />
+              <Saving s={s} set={set} />
               <Housing s={s} set={set} />
               <Timing s={s} set={set} sFull={sFull} />
               <Pension s={s} set={set} afcAuto={afcAuto} afcEff={afcEff} steady={steady} />
@@ -287,6 +290,8 @@ export default function RetirementCalculator() {
               firstRmdAge={firstRmdAge}
               view={invView}
               onViewChange={setInvView}
+              withdrawalOrder={s.withdrawalOrder}
+              onWithdrawalOrderChange={set("withdrawalOrder")}
             />
 
             {/* Balance with vs without SS */}
@@ -303,6 +308,9 @@ export default function RetirementCalculator() {
               showStress={s.showStress}
               hasShock={hasEmergent}
             />
+
+            {/* Task 6: Realized spending distribution — only when guardrails are on and MC has run */}
+            <RealizedSpending realizedSpending={mc?.realizedSpending ?? null} />
 
             {/* Places */}
             <Places

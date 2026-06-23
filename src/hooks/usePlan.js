@@ -74,6 +74,11 @@ export function usePlan(s, couple, stage) {
 
   const invRows = useMemo(() => simSS.rows.map(r => ({
     age: r.aA,
+    // Wave 3 D1: three real buckets for the stacked composition view.
+    taxableBal: r.taxableBal ?? Math.max(0, (r.bal ?? 0) - (r.defBal ?? 0)),
+    deferredBal: r.deferredBal ?? (r.defBal ?? 0),
+    rothBal: r.rothBal ?? 0,
+    // Legacy two-band keys (tax-deferred vs after-tax) kept for back-compat.
     deferred: r.defBal ?? 0,
     afterTax: Math.max(0, r.bal - (r.defBal ?? 0)),
     contrib: r.contrib || 0,
@@ -81,6 +86,8 @@ export function usePlan(s, couple, stage) {
     spendDraw: -(r.wdSpend ?? r.wd ?? 0),
     forcedRmd: -(r.forcedRmd || 0),
     rmd: r.rmd || 0,
+    // Wave 3 D2: years where guaranteed income exceeds need; surplus reinvested into taxable.
+    reinvest: r.reinvest || 0,
   })), [simSS]);
 
   const incomeStack = useMemo(() => [

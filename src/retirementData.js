@@ -52,6 +52,38 @@ export const DEFAULT_VOLATILITY = MC_DEFAULTS.volatility; // 0.12
 // Sources: SOURCES.smileRR, SOURCES.smileKitces, SOURCES.blanchett2026.
 export const SMILE_DEFAULTS = { earlyDecline: 0.01, upturnAge: 85, lateUpturn: 0.01, floor: 0.75 };
 
+// 2026 retirement-contribution limits. Source: IRS Notice 2025-67 (SOURCES.irsContrib2026).
+// Catch-up: standard 50+; "super" catch-up applies only in the year a worker is 60–63
+// (SECURE 2.0). High earners (>$150k prior-year FICA wages) must make 401(k) catch-ups as
+// Roth — flagged in the UI, not auto-enforced (planning-grade). Roth IRA MAGI phase-out per IRS.
+export const CONTRIB_LIMITS_2026 = {
+  "401k":      { base: 24500, catchUp50: 8000,  superCatchUp60to63: 11250 },
+  ira:         { base: 7500,  catchUp50: 1100,  superCatchUp60to63: 0 },
+  hsaSelf:     { base: 4400,  catchUp55: 1000 },
+  hsaFamily:   { base: 8750,  catchUp55: 1000 },
+  rothIraPhaseOut: { single: [153000, 168000], married: [242000, 252000] },
+  highEarnerRothCatchUpWageFloor: 150000,
+};
+
+// Return model defaults (Wave 3 Task 5).
+// "blended" is the opt-in default — resolveYearReturn returns i.realReturn unchanged,
+// so every existing result is byte-identical. "glidepath" and "byBucket" are opt-in.
+// Glidepath defaults anchored to long-run 60/40 history: 80% equity now → 40% at
+// retirement, using Growth (~6.5% real) and Conservative (~2% real bond) endpoints.
+// Sources: SOURCES.cfa6040, SOURCES.carson6040.
+export const RETURN_MODEL_DEFAULTS = { mode: "blended" };
+export const GLIDEPATH_DEFAULTS = {
+  equityPctNow: 80,
+  equityPctAtRetire: 40,
+  equityReal: 0.065,
+  bondReal: 0.02,
+};
+
+// Guyton-Klinger guardrail defaults (Wave 3 Task 6, opt-in).
+// Upper/lower bands are ±20% of the base SWR; adjustments are ±10%.
+// Sources: SOURCES.kitcesGuardrails, SOURCES.morningstarGuardrails.
+export const GUARDRAIL_DEFAULTS = { upperPct: 20, lowerPct: 20, cutPct: 10, raisePct: 10 };
+
 export const SOURCES = {
   irs2026: "https://www.irs.gov/newsroom/irs-releases-tax-inflation-adjustments-for-tax-year-2026-including-amendments-from-the-one-big-beautiful-bill",
   ssaPia: "https://www.ssa.gov/oact/progdata/retirebenefit2.html",
@@ -75,6 +107,10 @@ export const SOURCES = {
   irsFtc: "https://www.irs.gov/individuals/international-taxpayers/foreign-tax-credit",
   irsForm3520: "https://www.irs.gov/forms-pubs/about-form-3520",
   fbar: "https://www.irs.gov/businesses/small-businesses-self-employed/report-of-foreign-bank-and-financial-accounts-fbar",
+  irsContrib2026: "https://www.irs.gov/newsroom/401k-limit-increases-to-24500-for-2026-ira-limit-increases-to-7500",
+  fidelityCatchup: "https://www.fidelity.com/learning-center/personal-finance/401k-catch-up-contributions-high-earners",
+  kitcesGuardrails: "https://www.kitces.com/blog/guyton-klinger-guardrails-retirement-income-rules-risk-based/",
+  morningstarGuardrails: "https://www.morningstar.com/retirement/want-boost-your-retirement-income-guardrails-could-help",
 };
 
 /* 2026 reference data. Tax constants are from the IRS 2026 inflation release.
@@ -202,9 +238,9 @@ export const US_STATE_TAX = {
 // exposureNotes drive the DualTaxExposure panel. Sources: SOURCES.usModelTreaty,
 // SOURCES.irsFtc, SOURCES.irsForm3520, SOURCES.fbar.
 export const INTL_TAX = {
-  // Austria: addlTaxRate 0.05 in LOCATIONS; net-of-FTC effective rate modeled 0.0 (brief spec).
-  "Austria": { name: "Austria", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0.0, propertyTaxRate: 0,
-    exposureNotes: { worldwide: "As a US citizen you stay liable for US federal tax on worldwide income; the US–Austria treaty + Foreign Tax Credit prevent double taxation.", govtPension: "Her WA DRS pension is a government-service pension — taxable only by the US under the treaty, not by Austria.", residenceTaxed: "Austria can tax IRA/401(k) distributions as a resident; the US FTC generally offsets the US tax on the same dollars (effective added rate modeled ~0 here — verify).", filing: "Inheriting the Klagenfurt home over $100k triggers IRS Form 3520 (report-only); foreign accounts may trigger FBAR/FATCA." } },
+  // Austria: addlTaxRate 0.05 in LOCATIONS; net-of-treaty effective rate modeled 0.05 (Wave 3 T7).
+  "Austria": { name: "Austria", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0.05, propertyTaxRate: 0,
+    exposureNotes: { worldwide: "As a US citizen you stay liable for US federal tax on worldwide income; the US–Austria treaty + Foreign Tax Credit prevent double taxation.", govtPension: "Her WA DRS pension is a government-service pension — taxable only by the US under the treaty, not by Austria.", residenceTaxed: "Austria can tax IRA/401(k) distributions as a resident; effective added rate modeled ~5% net of treaty/FTC here — verify with a cross-border specialist.", filing: "Inheriting the Klagenfurt home over $100k triggers IRS Form 3520 (report-only); foreign accounts may trigger FBAR/FATCA." } },
   // Bulgaria / Romania: addlTaxRate 0 in LOCATIONS → retireRate 0.
   "Bulgaria / Romania": { name: "Bulgaria / Romania", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0, propertyTaxRate: 0,
     exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; a US–Bulgaria or US–Romania treaty + Foreign Tax Credit generally prevents double taxation.", govtPension: "Her WA DRS pension is a government-service pension — taxable only by the US under treaty, not by the residence country.", residenceTaxed: "Bulgaria/Romania may tax IRA/401(k) distributions as a resident; the US FTC typically offsets the US tax on the same dollars (effective added rate modeled 0 — verify).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },

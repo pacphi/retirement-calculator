@@ -33,6 +33,7 @@ import {
 } from "./calculatorCore.js";
 import { LOCATIONS, SINGLE_COST_FACTOR, HOME_SELL_NET } from "./retirementData.js";
 import { remainingBalance } from "./finance/housing.js";
+import { makeDefaultPlan } from "./defaultPlan.js";
 
 const baseState = {
   ageA:45, ageB:45, stopA:62, stopB:60, claimA:67, claimB:67, pensionAge:65,
@@ -699,8 +700,15 @@ describe("location-aware additional income tax", () => {
   });
 
   it("applies a higher modeled tax in a high-tax locale than a no-tax one", () => {
-    const nl = calculatePlan({ ...baseState, retireLoc: "Netherlands" });   // addlTaxRate 0.08
-    const tx = calculatePlan({ ...baseState, retireLoc: "US -- Texas / Florida" }); // 0%
+    // Wave 3 D1: the residence layer only taxes the deferred PORTION of a draw. Under the
+    // default tax-smart order (taxable→deferred→roth) the modest steady-state draw comes
+    // entirely from the taxable bucket (ordinaryShare 0), so the locale differential
+    // vanishes — both locales tax only pension+SS, identically. To exercise the
+    // locale-differential-on-deferred-withdrawal behavior this test asserts, draw from the
+    // deferred bucket first so there IS a deferred withdrawal for the residence layer to tax.
+    const order = ["deferred", "taxable", "roth"];
+    const nl = calculatePlan({ ...baseState, retireLoc: "Netherlands", withdrawalOrder: order });   // addlTaxRate 0.08
+    const tx = calculatePlan({ ...baseState, retireLoc: "US -- Texas / Florida", withdrawalOrder: order }); // 0%
     expect(nl.steady.tax).toBeGreaterThan(tx.steady.tax);
   });
 
@@ -717,13 +725,29 @@ describe("typed residence tax — single-tax-source invariant (Task 6)", () => {
   // typed residence layer; the simulated row carries the same composition, so the
   // chosen steady row's tax must match what steadyState reports for guaranteed-only.
 
-  it("zeroes the residence layer for an international treaty location (Austria retireRate 0)", () => {
-    // Austria: pensionExclusion "full", retireRate 0.0 → typed residence tax = 0.
-    // The headline tax must therefore equal the pure federal tax (no phantom 5% flat).
-    const austria = calculatePlan({ ...baseState, retireLoc: "Austria", stateCode: null, stateRate: null });
-    const txState = calculatePlan({ ...baseState, retireLoc: "Austria", stateCode: "TX", stateRate: null });
-    // TX is a no-income-tax US state (retireRate 0) — same zero residence layer as Austria.
-    expect(austria.steady.tax).toBeCloseTo(txState.steady.tax, 6);
+  it("adds a typed residence-tax layer for Austria at net-of-treaty rate (Wave 3 T7: 0→0.05)", () => {
+    // Wave 3 T7: Austria net-of-treaty 0→0.05 (verify with a cross-border specialist).
+    // INTL_TAX.Austria.retireRate changed from 0.0 to 0.05.
+    // The typed residence layer only fires when:
+    //   (a) relocationYear is set so activeJurisdiction returns the INTL_TAX profile, AND
+    //   (b) the steady-state draw includes a deferred portion (ordinaryShare > 0).
+    // Force both: use deferred-first withdrawal order (same as the Netherlands test above)
+    // and set relocationYear before the steady-state year so the typed path is active.
+    // pensionExclusion:"full" → DRS pension excluded; taxesSS:false → SS excluded from base.
+    // Only the deferred withdrawal is residence-taxed at 5%, raising Austria tax above TX (0%).
+    const order = ["deferred", "taxable", "roth"];
+    const austria = calculatePlan({
+      ...baseState, retireLoc: "Austria", stateCode: null, stateRate: null,
+      withdrawalOrder: order, relocationYear: 2026,
+    });
+    const txDomestic = calculatePlan({
+      ...baseState, retireLoc: "US -- Texas / Florida", stateCode: null, stateRate: null,
+      withdrawalOrder: order, relocationYear: 2026,
+    });
+    // Austria retireRate 0.05 on deferred draws → higher total tax than TX (retireRate 0).
+    expect(austria.steady.tax).toBeGreaterThan(txDomestic.steady.tax);
+    // Residence layer (stateTax) must be positive for Austria.
+    expect(austria.steady.taxDetails.stateTax).toBeGreaterThan(0);
   });
 
   it("applies a higher headline tax for a US state that taxes pension+withdrawals (CA) than a no-tax one (TX)", () => {
@@ -733,7 +757,8 @@ describe("typed residence tax — single-tax-source invariant (Task 6)", () => {
   });
 
   it("an explicit stateRate override re-engages the flat path even when a typed location exists", () => {
-    // Austria typed (retireRate 0) → no residence tax; a 10% override must raise the tax.
+    // Austria typed (retireRate 0.05 after Wave 3 T7) → residence tax on deferred draws;
+    // a 10% override must raise the tax further above the typed 5% rate.
     const typed = calculatePlan({ ...baseState, retireLoc: "Austria", stateCode: null, stateRate: null });
     const overridden = calculatePlan({ ...baseState, retireLoc: "Austria", stateCode: null, stateRate: 0.10 });
     expect(overridden.steady.tax).toBeGreaterThan(typed.steady.tax);
@@ -1493,5 +1518,59 @@ describe("Task 8 — work-vs-retire two-location jurisdiction split", () => {
     // Same ages, same income basis: the only difference is the pre-65 bridge gating.
     // Working → no bridge; retired pre-65 → bridge present, so retired need is higher.
     expect(rRow.need).toBeGreaterThan(wRow.need);
+  });
+});
+
+describe("Wave 3 D2 — general surplus reinvest", () => {
+  it("reinvests an after-tax guaranteed surplus into the taxable bucket", () => {
+    // Arrange: low targetPct so SS+pension after tax already exceeds the need in
+    // some retirement years — guaranteed income covers need without any portfolio draw.
+    const s = { ...makeDefaultPlan(), targetPct: 0.10, contrib: 0 };
+
+    // Act
+    const { simChosen } = calculatePlan(s);
+
+    // Assert: at least one row has reinvest > 0 with no portfolio withdrawal (wd === 0),
+    // and the taxable bucket must have grown (reinvested funds land there).
+    const surplusRow = simChosen.rows.find((r) => r.reinvest > 0 && r.wd === 0);
+    expect(surplusRow).toBeDefined();
+    expect(surplusRow.taxableBal).toBeGreaterThan(0);
+  });
+});
+
+describe("Wave 3 Task 1 — contributions engine integration", () => {
+  // Shared base for contribution tests: simple scenario, no inheritances, no travel.
+  const contribBase = {
+    ...baseState,
+    ageA: 45, ageB: 45, stopA: 62, stopB: 60,
+    incomeA: 90000, incomeB: 75000, savings: 300000,
+    contrib: 18000, tradFrac: 0.7,
+    tx: { ...baseState.tx, on: false }, at: { ...baseState.at, on: false },
+    travel: { on: false }, events: [],
+    retireLoc: "US -- national average", spendBasis: "income",
+  };
+
+  it("Simple mode with realRaise:0 produces identical depletion age and final balance to pre-Task-1 baseline", () => {
+    // Arrange: default Simple mode, zero real raise — engine must be behavior-identical.
+    const withNew = calculatePlan({ ...contribBase, contribMode: "simple", realRaise: 0,
+      bucketSplit: { mode: "pct", deferredPct: 70, taxablePct: 30, rothPct: 0 } });
+    const withoutFields = calculatePlan({ ...contribBase });
+    // Act + Assert: depletion age and final portfolio value must match to the dollar.
+    const rowsNew = withNew.simChosen.rows;
+    const rowsOld = withoutFields.simChosen.rows;
+    expect(withNew.simChosen.depAge).toBe(withoutFields.simChosen.depAge);
+    expect(rowsNew[rowsNew.length - 1].bal).toBe(rowsOld[rowsOld.length - 1].bal);
+  });
+
+  it("realRaise:0.02 grows contributions in real terms and raises final balance vs realRaise:0", () => {
+    // Arrange: 2% real raise should compound contributions upward each working year.
+    const flat = calculatePlan({ ...contribBase, contribMode: "simple", realRaise: 0,
+      bucketSplit: { mode: "pct", deferredPct: 70, taxablePct: 30, rothPct: 0 } });
+    const raised = calculatePlan({ ...contribBase, contribMode: "simple", realRaise: 0.02,
+      bucketSplit: { mode: "pct", deferredPct: 70, taxablePct: 30, rothPct: 0 } });
+    // Act + Assert: higher real raise → larger portfolio at retirement age.
+    const flatRetRow = flat.simChosen.rows.find((r) => r.aA >= contribBase.stopA);
+    const raisedRetRow = raised.simChosen.rows.find((r) => r.aA >= contribBase.stopA);
+    expect(raisedRetRow.bal).toBeGreaterThan(flatRetRow.bal);
   });
 });

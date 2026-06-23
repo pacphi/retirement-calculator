@@ -70,14 +70,16 @@ describe("residenceTaxForYear (US state typed cases — Task 6)", () => {
 
 describe("residenceTaxForYear (international typed cases — Task 6)", () => {
   it("a foreign profile exempts the govt (DRS) pension under the treaty but residence-taxes IRA draws", () => {
-    // Austria: pensionExclusion "full" (govt pension US-only), taxesTradWithdrawal true, retireRate 0 (FTC nets to ~0)
+    // Wave 3 T7: Austria net-of-treaty 0→0.05 (verify). retireRate is now 0.05, not 0.
+    // pensionExclusion "full" → pension excluded from base; taxesSS:false → SS excluded.
+    // Only deferredWithdrawal is in the residence base: 0.05 × 20000 = 1000.
     const t = residenceTaxForYear(INTL_TAX["Austria"], {
       isRetirement: true,
       ss: 40000,
       pension: 30000,
       deferredWithdrawal: 20000,
     });
-    expect(t).toBe(0); // effective net-of-treaty rate 0 ⇒ no residence-layer add for this persona
+    expect(t).toBeCloseTo(0.05 * 20000, 6); // 0→0.05 re-baseline: was 0, now 1000
 
     // and the govt pension is excluded from the base regardless of rate:
     const t2 = residenceTaxForYear(

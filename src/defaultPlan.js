@@ -1,4 +1,4 @@
-import { DEFAULT_TRAVEL, DEFAULT_LIFE_EVENTS, DEFAULT_LIFE } from "./retirementData.js";
+import { DEFAULT_TRAVEL, DEFAULT_LIFE_EVENTS, DEFAULT_LIFE, RETURN_MODEL_DEFAULTS, GUARDRAIL_DEFAULTS } from "./retirementData.js";
 
 // The single source of truth for the app's default scenario. Imported by
 // RetirementCalculator.jsx (initial useState) and pinned by a golden regression
@@ -26,6 +26,20 @@ export const DEFAULT_PLAN = {
   workLoc: "WA", relocationYear: 2046, stateCode: null,
   housing: { tenure: "rent", rent: 1650, mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: 2026 }, homeValue: 0, insuranceAnnual: 0, maintenancePct: 0.01, relocation: { action: "sell", saleValue: 0 } },
   retireHousing: null,
+  contribMode: "simple",
+  contribStreams: [],
+  employerMatch: { pct: 0, capPct: 0 },
+  realRaise: 0,
+  // Wave 3 D1: tax-smart withdrawal order (taxable→deferred→roth defers ordinary income).
+  withdrawalOrder: ["taxable", "deferred", "roth"],
+  // Wave 3 Task 5: return model (opt-in; "blended" default keeps all results unchanged).
+  returnModel: { ...RETURN_MODEL_DEFAULTS },
+  // bucketSplit is intentionally absent from the default — plan.js derives it from
+  // tradFrac when not explicitly set. Once a user adjusts the bucket controls in
+  // Saving.jsx, bucketSplit is stored in state and takes precedence over tradFrac.
+  // Wave 3 Task 6: spending strategy (opt-in; "fixed" default keeps all results unchanged).
+  spendingStrategy: "fixed",
+  guardrails: { ...GUARDRAIL_DEFAULTS },
 };
 
 // A fresh deep-ish clone for React state init (so state edits never mutate the constant).
@@ -38,4 +52,9 @@ export const makeDefaultPlan = () => ({
   ltc: { ...DEFAULT_PLAN.ltc }, spendingShape: { ...DEFAULT_PLAN.spendingShape },
   lifestyleSteps: DEFAULT_PLAN.lifestyleSteps.map((x) => ({ ...x })),
   housing: { ...DEFAULT_PLAN.housing, mortgage: { ...DEFAULT_PLAN.housing.mortgage }, relocation: { ...DEFAULT_PLAN.housing.relocation } },
+  contribStreams: [],
+  employerMatch: { ...DEFAULT_PLAN.employerMatch },
+  withdrawalOrder: [...DEFAULT_PLAN.withdrawalOrder],
+  returnModel: { ...DEFAULT_PLAN.returnModel },
+  guardrails: { ...DEFAULT_PLAN.guardrails },
 });
