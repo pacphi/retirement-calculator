@@ -3,7 +3,7 @@ import {
   ResponsiveContainer, ReferenceLine,
 } from "recharts";
 import { C, SRC } from "../theme.js";
-import { Segmented } from "../atoms/index.jsx";
+import { Segmented, Select } from "../atoms/index.jsx";
 import { usd0, usdK } from "../format.js";
 
 const invName = {
@@ -20,14 +20,24 @@ const invName = {
   rothBal: "Roth",
 };
 
-// Wave 3 D1: the two tax-smart withdrawal orders surfaced as a control. The engine accepts
-// any permutation; these two cover the planning-grade choice (draw tax-free/principal first
-// to defer ordinary income, or draw the pre-tax bucket first to level lifetime tax).
+// Wave 3 D1: the withdrawal order surfaced as a control. The engine draws buckets in the
+// chosen sequence (splitWithdrawal), so all six permutations of taxable/deferred/roth are
+// valid; each is offered. `value` is the full order joined ("taxable-deferred-roth"), so the
+// control distinguishes every permutation rather than collapsing to the first bucket.
+const DEFAULT_WITHDRAWAL_ORDER = ["taxable", "deferred", "roth"];
 const WITHDRAWAL_ORDER_OPTIONS = [
-  { label: "Taxable first", value: "taxable", order: ["taxable", "deferred", "roth"] },
-  { label: "Tax-deferred first", value: "deferred", order: ["deferred", "taxable", "roth"] },
-];
-const orderKey = (order) => ((order || [])[0] === "deferred" ? "deferred" : "taxable");
+  ["taxable", "deferred", "roth"],
+  ["taxable", "roth", "deferred"],
+  ["deferred", "taxable", "roth"],
+  ["deferred", "roth", "taxable"],
+  ["roth", "taxable", "deferred"],
+  ["roth", "deferred", "taxable"],
+].map((order) => ({
+  order,
+  value: order.join("-"),
+  label: order.map((b) => ({ taxable: "Taxable", deferred: "Tax-deferred", roth: "Roth" }[b])).join(" → "),
+}));
+const orderKey = (order) => (Array.isArray(order) && order.length ? order : DEFAULT_WITHDRAWAL_ORDER).join("-");
 
 /**
  * PortfolioFlows chart panel — what's happening inside the investment portfolio,
@@ -56,7 +66,7 @@ export function PortfolioFlows({ invRows, firstRmdAge, view, onViewChange, withd
           {onWithdrawalOrderChange && (
             <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: C.slate }}>
               <span aria-hidden="true">Withdrawal order</span>
-              <Segmented
+              <Select
                 aria-label="Withdrawal order"
                 value={orderKey(withdrawalOrder)}
                 onChange={(v) => onWithdrawalOrderChange((WITHDRAWAL_ORDER_OPTIONS.find((o) => o.value === v) || WITHDRAWAL_ORDER_OPTIONS[0]).order)}

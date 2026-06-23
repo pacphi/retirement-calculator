@@ -31,7 +31,7 @@ export function Saving({ s, set }) {
   const addStream = () =>
     set("contribStreams")([
       ...streams,
-      { id: String(Date.now()), vehicle: "401k", owner: "B", amount: 0, roth: false },
+      { id: crypto.randomUUID(), vehicle: "401k", owner: "B", amount: 0, roth: false },
     ]);
 
   const removeStream = (id) =>

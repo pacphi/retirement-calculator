@@ -81,9 +81,9 @@ export function NumberInput({ value, onChange, prefix, suffix, min, ...rest }) {
     {suffix && <span style={{ position:"absolute", right:11, fontFamily:"'JetBrains Mono',monospace", color:C.slate, fontSize:13 }}>{suffix}</span>}
   </div>);
 }
-export function Select({ value, onChange, options }) {
-  return (<select value={value} onChange={(e)=>onChange(e.target.value)} style={{ ...inputStyle, fontFamily:"'Inter',sans-serif", fontWeight:600, fontSize:13.5, cursor:"pointer" }}>
-    {options.map(o => <option key={o} value={o}>{o}</option>)}
+export function Select({ value, onChange, options, "aria-label": ariaLabel }) {
+  return (<select aria-label={ariaLabel} value={value} onChange={(e)=>onChange(e.target.value)} style={{ ...inputStyle, fontFamily:"'Inter',sans-serif", fontWeight:600, fontSize:13.5, cursor:"pointer" }}>
+    {options.map(o => { const opt = (o && typeof o === "object") ? o : { value:o, label:o }; return <option key={opt.value} value={opt.value}>{opt.label}</option>; })}
   </select>);
 }
 export function Segmented({ value, onChange, options, "aria-label": ariaLabel }) {
