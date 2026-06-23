@@ -113,10 +113,12 @@ Inter / Newsreader / JetBrains Mono).
 ## File structure (created / modified this wave)
 
 **Task 0 — golden baseline**
+
 - Create: `src/defaultPlan.js` (the extracted default-state literal) + `src/defaultPlan.test.js`.
 - Modify: `RetirementCalculator.jsx` (import `DEFAULT_PLAN` instead of inline literal).
 
 **Task 1 — A1/A2 contributions**
+
 - Create: `src/finance/contributions.js` + `src/finance/contributions.test.js`;
   `src/components/steps/Contributions.jsx`.
 - Modify: `src/retirementData.js` (`CONTRIB_LIMITS_2026`, `SOURCES.irsContrib2026`,
@@ -126,25 +128,30 @@ Inter / Newsreader / JetBrains Mono).
   `RetirementCalculator.jsx` (wire the step).
 
 **Task 2 — bucket data shape + seeding**
+
 - Create: `src/finance/buckets.js` + `src/finance/buckets.test.js`.
 - Modify: `src/finance/plan.js` (`seedBuckets` from `bucketSplit`; `tradFrac` becomes derived).
 
 **Task 3 — D1 buckets engine + withdrawal ordering (deepest surgery, opus review)**
+
 - Modify: `src/finance/simulate.js` (three balances, order-dependent draw, RMD on deferred,
   per-bucket rows); `src/finance/buckets.js` (`splitWithdrawal`); `src/components/charts/` (the
   investments "buckets" view drains three real bands); `src/calculatorCore.test.js` (re-baseline).
 
 **Task 4 — D2 surplus reinvest**
+
 - Modify: `src/finance/simulate.js` (generalized surplus → taxable bucket);
   `src/components/charts/` (retirement-year reinvest bar); tests.
 
 **Task 5 — glidepath return model**
+
 - Modify: `src/finance/returns.js` (`resolveYearReturn`/`blendedMean`); `src/finance/seams.js`
   (`yearReturn` delegates to the model); `src/finance/monteCarlo.js` (sample around blended mean);
   `src/finance/plan.js` (normalize `returnModel`); create
   `src/components/steps/ReturnModel.jsx` (or extend the existing returns control) + tests.
 
 **Task 6 — E2 Guyton-Klinger guardrails (opus review)**
+
 - Create: `src/finance/guardrails.js` + `src/finance/guardrails.test.js`;
   `src/components/charts/RealizedSpending.jsx`.
 - Modify: `src/finance/simulate.js` (apply guardrail multiplier when `spendingStrategy==="guardrails"`);
@@ -152,12 +159,13 @@ Inter / Newsreader / JetBrains Mono).
   `src/components/steps/SpendingStrategy.jsx`; tests.
 
 **Task 7 — Austria rate + docs reconcile + full gate**
+
 - Modify: `src/retirementData.js` (`INTL_TAX.Austria.retireRate 0.0→0.05`, caption);
   `docs/prd.md`, `docs/use-cases.md`, `docs/sources.md`; final CI gate.
 
 ## Execution order & parallelization
 
-```
+```text
 T0 (golden baseline) ── serial, FIRST (pins headline before any change)
    │
 T1 (contributions + 2026 limits + realRaise) ── serial
@@ -186,10 +194,12 @@ unnecessary — one ledgered sequence. Commit intentionally per task.
 > deliberate, auditable diff against this literal — never a silently mutated assertion.
 
 **Files:**
+
 - Create: `src/defaultPlan.js`, `src/defaultPlan.test.js`
 - Modify: `RetirementCalculator.jsx:51-81` (import the literal instead of inlining it)
 
 **Interfaces:**
+
 - Produces: `export const DEFAULT_PLAN = { ...the exact current useState literal... }` — imported by
   `RetirementCalculator.jsx` (`useState(DEFAULT_PLAN)` — note: pass a fresh shallow clone so React
   state never mutates the module constant) and by `defaultPlan.test.js`.
@@ -287,6 +297,7 @@ const [s, setS] = useState(makeDefaultPlan);
 - [ ] **Step 5: Run the full suite + commit.**
 
 Run: `pnpm test` → all green (312 incl. the new golden test). Then:
+
 ```bash
 git add src/defaultPlan.js src/defaultPlan.test.js RetirementCalculator.jsx
 git commit -m "test(wave3): pin default headline via extracted DEFAULT_PLAN golden baseline"
@@ -302,12 +313,14 @@ git commit -m "test(wave3): pin default headline via extracted DEFAULT_PLAN gold
 > contribution SPLIT and the real-raise multiplier and proves them in isolation.
 
 **Files:**
+
 - Create: `src/finance/contributions.js`, `src/finance/contributions.test.js`,
   `src/components/steps/Contributions.jsx`
 - Modify: `src/retirementData.js`, `src/finance/plan.js`, `src/finance/simulate.js:29` +
   contribution deposit (lines ~306-320), `src/defaultPlan.js`, `RetirementCalculator.jsx`
 
 **Interfaces:**
+
 - Consumes: `DEFAULT_PLAN` (Task 0).
 - Produces:
   - `CONTRIB_LIMITS_2026` (in `retirementData.js`) — dated, source-linked table.
@@ -416,6 +429,7 @@ export const CONTRIB_LIMITS_2026 = {
 ```
 
 Add to `SOURCES`:
+
 ```js
   irsContrib2026: "https://www.irs.gov/newsroom/401k-limit-increases-to-24500-for-2026-ira-limit-increases-to-7500",
   fidelityCatchup: "https://www.fidelity.com/learning-center/personal-finance/401k-catch-up-contributions-high-earners",
@@ -505,6 +519,7 @@ Run: `pnpm test -- src/finance/contributions.test.js` → PASS.
 - [ ] **Step 6: Wire into `plan.js` + `simulate.js` (engine integration test first).**
 
 Add to `src/finance/plan.js` `buildPlanInputs` return object (defaults preserve Simple behavior):
+
 ```js
     contribMode: s.contribMode ?? "simple",
     contribStreams: s.contribStreams ?? [],
@@ -544,6 +559,7 @@ it("exposes the contributions controls", () => {
 - [ ] **Step 9: Run full suite + commit.**
 
 Run: `pnpm test` → green. Golden test (Task 0) must STILL PASS (Simple default unchanged).
+
 ```bash
 git add src/finance/contributions.js src/finance/contributions.test.js src/retirementData.js \
   src/finance/plan.js src/finance/simulate.js src/components/steps/Contributions.jsx \
@@ -560,10 +576,12 @@ git commit -m "feat(wave3): A1/A2 multi-vehicle contributions + 2026 limits + re
 > split and makes `tradFrac` a DERIVED output (`deferred / savings`).
 
 **Files:**
+
 - Modify: `src/finance/buckets.js` (created here — first half), `src/finance/buckets.test.js`,
   `src/finance/plan.js`
 
 **Interfaces:**
+
 - Produces:
   - `seedBuckets(savings, bucketSplit) -> { taxable, deferred, roth }` — totals to `savings`.
   - `derivedTradFrac({deferred, taxable, roth}) -> number` = `deferred / total` (0 when empty).
@@ -652,6 +670,7 @@ back-compat consumers. Run `pnpm test` → the golden test (Task 0) MUST still p
 reproduces `tradFrac 0.7` exactly).
 
 - [ ] **Step 5: Commit.**
+
 ```bash
 git add src/finance/buckets.js src/finance/buckets.test.js src/finance/plan.js
 git commit -m "feat(wave3): seedBuckets + derived tradFrac — three-bucket seeding (behavior-preserving)"
@@ -669,11 +688,13 @@ git commit -m "feat(wave3): seedBuckets + derived tradFrac — three-bucket seed
 > early ordinary income); re-baseline the golden test and `calculatorCore.test.js` deliberately.
 
 **Files:**
+
 - Modify: `src/finance/buckets.js` (add `splitWithdrawal`), `src/finance/buckets.test.js`,
   `src/finance/simulate.js` (the loop + `steadyState`), `src/calculatorCore.test.js`,
   `src/defaultPlan.js` (+`withdrawalOrder`), the investments "buckets" chart, `RetirementCalculator.*`
 
 **Interfaces:**
+
 - Consumes: `seedBuckets`, `contributionPlan` (Task 1).
 - Produces:
   - `splitWithdrawal(D, balances, order) -> { taxable, deferred, roth, total, ordinaryShare }` where
@@ -748,21 +769,25 @@ export function splitWithdrawal(D, balances, order = DEFAULT_WITHDRAWAL_ORDER) {
 Detailed modify-spec (the implementer holds the whole loop in context — do NOT placeholder):
 
 1. **Initialize buckets** (replace lines ~110-114):
+
    ```js
    let buckets = i.initialBuckets ? { ...i.initialBuckets } : seedBuckets(Number(i.savings) || 0, i.bucketSplit);
    const order = i.withdrawalOrder || DEFAULT_WITHDRAWAL_ORDER;
    const balOf = (b) => b.taxable + b.deferred + b.roth;
    let bal = balOf(buckets);
    ```
+
    Keep a `bal` mirror updated after each mutation (rows/depletion read it) — OR derive it via
    `balOf(buckets)` everywhere `bal` was read. Pick one and apply consistently.
 2. **Growth** (replace `bal = bal*(1+yr)+sellLump; defBal = defBal*(1+yr)`): grow each bucket by the
    year return; sale proceeds land in `taxable` (sale proceeds are taxable savings, not deferred):
+
    ```js
    buckets.taxable = buckets.taxable * (1 + yr) + sellLump;
    buckets.deferred = buckets.deferred * (1 + yr);
    buckets.roth = buckets.roth * (1 + yr);
    ```
+
    `defBalStart` (the RMD base) becomes `buckets.deferred` captured BEFORE growth.
 3. **Contributions** (replace lines ~306-320): deposit `contributionPlan(...).byBucket` into the
    matching buckets (employer match already folded into `deferred` by Task 1). Apply
@@ -793,10 +818,12 @@ Run the FULL suite. Tests asserting the old default headline/need will move (tax
 tax-free/principal first → less early ordinary income → higher net). For EACH failing assertion,
 verify the new value is correct by reasoning (taxable-first should raise early net), then re-baseline
 to the new intended value with an explanatory comment:
+
 ```js
 // Wave 3 D1: tax-smart withdrawal order (taxable→deferred→roth) defers ordinary income,
 // lowering early-retirement tax. Headline net <OLD> → <NEW>.
 ```
+
 Update `src/defaultPlan.test.js`'s pinned `steady.net` to the new value with the same comment.
 **Record the before→after headline net in the commit message and the SDD ledger.** Never mutate an
 assertion without the comment + rationale.
@@ -816,10 +843,13 @@ it("exposes the withdrawal-order control", () => {
   expect(screen.getByLabelText("Withdrawal order")).toBeInTheDocument();
 });
 ```
+
 Run: `pnpm test` → green. Commit:
+
 ```bash
 git commit -m "feat(wave3): D1 three real buckets + tax-smart withdrawal ordering (re-baselines default headline net <OLD>→<NEW>)"
 ```
+
 **Dispatch an opus spec+quality reviewer.** Require: (a) RED→GREEN evidence for the re-baseline;
 (b) independent re-derivation that the headline move is the ordering effect, not a tax-engine fork;
 (c) SINGLE-TAX-SOURCE verified in source (rows and `steadyState` use the same split+order);
@@ -834,10 +864,12 @@ git commit -m "feat(wave3): D1 three real buckets + tax-smart withdrawal orderin
 > path already proves the mechanic — this lifts it to the general case.
 
 **Files:**
+
 - Modify: `src/finance/simulate.js` (after `solveWithdrawal`, before row push),
   `src/calculatorCore.test.js`, the cash-flow chart.
 
 **Interfaces:**
+
 - Consumes: the three-bucket model (Task 3).
 - Produces: rows gain `reinvest: Math.round(surplusReinvested)` for the chart.
 
@@ -863,6 +895,7 @@ it("reinvests an after-tax guaranteed surplus into the taxable bucket", () => {
 
 In `simulate.js`, after the withdrawal/RMD block, when `wd === 0` (guaranteed income already covers
 need) and `afterTaxBeforeWithdrawal > need`, reinvest:
+
 ```js
 let reinvest = 0;
 if (wd === 0) {
@@ -870,6 +903,7 @@ if (wd === 0) {
   if (surplus > 0) { buckets.taxable += surplus; reinvest = surplus; }
 }
 ```
+
 Push `reinvest: Math.round(reinvest)` onto the row. (The RMD forced-surplus reinvest from Task 3
 stays; this covers the no-withdrawal surplus case, the generalization the spec asks for.)
 
@@ -882,6 +916,7 @@ Add a positive `reinvest` series (viridian) to the investments "flow" view so a 
 year is legible. Caption: "Years your guaranteed income exceeds need reinvest the surplus."
 
 - [ ] **Step 6: Commit.**
+
 ```bash
 git commit -m "feat(wave3): D2 generalize surplus reinvest — any guaranteed surplus year funds the taxable bucket"
 ```
@@ -896,12 +931,14 @@ git commit -m "feat(wave3): D2 generalize surplus reinvest — any guaranteed su
 > BLENDED mean so the variability band is unchanged (invariant 4).
 
 **Files:**
+
 - Modify: `src/finance/returns.js` + `src/finance/returns.test.js`, `src/finance/seams.js`
   (`yearReturn` delegates), `src/finance/monteCarlo.js`, `src/finance/plan.js`, a return-model UI
   control + `RetirementCalculator.*`. Add `RETURN_MODEL_DEFAULTS` + `GLIDEPATH_DEFAULTS` to
   `retirementData.js` (source-linked to `SOURCES.cfa6040`/`carson6040`).
 
 **Interfaces:**
+
 - Produces:
   - `blendedMean(i) -> number` — the scalar mean MC samples around (equals `i.realReturn` for
     blended; the equity/bond blend at the midpoint for glidepath; the balance-weighted mean for
@@ -961,7 +998,8 @@ describe("returnModel", () => {
   `"Return model"`, `"Equity % now"`, `"Equity % at retirement"`. Caption with the 60/40 sources and
   "glidepath is opt-in; Monte Carlo samples around the blended mean".
 
-- [ ] **Step 7: Full suite + commit.** Golden test unchanged (default `returnModel` blended). 
+- [ ] **Step 7: Full suite + commit.** Golden test unchanged (default `returnModel` blended).
+
 ```bash
 git commit -m "feat(wave3): glidepath/by-bucket return model (opt-in; MC samples the blended mean)"
 ```
@@ -977,6 +1015,7 @@ git commit -m "feat(wave3): glidepath/by-bucket return model (opt-in; MC samples
 > (Decision 7). Opt-in — default `"fixed"` (invariant 4 + one-number default).
 
 **Files:**
+
 - Create: `src/finance/guardrails.js`, `src/finance/guardrails.test.js`,
   `src/components/charts/RealizedSpending.jsx`
 - Modify: `src/finance/simulate.js` (apply the multiplier to `nonHousingBase` via the spend seam),
@@ -984,6 +1023,7 @@ git commit -m "feat(wave3): glidepath/by-bucket return model (opt-in; MC samples
   `RetirementCalculator.*`, `src/retirementData.js` (`GUARDRAIL_DEFAULTS`).
 
 **Interfaces:**
+
 - Produces:
   - `GUARDRAIL_DEFAULTS = { upperPct: 20, lowerPct: 20, cutPct: 10, raisePct: 10 }` (sourced).
   - `nextSpendingMultiplier({ multiplier, withdrawalRate, baseRate, bands }) -> { multiplier, breach }`
@@ -1078,9 +1118,11 @@ it("exposes the spending-strategy control", () => {
 ```
 
 - [ ] **Step 8: Full suite + commit (opus review gate).**
+
 ```bash
 git commit -m "feat(wave3): E2 Guyton-Klinger guardrails (opt-in) + MC realized-spending distribution"
 ```
+
 **Dispatch an opus reviewer.** Require: (a) determinism — guardrail MC reproducible under the fixed
 seed; (b) the guardrail multiplier scales discretionary spend only (housing/floor untouched);
 (c) default `"fixed"` leaves the deterministic projection unchanged (golden test green);
@@ -1093,6 +1135,7 @@ seed; (b) the guardrail multiplier scales discretionary spend only (housing/floo
 > Land Decision 6 (one-constant change) and reconcile docs. Controller verifies the whole gate.
 
 **Files:**
+
 - Modify: `src/retirementData.js` (`INTL_TAX.Austria.retireRate 0.0→0.05` + caption), `docs/prd.md`,
   `docs/use-cases.md`, `docs/sources.md`.
 
@@ -1114,6 +1157,7 @@ seed; (b) the guardrail multiplier scales discretionary spend only (housing/floo
   (Task 0 baseline → Task 3 re-baseline → Task 7 Austria) in the ledger.
 
 - [ ] **Step 4: Commit.**
+
 ```bash
 git commit -m "feat(wave3): Austria net-of-treaty rate (0→0.05, verify) + docs reconcile; full gate green"
 ```
