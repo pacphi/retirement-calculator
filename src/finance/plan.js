@@ -1,4 +1,5 @@
 import { LOCATIONS, PROP, TAX_YEAR, TIERS, US_STATE_TAX } from "../retirementData.js";
+import { seedBuckets, derivedTradFrac } from "./buckets.js";
 import { resolveReturn } from "./returns.js";
 import { simulate, steadyState } from "./simulate.js";
 
@@ -67,11 +68,15 @@ export function buildPlanInputs(s) {
   const incomeHH = (Number(s.incomeA) || 0) + (Number(s.incomeB) || 0);
   const retLocObj = LOCATIONS.find((l) => l.name === s.retireLoc) || LOCATIONS[10];
   const inher = buildInheritanceInputs(s);
-  // tradFrac (the pre-tax/ordinary-income share of withdrawals) is the single source of
-  // truth; the pre-tax balance subject to RMDs is simply that share of total savings.
+  // Bucket seeding (Task 2): bucketSplit drives the three-bucket split; tradFrac and
+  // taxDeferred are now DERIVED from the seeded buckets (back-compat for simulate.js
+  // and contributionPlan consumers that still read these keys).
   const savings = Number(s.savings) || 0;
-  const tradFrac = Math.min(1, Math.max(0, Number(s.tradFrac) || 0));
-  const taxDeferred = savings * tradFrac;
+  const _tfrac = (s.tradFrac != null && s.tradFrac !== "") ? Math.min(1, Math.max(0, Number(s.tradFrac))) : 0.7;
+  const bucketSplit = s.bucketSplit ?? { mode: "pct", deferredPct: Math.round(_tfrac * 100), taxablePct: Math.round((1 - _tfrac) * 100), rothPct: 0 };
+  const initialBuckets = seedBuckets(savings, bucketSplit);
+  const tradFrac = derivedTradFrac(initialBuckets); // DERIVED OUTPUT (was an input)
+  const taxDeferred = initialBuckets.deferred;
   return {
     ...s,
     tradFrac,
@@ -132,7 +137,8 @@ export function buildPlanInputs(s) {
     contribStreams: s.contribStreams ?? [],
     employerMatch: s.employerMatch ?? { pct: 0, capPct: 0 },
     realRaise: Number(s.realRaise) || 0,
-    bucketSplit: s.bucketSplit ?? { mode: "pct", deferredPct: Math.round((Number(s.tradFrac) || 0.7) * 100), taxablePct: Math.round((1 - (Number(s.tradFrac) || 0.7)) * 100), rothPct: 0 },
+    bucketSplit,
+    initialBuckets,
   };
 }
 

@@ -30,7 +30,9 @@ export const DEFAULT_PLAN = {
   contribStreams: [],
   employerMatch: { pct: 0, capPct: 0 },
   realRaise: 0,
-  bucketSplit: { mode: "pct", deferredPct: 70, taxablePct: 30, rothPct: 0 },
+  // bucketSplit is intentionally absent from the default — plan.js derives it from
+  // tradFrac when not explicitly set. Once a user adjusts the bucket controls in
+  // Saving.jsx, bucketSplit is stored in state and takes precedence over tradFrac.
 };
 
 // A fresh deep-ish clone for React state init (so state edits never mutate the constant).
@@ -45,5 +47,4 @@ export const makeDefaultPlan = () => ({
   housing: { ...DEFAULT_PLAN.housing, mortgage: { ...DEFAULT_PLAN.housing.mortgage }, relocation: { ...DEFAULT_PLAN.housing.relocation } },
   contribStreams: [],
   employerMatch: { ...DEFAULT_PLAN.employerMatch },
-  bucketSplit: { ...DEFAULT_PLAN.bucketSplit },
 });
