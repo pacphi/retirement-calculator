@@ -1,5 +1,6 @@
-import { TAX_YEAR } from "../retirementData.js";
+import { TAX_YEAR, GUARDRAIL_DEFAULTS } from "../retirementData.js";
 import { composeNeed, spendingComponents, yearReturn } from "./seams.js";
+import { nextSpendingMultiplier } from "./guardrails.js";
 import { housingCostForYear, resolveDwelling } from "./housing.js";
 import { calculateFederalTaxYear } from "./tax.js";
 import { residenceTaxForYear } from "./residenceTax.js";
@@ -106,6 +107,12 @@ export function spendingNeed(i, ageA, ageB, liveSav = 0, isSurvivor = false, sur
   return composeNeed(parts, liveSav);
 }
 
+// Internal helper: computes spendingNeed with an explicit guardrail multiplier.
+function spendingNeedWithMult(i, ageA, ageB, isSurvivor, survAge, baseCtx, spendMult) {
+  const parts = spendingComponents(i, ageA, ageB, { isSurvivor, survivorAge: survAge, ...baseCtx, spendMult });
+  return composeNeed(parts, 0);
+}
+
 export function simulate(i, ssOpt) {
   const haircut = ssOpt.haircut == null ? 1 : ssOpt.haircut;
   const cutYear = ssOpt.cutYear == null ? 9999 : ssOpt.cutYear;
@@ -127,6 +134,16 @@ export function simulate(i, ssOpt) {
   let fullyRetAge = null;
   let balAtFullRet = null;
   const rows = [];
+
+  // Task 6 (Wave 3): Guyton-Klinger guardrail carry-forward.
+  // spendMult starts at 1; when strategy is "guardrails" it steps each year based
+  // on the prior-year withdrawal rate vs the SWR bands. When "fixed" (default),
+  // spendMult stays 1 and nothing changes — byte-identical to pre-Task-6 behaviour.
+  const guardrailsOn = i.spendingStrategy === "guardrails";
+  const guardrailBands = (guardrailsOn && i.guardrails) ? i.guardrails : GUARDRAIL_DEFAULTS;
+  let spendMult = 1;
+  let prevWd = 0;   // prior-year gross withdrawal (for rate computation)
+  let prevBal = bal; // prior-year start-of-year balance
 
   // Life-expectancy model: derive each spouse's death year, who survives, and the
   // first/last death. The plan stops at the last death (capped by the horizon).
@@ -239,7 +256,21 @@ export function simulate(i, ssOpt) {
     // owned home — that would double-count property tax. The inherited owned carrying cost
     // is therefore ownRate × homeValue exactly, for both international and US homes.
     const effPropertyTaxRate = overrideActive ? 0 : jur.propertyTaxRate;
-    const need = spendingNeed(iEffective, aA, aB, 0, isSurvivor, survAge, {
+    // Task 6: step the guardrail multiplier using the prior year's withdrawal rate,
+    // then pass it into spendingNeed so it scales nonHousingBase only.
+    // Only step when there was an actual withdrawal (prevWd > 0): a zero-withdrawal
+    // year (guaranteed income covers the need) has no rate signal — hold the multiplier.
+    // This prevents spurious "raise" triggers during working years and surplus years.
+    if (guardrailsOn && y > 0 && prevWd > 0 && prevBal > 0) {
+      const wr = prevWd / prevBal;
+      ({ multiplier: spendMult } = nextSpendingMultiplier({
+        multiplier: spendMult,
+        withdrawalRate: wr,
+        baseRate: i.swr,
+        bands: guardrailBands,
+      }));
+    }
+    const spendCtx = {
       retireAgeA,
       cal,
       inflation: i.inflation,
@@ -250,7 +281,12 @@ export function simulate(i, ssOpt) {
       // alone (which wrongly fired the bridge during still-employed pre-65 years).
       workingA: workA,
       workingB: workB,
-    }) + extraSpend;
+      // Task 6: pass the carried multiplier; seams applies it to nonHousingBase only.
+      // When guardrailsOn is false, spendMult === 1 → no-op, byte-identical output.
+      spendMult,
+    };
+    const need = spendingNeedWithMult(iEffective, aA, aB, isSurvivor, survAge, spendCtx, spendMult)
+      + extraSpend;
     // Wave 3 Task 5: build the return-model context for glidepath / byBucket.
     // yearsToRetire: years remaining until the last spouse stops working (clamped ≥ 0).
     // totalAccumYears: total working years from simulation start to full retirement.
@@ -447,7 +483,18 @@ export function simulate(i, ssOpt) {
       housingRentOrPI: Math.round(housingRentOrPI),
       housingPropertyTax: Math.round(housingBreakdown.propertyTax),
       mortgagePaidOff,
+      // Task 6: expose the carried multiplier on the row for MC realized-spending capture.
+      spendMult,
     });
+    // Task 6: record this year's gross withdrawal and start-of-year balance for the
+    // next iteration's guardrail rate computation. prevBal is bal BEFORE this year's
+    // growth — i.e. the balance the withdrawal was drawn against (post-contribution
+    // balance from the prior year). We capture it here as the end-of-year bal AFTER
+    // the draw; next year's start-of-year balance equals this value plus growth.
+    // Simpler and correct for guardrail semantics: use wdTotal / bal-before-draw.
+    // We track prevBal as the start-of-year balance (bal after last year's mutations).
+    prevWd = wdTotal;
+    prevBal = bal + wdTotal; // restore pre-draw balance: end-bal + what was withdrawn
   }
 
   return { rows, depAge, fullyRetAge: fullyRetAge ?? i.ageA, balAtFullRet: balAtFullRet ?? bal };

@@ -54,9 +54,9 @@ import { resolveYearReturn } from "./returns.js";
  * @param {object} i             - Inputs (same object passed to spendingNeed)
  * @param {number} ageA          - Person A's age in the projection year
  * @param {number} ageB          - Person B's age in the projection year
- * @param {{ isSurvivor: boolean, survivorAge: number|null }} ctx
+ * @param {{ isSurvivor: boolean, survivorAge: number|null, spendMult?: number }} ctx
  * @returns {{
- *   nonHousingBase: number,   // living / income portion (no healthcare)
+ *   nonHousingBase: number,   // living / income portion (no healthcare), scaled by spendMult
  *   healthcare:     number,   // age-based healthcare annual amount
  *   housing:        number,   // Annual housing cost (rent / P&I / property tax / insurance / maintenance)
  *   lifestyleSteps: number,   // Wave 0: always 0 (seam for smile/step curve)
@@ -77,6 +77,10 @@ export function spendingComponents(i, ageA, ageB, ctx = {}) {
     // preserves pre-Task-8 behaviour for callers that don't pass these (e.g. headline/steady).
     workingA = false,
     workingB = false,
+    // Task 6 (Wave 3): Guyton-Klinger guardrail multiplier. Scales nonHousingBase ONLY
+    // (discretionary). Housing and healthcare are hard obligations — never scaled.
+    // Default 1 → byte-identical to pre-Task-6 behaviour (fixed strategy).
+    spendMult = 1,
   } = ctx;
 
   // Preserve the survivor-age fallback from the original spendingNeed.
@@ -106,7 +110,7 @@ export function spendingComponents(i, ageA, ageB, ctx = {}) {
     const scale = single ? SINGLE_COST_FACTOR : 1;
     const lifestyle = (Number(i.lifestyle) || 100) / 100;
     const smile = smileMultiplier(ageA, retireAgeA, i.spendingShape);
-    const nonHousingBase = livingMo * 12 * scale * lifestyle * smile;
+    const nonHousingBase = livingMo * 12 * scale * lifestyle * smile * spendMult;
 
     // Task 8: the pre-65 ACA figure (hcPre) applies to a person only when under 65 AND not
     // working; a still-working pre-65 person uses the post-65/Medicare figure (employer-insured).
@@ -125,7 +129,7 @@ export function spendingComponents(i, ageA, ageB, ctx = {}) {
   // targetPct is reframed as the NON-HOUSING share of income (Wave 2, Task 4).
   // Default changed: 0.40 → 0.28 in RetirementCalculator.jsx.
   const smile = smileMultiplier(ageA, retireAgeA, i.spendingShape);
-  const nonHousingBase = i.incomeHH * i.targetPct * smile;
+  const nonHousingBase = i.incomeHH * i.targetPct * smile * spendMult;
   const perPersonHC = Math.max(0, (i.hcPre - i.hcPost)) / 2;
   // Task 8: count a person in the pre-65 ACA bridge only if under 65 AND not working
   // (a still-working spouse carries employer insurance). A survivor is retired.

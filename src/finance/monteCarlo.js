@@ -30,6 +30,9 @@ export function runMonteCarlo(s, mcOpt = {}) {
   const balancesByYear = Array.from({ length: end + 1 }, () => []);
   const incomes = [];
   const depAges = [];
+  // Task 6: collect per-path realized spending when guardrails are on.
+  const guardrailsOn = inp.spendingStrategy === "guardrails";
+  const realizedSpends = guardrailsOn ? [] : null;
   let lasted = 0;
 
   for (let p = 0; p < paths; p++) {
@@ -40,6 +43,15 @@ export function runMonteCarlo(s, mcOpt = {}) {
     if (sim.depAge === null) { lasted += 1; depAges.push(horizon + 1); }
     else depAges.push(sim.depAge);
     incomes.push(steadyState(inp, sim).net);
+    // Task 6: capture this path's median realized non-housing spend (need - housing - extraSpend
+    // approximation: use row.need directly as the realized total need, which already reflects
+    // the carried spendMult). Use the terminal non-depleted row's need as a representative
+    // realized spend level for this path — the multiplier is baked in via spendingNeed.
+    if (guardrailsOn) {
+      const retRows = sim.rows.filter((r) => r.bal > 0);
+      const repRow = retRows.length > 0 ? retRows[retRows.length - 1] : sim.rows[sim.rows.length - 1];
+      realizedSpends.push(repRow.need);
+    }
   }
 
   const balanceFan = balancesByYear.map((vals, y) => {
@@ -54,6 +66,19 @@ export function runMonteCarlo(s, mcOpt = {}) {
   const incSorted = incomes.slice().sort((a, b) => a - b);
   const depSorted = depAges.slice().sort((a, b) => a - b);
 
+  // Task 6: compute realized-spending percentiles when guardrails are on.
+  // Each path's representative spend already reflects its carried spendMult —
+  // computed deterministically per-path under the seeded returns.
+  let realizedSpending = null;
+  if (guardrailsOn && realizedSpends && realizedSpends.length > 0) {
+    const rsSorted = realizedSpends.slice().sort((a, b) => a - b);
+    realizedSpending = {
+      p10: Math.round(quantile(rsSorted, 0.1)),
+      p50: Math.round(quantile(rsSorted, 0.5)),
+      p90: Math.round(quantile(rsSorted, 0.9)),
+    };
+  }
+
   return {
     paths, seed,
     successProb: lasted / paths,
@@ -67,5 +92,7 @@ export function runMonteCarlo(s, mcOpt = {}) {
       p10: Math.round(quantile(depSorted, 0.1)),
       p50: Math.round(quantile(depSorted, 0.5)),
     },
+    // null when guardrails are off — does not perturb the default MC return shape.
+    realizedSpending,
   };
 }

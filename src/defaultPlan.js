@@ -1,4 +1,4 @@
-import { DEFAULT_TRAVEL, DEFAULT_LIFE_EVENTS, DEFAULT_LIFE, RETURN_MODEL_DEFAULTS } from "./retirementData.js";
+import { DEFAULT_TRAVEL, DEFAULT_LIFE_EVENTS, DEFAULT_LIFE, RETURN_MODEL_DEFAULTS, GUARDRAIL_DEFAULTS } from "./retirementData.js";
 
 // The single source of truth for the app's default scenario. Imported by
 // RetirementCalculator.jsx (initial useState) and pinned by a golden regression
@@ -37,6 +37,9 @@ export const DEFAULT_PLAN = {
   // bucketSplit is intentionally absent from the default — plan.js derives it from
   // tradFrac when not explicitly set. Once a user adjusts the bucket controls in
   // Saving.jsx, bucketSplit is stored in state and takes precedence over tradFrac.
+  // Wave 3 Task 6: spending strategy (opt-in; "fixed" default keeps all results unchanged).
+  spendingStrategy: "fixed",
+  guardrails: { ...GUARDRAIL_DEFAULTS },
 };
 
 // A fresh deep-ish clone for React state init (so state edits never mutate the constant).
@@ -53,4 +56,5 @@ export const makeDefaultPlan = () => ({
   employerMatch: { ...DEFAULT_PLAN.employerMatch },
   withdrawalOrder: [...DEFAULT_PLAN.withdrawalOrder],
   returnModel: { ...DEFAULT_PLAN.returnModel },
+  guardrails: { ...DEFAULT_PLAN.guardrails },
 });

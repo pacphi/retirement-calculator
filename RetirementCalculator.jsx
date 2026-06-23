@@ -15,6 +15,7 @@ import { Staircase } from "./src/components/charts/Staircase.jsx";
 import { YearByYear } from "./src/components/charts/YearByYear.jsx";
 import { PortfolioFlows } from "./src/components/charts/PortfolioFlows.jsx";
 import { LongRun } from "./src/components/charts/LongRun.jsx";
+import { RealizedSpending } from "./src/components/charts/RealizedSpending.jsx";
 import { Places } from "./src/components/charts/Places.jsx";
 import { Compare } from "./src/components/charts/Compare.jsx";
 import { IncomeMix } from "./src/components/charts/IncomeMix.jsx";
@@ -307,6 +308,9 @@ export default function RetirementCalculator() {
               showStress={s.showStress}
               hasShock={hasEmergent}
             />
+
+            {/* Task 6: Realized spending distribution — only when guardrails are on and MC has run */}
+            <RealizedSpending realizedSpending={mc?.realizedSpending ?? null} />
 
             {/* Places */}
             <Places

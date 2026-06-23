@@ -359,6 +359,11 @@ describe("spending basis toggle", () => {
     render(<RetirementCalculator />);
     expect(screen.getByLabelText("Replace this share of income in retirement")).toBeInTheDocument();
   });
+
+  it("exposes the spending-strategy control", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByLabelText("Spending strategy")).toBeInTheDocument();
+  });
 });
 
 describe("recurring life events editor", () => {

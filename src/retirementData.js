@@ -79,6 +79,11 @@ export const GLIDEPATH_DEFAULTS = {
   bondReal: 0.02,
 };
 
+// Guyton-Klinger guardrail defaults (Wave 3 Task 6, opt-in).
+// Upper/lower bands are ±20% of the base SWR; adjustments are ±10%.
+// Sources: SOURCES.kitcesGuardrails, SOURCES.morningstarGuardrails.
+export const GUARDRAIL_DEFAULTS = { upperPct: 20, lowerPct: 20, cutPct: 10, raisePct: 10 };
+
 export const SOURCES = {
   irs2026: "https://www.irs.gov/newsroom/irs-releases-tax-inflation-adjustments-for-tax-year-2026-including-amendments-from-the-one-big-beautiful-bill",
   ssaPia: "https://www.ssa.gov/oact/progdata/retirebenefit2.html",
