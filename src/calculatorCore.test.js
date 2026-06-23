@@ -1495,3 +1495,40 @@ describe("Task 8 — work-vs-retire two-location jurisdiction split", () => {
     expect(rRow.need).toBeGreaterThan(wRow.need);
   });
 });
+
+describe("Wave 3 Task 1 — contributions engine integration", () => {
+  // Shared base for contribution tests: simple scenario, no inheritances, no travel.
+  const contribBase = {
+    ...baseState,
+    ageA: 45, ageB: 45, stopA: 62, stopB: 60,
+    incomeA: 90000, incomeB: 75000, savings: 300000,
+    contrib: 18000, tradFrac: 0.7,
+    tx: { ...baseState.tx, on: false }, at: { ...baseState.at, on: false },
+    travel: { on: false }, events: [],
+    retireLoc: "US -- national average", spendBasis: "income",
+  };
+
+  it("Simple mode with realRaise:0 produces identical depletion age and final balance to pre-Task-1 baseline", () => {
+    // Arrange: default Simple mode, zero real raise — engine must be behavior-identical.
+    const withNew = calculatePlan({ ...contribBase, contribMode: "simple", realRaise: 0,
+      bucketSplit: { mode: "pct", deferredPct: 70, taxablePct: 30, rothPct: 0 } });
+    const withoutFields = calculatePlan({ ...contribBase });
+    // Act + Assert: depletion age and final portfolio value must match to the dollar.
+    const rowsNew = withNew.simChosen.rows;
+    const rowsOld = withoutFields.simChosen.rows;
+    expect(withNew.simChosen.depAge).toBe(withoutFields.simChosen.depAge);
+    expect(rowsNew[rowsNew.length - 1].bal).toBe(rowsOld[rowsOld.length - 1].bal);
+  });
+
+  it("realRaise:0.02 grows contributions in real terms and raises final balance vs realRaise:0", () => {
+    // Arrange: 2% real raise should compound contributions upward each working year.
+    const flat = calculatePlan({ ...contribBase, contribMode: "simple", realRaise: 0,
+      bucketSplit: { mode: "pct", deferredPct: 70, taxablePct: 30, rothPct: 0 } });
+    const raised = calculatePlan({ ...contribBase, contribMode: "simple", realRaise: 0.02,
+      bucketSplit: { mode: "pct", deferredPct: 70, taxablePct: 30, rothPct: 0 } });
+    // Act + Assert: higher real raise → larger portfolio at retirement age.
+    const flatRetRow = flat.simChosen.rows.find((r) => r.aA >= contribBase.stopA);
+    const raisedRetRow = raised.simChosen.rows.find((r) => r.aA >= contribBase.stopA);
+    expect(raisedRetRow.bal).toBeGreaterThan(flatRetRow.bal);
+  });
+});

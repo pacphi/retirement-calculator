@@ -128,6 +128,11 @@ export function buildPlanInputs(s) {
     // — covers the single-location case where work and retire residence are the same home).
     // Task 8: simulate.js will switch to retireHousing from relocationYear onward.
     retireHousing: s.retireHousing ?? null,
+    contribMode: s.contribMode ?? "simple",
+    contribStreams: s.contribStreams ?? [],
+    employerMatch: s.employerMatch ?? { pct: 0, capPct: 0 },
+    realRaise: Number(s.realRaise) || 0,
+    bucketSplit: s.bucketSplit ?? { mode: "pct", deferredPct: Math.round((Number(s.tradFrac) || 0.7) * 100), taxablePct: Math.round((1 - (Number(s.tradFrac) || 0.7)) * 100), rothPct: 0 },
   };
 }
 

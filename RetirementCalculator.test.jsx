@@ -690,3 +690,15 @@ describe("Places panel — housing caption (Wave 2.5 Part 5)", () => {
     expect(screen.getByText(/each location.s local rent is shown/i)).toBeInTheDocument();
   });
 });
+
+describe("Saving step — accessible controls (Wave 3 Task 1)", () => {
+  it("exposes the contributions controls", () => {
+    // Arrange + Act
+    render(<RetirementCalculator />);
+
+    // Assert — both labelled controls are present in Simple mode (default)
+    expect(screen.getByLabelText("Contribution mode")).toBeInTheDocument();
+    expect(screen.getByLabelText("Real raise")).toBeInTheDocument();
+  });
+});
+

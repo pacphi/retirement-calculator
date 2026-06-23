@@ -52,6 +52,19 @@ export const DEFAULT_VOLATILITY = MC_DEFAULTS.volatility; // 0.12
 // Sources: SOURCES.smileRR, SOURCES.smileKitces, SOURCES.blanchett2026.
 export const SMILE_DEFAULTS = { earlyDecline: 0.01, upturnAge: 85, lateUpturn: 0.01, floor: 0.75 };
 
+// 2026 retirement-contribution limits. Source: IRS Notice 2025-67 (SOURCES.irsContrib2026).
+// Catch-up: standard 50+; "super" catch-up applies only in the year a worker is 60–63
+// (SECURE 2.0). High earners (>$150k prior-year FICA wages) must make 401(k) catch-ups as
+// Roth — flagged in the UI, not auto-enforced (planning-grade). Roth IRA MAGI phase-out per IRS.
+export const CONTRIB_LIMITS_2026 = {
+  "401k":      { base: 24500, catchUp50: 8000,  superCatchUp60to63: 11250 },
+  ira:         { base: 7500,  catchUp50: 1100,  superCatchUp60to63: 0 },
+  hsaSelf:     { base: 4400,  catchUp55: 1000 },
+  hsaFamily:   { base: 8750,  catchUp55: 1000 },
+  rothIraPhaseOut: { single: [153000, 168000], married: [242000, 252000] },
+  highEarnerRothCatchUpWageFloor: 150000,
+};
+
 export const SOURCES = {
   irs2026: "https://www.irs.gov/newsroom/irs-releases-tax-inflation-adjustments-for-tax-year-2026-including-amendments-from-the-one-big-beautiful-bill",
   ssaPia: "https://www.ssa.gov/oact/progdata/retirebenefit2.html",
@@ -75,6 +88,10 @@ export const SOURCES = {
   irsFtc: "https://www.irs.gov/individuals/international-taxpayers/foreign-tax-credit",
   irsForm3520: "https://www.irs.gov/forms-pubs/about-form-3520",
   fbar: "https://www.irs.gov/businesses/small-businesses-self-employed/report-of-foreign-bank-and-financial-accounts-fbar",
+  irsContrib2026: "https://www.irs.gov/newsroom/401k-limit-increases-to-24500-for-2026-ira-limit-increases-to-7500",
+  fidelityCatchup: "https://www.fidelity.com/learning-center/personal-finance/401k-catch-up-contributions-high-earners",
+  kitcesGuardrails: "https://www.kitces.com/blog/guyton-klinger-guardrails-retirement-income-rules-risk-based/",
+  morningstarGuardrails: "https://www.morningstar.com/retirement/want-boost-your-retirement-income-guardrails-could-help",
 };
 
 /* 2026 reference data. Tax constants are from the IRS 2026 inflation release.

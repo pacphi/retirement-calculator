@@ -25,6 +25,7 @@ import { Stats } from "./src/components/results/Stats.jsx";
 import { RiskTable } from "./src/components/results/RiskTable.jsx";
 import { Inheritance as InheritanceResult } from "./src/components/results/Inheritance.jsx";
 import { Household } from "./src/components/steps/Household.jsx";
+import { Saving } from "./src/components/steps/Saving.jsx";
 import { Timing } from "./src/components/steps/Timing.jsx";
 import { Pension } from "./src/components/steps/Pension.jsx";
 import { Inheritance as InheritanceStep } from "./src/components/steps/Inheritance.jsx";
@@ -220,6 +221,7 @@ export default function RetirementCalculator() {
           <div>
             <div style={{ background:C.panel, border:`1px solid ${C.line}`, borderRadius:14, padding:"20px 20px 6px", marginBottom:18 }}>
               <Household s={s} set={set} deferredMode={deferredMode} onDeferredModeChange={setDeferredMode} incomeHH={incomeHH} retireHousingAnnual={retireHousingAnnual} />
+              <Saving s={s} set={set} />
               <Housing s={s} set={set} />
               <Timing s={s} set={set} sFull={sFull} />
               <Pension s={s} set={set} afcAuto={afcAuto} afcEff={afcEff} steady={steady} />

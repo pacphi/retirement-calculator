@@ -8,6 +8,7 @@ import { drsEligibilityNote, pensionERF, resolveAfc } from "./pension.js";
 import { ltcSpendForYear, oneTimeSpendForYear, travelSpendForYear } from "./events.js";
 import { requiredMinimum, rmdStartAge } from "./rmd.js";
 import { activeJurisdiction } from "./jurisdiction.js";
+import { contributionPlan, realRaiseFactor } from "./contributions.js";
 
 export function benefits(i) {
   const piaA = i.ssModeA === "statement" ? (Number(i.ssFraA) || 0) / 12 : piaFromIncome(i.incomeA);
@@ -26,7 +27,26 @@ export function benefits(i) {
   return { piaA, piaB, ssA, ssB, pension, erf, pensionNote };
 }
 
-const plannedContribution = (i, workA, workB) => ((workA ? 0.5 : 0) + (workB ? 0.5 : 0)) * i.contrib;
+// plannedContribution: compute the year-y gross contribution amount (before the
+// "can we afford it?" cap in the loop). Simple mode: scales i.contrib by the real-raise
+// factor and the working-spouse fraction. Detailed mode: sums contribStreams (scaled by
+// realRaiseFactor so salary-linked streams grow in real terms).
+// realRaise is REAL: salary*(1+realRaise)^y — never compounded with inflation.
+const plannedContribution = (i, workA, workB, y, ageA, ageB) => {
+  const rrf = realRaiseFactor(i.realRaise ?? 0, y);
+  if ((i.contribMode ?? "simple") !== "detailed") {
+    // Simple: scale by working-spouse fraction and real raise.
+    const workerFrac = (workA ? 0.5 : 0) + (workB ? 0.5 : 0);
+    return workerFrac * (Number(i.contrib) || 0) * rrf;
+  }
+  // Detailed: contributionPlan resolves per-vehicle streams; scale each stream amount
+  // by realRaiseFactor before passing in, then return total.
+  const scaled = {
+    ...i,
+    contribStreams: (i.contribStreams || []).map((s) => ({ ...s, amount: (Number(s.amount) || 0) * rrf })),
+  };
+  return contributionPlan(scaled, { ageA, ageB, year: TAX_YEAR + y }).total;
+};
 
 // profile: a typed US_STATE_TAX or INTL_TAX entry, or null for the flat fallback.
 // When profile is provided the year is a full-retirement year (no wages), so the
@@ -249,7 +269,7 @@ export function simulate(i, ssOpt) {
     bal = bal * (1 + yr) + sellLump;
     defBal = defBal * (1 + yr); // sale proceeds are taxable savings, not deferred
 
-    const plannedContrib = plannedContribution(i, workA, workB);
+    const plannedContrib = plannedContribution(i, workA, workB, y, aA, aB);
     // yearProfile: typed profile for retirement years; null for working years (flat path).
     // Working-year state tax uses the work-state wageRate (0 for WA) via flatStateRate.
     // This fixes a pre-Task-8 bug where i.taxRate (the retire location's addlTaxRate,
@@ -262,8 +282,14 @@ export function simulate(i, ssOpt) {
     const taxBeforeWithdrawal = taxForYear(i, aA, aB, wages, pensEff, rent, ssAyEff + ssByEff, 0, yearStatus, cal, yearProfile, flatStateRate);
     const afterTaxBeforeWithdrawal = wages + pensEff + rent + ssAyEff + ssByEff - taxBeforeWithdrawal;
     const contrib = Math.min(plannedContrib, Math.max(0, afterTaxBeforeWithdrawal - need));
+    // Compute per-bucket split for the actual (capped) contrib amount.
+    // Simple mode: byBucket.deferred = contrib * deferredPct/100 ≈ contrib * tradFrac
+    // (behavior-identical to the prior `defBal += contrib * i.tradFrac` when realRaise:0).
+    // Task 3 will consume the full byBucket for multi-bucket deposits; for now only the
+    // deferred slice is tracked (taxable+roth accumulate in the single `bal` pool).
+    const contribSplit = contributionPlan({ ...i, contrib }, { ageA: aA, ageB: aB, year: cal });
     bal += contrib;
-    defBal += contrib * i.tradFrac;
+    defBal += contribSplit.byBucket.deferred;
 
     const olderAge = olderAgeNow + y;
     const rmd = (defBalStart > 0 && olderAge >= rmdStart) ? requiredMinimum(defBalStart, olderAge) : 0;

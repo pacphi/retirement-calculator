@@ -26,6 +26,11 @@ export const DEFAULT_PLAN = {
   workLoc: "WA", relocationYear: 2046, stateCode: null,
   housing: { tenure: "rent", rent: 1650, mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: 2026 }, homeValue: 0, insuranceAnnual: 0, maintenancePct: 0.01, relocation: { action: "sell", saleValue: 0 } },
   retireHousing: null,
+  contribMode: "simple",
+  contribStreams: [],
+  employerMatch: { pct: 0, capPct: 0 },
+  realRaise: 0,
+  bucketSplit: { mode: "pct", deferredPct: 70, taxablePct: 30, rothPct: 0 },
 };
 
 // A fresh deep-ish clone for React state init (so state edits never mutate the constant).
@@ -38,4 +43,7 @@ export const makeDefaultPlan = () => ({
   ltc: { ...DEFAULT_PLAN.ltc }, spendingShape: { ...DEFAULT_PLAN.spendingShape },
   lifestyleSteps: DEFAULT_PLAN.lifestyleSteps.map((x) => ({ ...x })),
   housing: { ...DEFAULT_PLAN.housing, mortgage: { ...DEFAULT_PLAN.housing.mortgage }, relocation: { ...DEFAULT_PLAN.housing.relocation } },
+  contribStreams: [],
+  employerMatch: { ...DEFAULT_PLAN.employerMatch },
+  bucketSplit: { ...DEFAULT_PLAN.bucketSplit },
 });
