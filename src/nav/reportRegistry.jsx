@@ -111,7 +111,7 @@ export function buildReportSections(ctx) {
             sFull={ctx.sFull} sTrust={ctx.sTrust} sNone={ctx.sNone} simFull={ctx.simFull} simTrust={ctx.simTrust}
             simNone={ctx.simNone} s={s} effHaircut={ctx.effHaircut} horizon={ctx.horizon}
           />
-          <InheritanceResult s={s} setProp={ctx.setProp} />
+          <InheritanceResult s={s} setProperty={ctx.setProperty} />
         </>
       ),
     },

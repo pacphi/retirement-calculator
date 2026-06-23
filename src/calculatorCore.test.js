@@ -43,8 +43,8 @@ const baseState = {
   realReturn:0.05, swr:0.04, tradFrac:0.7, inflation:0.025,
   ssMode:"trustees", ssHaircut:81, ssCutYear:2034,
   retireLoc:"US -- national average",
-  tx:{ on:true, value:790000, year:2038, strategy:"rent" },
-  at:{ on:true, value:324000, year:2040, strategy:"live" },
+  // Real estate is now an editable list; default fixture has none (tests opt in explicitly).
+  properties: [],
 };
 
 describe("federal tax", () => {
@@ -1060,7 +1060,7 @@ describe("year milestones", () => {
   });
 
   it("flags a home sale with its lump-sum amount", () => {
-    const sold = { ...baseState, at: { on: true, value: 324000, year: 2040, strategy: "sell" } };
+    const sold = { ...baseState, properties: [{ id: "p1", place: "Austria", value: 324000, year: 2040, strategy: "sell", on: true }] };
     const rows = calculatePlan(sold).simChosen.rows;
     const row = rows.find((r) => r.sellLump > 0);
     const ms = yearMilestones(row, null, sold);

@@ -693,21 +693,21 @@ describe("RetirementPlace step (Step 5 — Wave 2.5 Task 3a)", () => {
   it("renders the Retirement state select with accessible label", async () => {
     const user = userEvent.setup();
     render(<RetirementCalculator />);
-    await gotoStep(user, /place/i);
+    await gotoStep(user, /retiring to/i);
     expect(screen.getByLabelText(/retirement state/i)).toBeInTheDocument();
   });
 
   it("shows the state rate override input with accessible label", async () => {
     const user = userEvent.setup();
     render(<RetirementCalculator />);
-    await gotoStep(user, /place/i);
+    await gotoStep(user, /retiring to/i);
     expect(screen.getByLabelText(/state rate override/i)).toBeInTheDocument();
   });
 
   it("shows a plain-language note when a no-tax state is selected", async () => {
     const user = userEvent.setup();
     render(<RetirementCalculator />);
-    await gotoStep(user, /place/i);
+    await gotoStep(user, /retiring to/i);
     const select = screen.getByLabelText(/retirement state/i);
     await user.selectOptions(select, "TX");
     expect(screen.getByText(/Texas.*no state income tax/i)).toBeInTheDocument();
@@ -716,7 +716,7 @@ describe("RetirementPlace step (Step 5 — Wave 2.5 Task 3a)", () => {
   it("shows a typed-rate note when CA is selected", async () => {
     const user = userEvent.setup();
     render(<RetirementCalculator />);
-    await gotoStep(user, /place/i);
+    await gotoStep(user, /retiring to/i);
     const select = screen.getByLabelText(/retirement state/i);
     await user.selectOptions(select, "CA");
     expect(screen.getByText(/California.*effective state income tax/i)).toBeInTheDocument();
@@ -725,14 +725,14 @@ describe("RetirementPlace step (Step 5 — Wave 2.5 Task 3a)", () => {
   it("renders the relocation-year input with an accessible label", async () => {
     const user = userEvent.setup();
     render(<RetirementCalculator />);
-    await gotoStep(user, /place/i);
+    await gotoStep(user, /retiring to/i);
     expect(screen.getByLabelText(/relocation year/i)).toBeInTheDocument();
   });
 
   it("shows the simplified-transition / Pension Source Tax Act note near relocation year", async () => {
     const user = userEvent.setup();
     render(<RetirementCalculator />);
-    await gotoStep(user, /place/i);
+    await gotoStep(user, /retiring to/i);
     expect(screen.getByText(/transition year is simplified/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Pension Source Tax Act/i })).toBeInTheDocument();
   });
@@ -743,7 +743,7 @@ describe("RetirementPlace step (Step 5 — Wave 2.5 Task 3a)", () => {
     // Work state is on the default (Income) step.
     expect(screen.getByLabelText("Where you live and earn now")).toBeInTheDocument();
     // Retirement-place controls live on Step 5.
-    await gotoStep(user, /place/i);
+    await gotoStep(user, /retiring to/i);
     expect(screen.getByLabelText("Retirement state")).toBeInTheDocument();
     expect(screen.getByLabelText("Relocation year")).toBeInTheDocument();
   });
@@ -828,7 +828,7 @@ describe("Tax & residency panel (generalized from DualTaxExposure)", () => {
     const user = userEvent.setup();
     render(<RetirementCalculator />);
     // Pick a US retirement state on Step 5, then view the report.
-    await gotoStep(user, /place/i);
+    await gotoStep(user, /retiring to/i);
     await user.selectOptions(screen.getByLabelText(/retirement state/i), "TX");
     await openReport(user);
     await gotoSection(user, /taxes/i);
@@ -854,8 +854,8 @@ describe("two-stage wizard navigation", () => {
     const nav = screen.getByRole("navigation", { name: /input steps/i });
     const titles = within(nav).getAllByRole("button").map((b) => b.textContent.replace(/^[0-9✓]+/, "").trim());
     expect(titles).toEqual([
-      "Income", "Housing", "Timing", "Pension", "Place",
-      "Inheritance", "Spending", "Milestones", "Travel", "Assumptions",
+      "Income", "Housing", "Timing", "Pension", "Retiring to",
+      "Real Estate", "Spending", "Milestones", "Travel", "Assumptions",
     ]);
   });
 
@@ -934,7 +934,7 @@ describe("Task 8 — work-vs-retire jurisdiction split UI", () => {
   it("renders the Relocation year input with an accessible label", async () => {
     const user = userEvent.setup();
     render(<RetirementCalculator />);
-    await gotoStep(user, /place/i);
+    await gotoStep(user, /retiring to/i);
     expect(screen.getByLabelText(/relocation year/i)).toBeInTheDocument();
   });
 
@@ -962,5 +962,64 @@ describe("Saving controls — accessible (Wave 3 Task 1)", () => {
     render(<RetirementCalculator />); // Saving is grouped into the default Income step
     expect(screen.getByLabelText("Contribution mode")).toBeInTheDocument();
     expect(screen.getByLabelText("Real raise")).toBeInTheDocument();
+  });
+});
+
+describe("Real Estate step — dynamic property list", () => {
+  it("starts with the default Klagenfurt (active) and Texas (inactive) properties", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    await gotoStep(user, /real estate/i);
+    expect(screen.getByDisplayValue("Klagenfurt home")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Texas home")).toBeInTheDocument();
+    // First (Klagenfurt) property is located in Austria.
+    expect(screen.getAllByLabelText(/property location/i)[0]).toHaveValue("Austria");
+  });
+
+  it("adds a property when '+ Add property' is clicked", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    await gotoStep(user, /real estate/i);
+    const before = screen.getAllByLabelText(/property name/i).length;
+    await user.click(screen.getByRole("button", { name: /add property/i }));
+    expect(screen.getAllByLabelText(/property name/i).length).toBe(before + 1);
+  });
+
+  it("removes a property when its × button is clicked", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    await gotoStep(user, /real estate/i);
+    const before = screen.getAllByLabelText(/remove property/i).length;
+    await user.click(screen.getAllByLabelText(/remove property/i)[0]);
+    expect(screen.queryAllByLabelText(/remove property/i).length).toBe(before - 1);
+  });
+
+  it("derives the sale/rent/live economics from the chosen location", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    await gotoStep(user, /real estate/i);
+    // Klagenfurt in Austria ($324k, sellNet 0.90) → sell nets ~$291,600.
+    expect(screen.getByText(/sell nets ~\$291,600/i)).toBeInTheDocument();
+    // Switch its location to a US one → step-up basis (0.93) → ~$301,320.
+    await user.selectOptions(screen.getAllByLabelText(/property location/i)[0], "US -- Texas / Florida");
+    expect(screen.getByText(/sell nets ~\$301,320/i)).toBeInTheDocument();
+  });
+
+  it("shows the Form 3520 filing card only when a foreign property is included", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    // Default: Austria (foreign) property → Form 3520 appears in the Tax & residency panel.
+    await openReport(user);
+    await gotoSection(user, /taxes/i);
+    expect(screen.getByText(/Filing obligations \(FBAR \/ FATCA \/ Form 3520\)/i)).toBeInTheDocument();
+    // Move the property to a US location → no foreign inheritance → filing card drops Form 3520
+    // from its label (the "IRS Form 3520" reference link still exists, so assert on the label).
+    await editInputs(user);
+    await gotoStep(user, /real estate/i);
+    await user.selectOptions(screen.getAllByLabelText(/property location/i)[0], "US -- Texas / Florida");
+    await openReport(user);
+    await gotoSection(user, /taxes/i);
+    expect(screen.getByText(/Filing obligations \(FBAR \/ FATCA\)/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Filing obligations \(FBAR \/ FATCA \/ Form 3520\)/i)).not.toBeInTheDocument();
   });
 });

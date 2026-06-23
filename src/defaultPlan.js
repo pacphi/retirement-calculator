@@ -14,8 +14,14 @@ export const DEFAULT_PLAN = {
   realReturn:0.05, swr:0.04, tradFrac:0.9, inflation:0.025,
   ssMode:"trustees", ssHaircut:81, ssCutYear:2034,
   retireLoc:"Austria", spendBasis:"income", lifestyle:100,
-  tx:{ on:false, value:790000, year:2038, strategy:"rent" },
-  at:{ on:true, value:324000, year:2040, strategy:"live" },
+  // Inherited/owned real estate — an editable list of properties in any location. Economics
+  // (sale-net, rent yield, carrying cost, local rent) derive from each property's `place` via
+  // inheritanceRulesForPlace(). Default: the inherited Klagenfurt (Austria) home is lived in;
+  // the Texas home is present but inactive (Skip) so it contributes nothing until included.
+  properties: [
+    { id:"prop-klagenfurt", label:"Klagenfurt home", place:"Austria", value:324000, year:2040, strategy:"live", on:true },
+    { id:"prop-texas", label:"Texas home", place:"US -- Texas / Florida", value:790000, year:2038, strategy:"rent", on:false },
+  ],
   travel: { ...DEFAULT_TRAVEL },
   events: DEFAULT_LIFE_EVENTS.map((e) => ({ ...e })),
   life: { ...DEFAULT_LIFE },
@@ -48,7 +54,7 @@ export const DEFAULT_PLAN = {
 // A fresh deep-ish clone for React state init (so state edits never mutate the constant).
 export const makeDefaultPlan = () => ({
   ...DEFAULT_PLAN,
-  tx: { ...DEFAULT_PLAN.tx }, at: { ...DEFAULT_PLAN.at },
+  properties: DEFAULT_PLAN.properties.map((p) => ({ ...p })),
   travel: { ...DEFAULT_PLAN.travel },
   events: DEFAULT_PLAN.events.map((e) => ({ ...e })),
   life: { ...DEFAULT_PLAN.life }, survivor: { ...DEFAULT_PLAN.survivor },

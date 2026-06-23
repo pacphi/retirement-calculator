@@ -164,18 +164,45 @@ export const LOCATIONS = [
   { name:"US -- Hawaii / NYC", region:"US", ltcAnnual:197000, addlTaxRate:0.08, hcPre:2300, hcPost:1100, m:{rent:3800,groceries:1150,utilities:500,transport:650,dining:750,entertainment:500,misc:700}, vat:"about 4-9% sales tax", incomeTax:"Up to about 11% (HI) / 14% (NYC)", note:"Premium cost of living; the stretch goal." },
 ];
 
-export const PROP = {
-  tx: { label:"Texas home", place:"US -- Texas / Florida", sellNet:0.93, rentYield:0.035, ownRate:0.027, rentMo:1500,
-    notes:{
-      sell:"US tax law generally steps basis up to date-of-death value, so a near-term sale often has little capital-gains tax. Texas has no estate, inheritance, or income tax. This estimate keeps about 7% aside for selling costs.",
-      rent:"No Texas income tax, but property tax and upkeep are high. The model uses a simple net rental yield of about 3.5% of the home's value.",
-      live:"Owning the Texas home may not free up much cash because property tax and upkeep can be close to the rent you avoid. Selling or renting usually puts the value to clearer use." } },
-  at: { label:"Klagenfurt home", place:"Austria", sellNet:0.90, rentYield:0.020, ownRate:0.012, rentMo:1650,
-    notes:{
-      sell:"Austria has no inheritance tax, but inheriting and later selling real estate can still create transfer and real-estate gains taxes (ImmoESt ~30% on nominal gain, plus transfer + registration fees). This simplified estimate keeps only 10% aside, which may materially understate the cost for a property with large gains since the decedent's acquisition — the true net could be 20-35% lower. A cross-border tax professional should verify the actual basis and treaty result.",
-      rent:"Austrian rental income can be taxed in Austria and reported in the US, usually with foreign tax credit mechanics. The model uses a conservative 2% net yield.",
-      live:"This is often the strongest cash-flow choice. Austrian carrying costs are low, so living there can replace a large rent bill with a much smaller owner cost." } },
-};
+/**
+ * Inherited-property economics, derived from the property's LOCATION. Generalizes the former
+ * fixed Texas/Austria slots by region so a property can sit in any LOCATIONS place:
+ *   - US homes: basis step-up on sale (~93% net) + a higher combined carrying-cost rate
+ *     (state property tax + insurance + upkeep, ~2.7%/yr) + ~3.5% net rental yield.
+ *   - International homes: local transfer + real-estate gains taxes baked into the net-sale
+ *     factor (~90%), low carrying cost (~1.2%/yr), ~2% net yield, and a foreign-inheritance
+ *     filing flag (IRS Form 3520 / FBAR / FATCA).
+ * Local monthly rent comes from each location's cost basket (`LOCATIONS[].m.rent`). All net
+ * factors are planning-grade. These reproduce the previous Texas/Austria constants exactly.
+ *
+ * @param {string} placeName a LOCATIONS[].name
+ * @returns {{ place, region, foreign, sellNet, rentYield, ownRate, rentMo, notes:{sell,rent,live} }}
+ */
+export function inheritanceRulesForPlace(placeName) {
+  const loc = LOCATIONS.find((l) => l.name === placeName);
+  const isUS = loc?.region === "US";
+  const rentMo = loc?.m?.rent ?? 1500;
+  if (isUS) {
+    return {
+      place: placeName, region: loc?.region ?? "US", foreign: false,
+      sellNet: 0.93, rentYield: 0.035, ownRate: 0.027, rentMo,
+      notes: {
+        sell: "US tax law generally steps the basis up to date-of-death value, so a near-term sale often has little capital-gains tax. This estimate keeps about 7% aside for selling costs.",
+        rent: "US rental income is taxable, and property tax plus upkeep can be high. The model uses a net rental yield of about 3.5% of the home's value.",
+        live: "Owning a US home may not free up much cash because property tax and upkeep can be close to the rent you avoid. Selling or renting often puts the value to clearer use.",
+      },
+    };
+  }
+  return {
+    place: placeName, region: loc?.region ?? "Europe", foreign: true,
+    sellNet: 0.90, rentYield: 0.020, ownRate: 0.012, rentMo,
+    notes: {
+      sell: "Inheriting and later selling foreign real estate can create local transfer and real-estate gains taxes (e.g. Austria's ImmoESt ~30% on nominal gain, plus transfer and registration fees). This simplified estimate keeps only 10% aside and may understate the cost — a cross-border tax professional should verify the basis and treaty result.",
+      rent: "Foreign rental income can be taxed locally and reported in the US, usually with foreign-tax-credit mechanics. The model uses a conservative 2% net yield.",
+      live: "Living in an inherited foreign home is often the strongest cash-flow choice where carrying costs are low — it can replace a large rent bill with a much smaller owner cost.",
+    },
+  };
+}
 
 /* Required Minimum Distributions (RMDs). SECURE 2.0 sets the first-RMD age at 73 for
    those born 1951-1959 and 75 for those born 1960 or later. A missed RMD is hit with a
