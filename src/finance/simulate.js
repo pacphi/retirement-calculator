@@ -482,15 +482,12 @@ export function simulate(i, ssOpt) {
       // Task 6: expose the carried multiplier on the row for MC realized-spending capture.
       spendMult,
     });
-    // Task 6: record this year's gross withdrawal and start-of-year balance for the
-    // next iteration's guardrail rate computation. prevBal is bal BEFORE this year's
-    // growth — i.e. the balance the withdrawal was drawn against (post-contribution
-    // balance from the prior year). We capture it here as the end-of-year bal AFTER
-    // the draw; next year's start-of-year balance equals this value plus growth.
-    // Simpler and correct for guardrail semantics: use wdTotal / bal-before-draw.
-    // We track prevBal as the start-of-year balance (bal after last year's mutations).
+    // Task 6: record this year's gross withdrawal and the balance it was drawn against,
+    // for next year's guardrail withdrawal-rate (wr = prevWd / prevBal). `bal` here is the
+    // END-of-year balance (after the draw), so `bal + wdTotal` reconstructs the PRE-draw
+    // balance — the portfolio value the withdrawal actually came out of.
     prevWd = wdTotal;
-    prevBal = bal + wdTotal; // restore pre-draw balance: end-bal + what was withdrawn
+    prevBal = bal + wdTotal; // pre-draw balance = end-of-year bal + what was withdrawn
   }
 
   return { rows, depAge, fullyRetAge: fullyRetAge ?? i.ageA, balAtFullRet: balAtFullRet ?? bal };
