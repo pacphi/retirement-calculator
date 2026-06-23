@@ -1,4 +1,4 @@
-import { LOCATIONS, PROP, RETURN_MODEL_DEFAULTS, TAX_YEAR, TIERS, US_STATE_TAX } from "../retirementData.js";
+import { LOCATIONS, inheritanceRulesForPlace, RETURN_MODEL_DEFAULTS, TAX_YEAR, TIERS, US_STATE_TAX } from "../retirementData.js";
 import { seedBuckets, derivedTradFrac } from "./buckets.js";
 import { resolveReturn } from "./returns.js";
 import { simulate, steadyState } from "./simulate.js";
@@ -19,8 +19,8 @@ export const monthlyTotal = (l, stage) =>
 
 export const tierFor = (ratio) => TIERS.find((t) => ratio < t.max);
 
-export const propEcon = (key, value) => {
-  const m = PROP[key];
+export const propEcon = (place, value) => {
+  const m = inheritanceRulesForPlace(place);
   return { sell: value * m.sellNet, rent: value * m.rentYield, live: m.rentMo * 12 - value * m.ownRate };
 };
 
@@ -36,27 +36,24 @@ export function resolveSocialSecurityScenario(s) {
 
 export function buildInheritanceInputs(s) {
   const out = [];
-  for (const key of ["tx", "at"]) {
-    const p = s[key];
+  // Editable list of properties; economics derive from each property's location.
+  for (const p of (s.properties || [])) {
     if (!p.on) continue;
     const value = Number(p.value) || 0;
-    const e = propEcon(key, value);
-    const m = PROP[key];
-    // Task 5 (Wave 2): carry the home value and property-tax rate into "live" entries
-    // so simulate.js can build an inheritedOwnOverride (owned carrying cost) for that year.
-    // US properties use ownRate as a combined carrying-cost rate (property tax + insurance +
-    // maintenance) — we model it as maintenance for the override since property tax is
-    // handled separately via activePropertyTaxRate. International properties (e.g. "at")
-    // carry 0 property-tax rate because the retirement jurisdiction is international and
-    // its carrying cost is captured entirely in ownRate.
+    const m = inheritanceRulesForPlace(p.place);
+    const e = propEcon(p.place, value);
+    // Carry the home value and carrying-cost rate into "live" entries so simulate.js can build
+    // an inheritedOwnOverride (owned carrying cost) for that year. `ownRate` is a combined
+    // carrying-cost rate (property tax + insurance + maintenance); for international properties
+    // the retirement jurisdiction's property tax is already 0, so it is captured entirely here.
     out.push({
-      key,
+      key: p.id,
       year: Number(p.year) || 2038,
       type: p.strategy,
       sell: e.sell,
       rent: e.rent,
       live: e.live,
-      // Fields used only when type === "live" (Task 5 tenure override):
+      // Fields used only when type === "live" (tenure override):
       homeValue: value,
       ownRate: m.ownRate,
     });

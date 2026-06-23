@@ -91,6 +91,14 @@ export default function RetirementCalculator() {
   const setLifestyleStep = (idx, field) => (v) =>
     set("lifestyleSteps")((s.lifestyleSteps || []).map((st, i) => (i === idx ? { ...st, [field]: v } : st)));
 
+  // Real-estate properties — editable list (add / remove / edit / toggle).
+  const propSeq = useRef(0);
+  const addProperty = () =>
+    set("properties")([...(s.properties || []), { id: `prop-${propSeq.current++}`, label: "New property", place: s.retireLoc ?? "US -- national average", value: 300000, year: 2040, strategy: "sell", on: true }]);
+  const removeProperty = (idx) => set("properties")((s.properties || []).filter((_, i) => i !== idx));
+  const setProperty = (idx, field) => (v) =>
+    set("properties")((s.properties || []).map((p, i) => (i === idx ? { ...p, [field]: v } : p)));
+
   // Plan derivation (calc + all downstream memos)
   const {
     incomeHH, inher,
@@ -150,6 +158,7 @@ export default function RetirementCalculator() {
     incomeHH, retireHousingAnnual, sFull, sTrust, sNone,
     afcAuto, afcEff, steady,
     addEvent, removeEvent, addLifestyleStep, removeLifestyleStep, setLifestyleStep,
+    addProperty, removeProperty, setProperty,
     // report-derived
     mc, mcRunning, runMc, mcSummaryLines,
     onTrack, effHaircut, effCutYear, headroom, horizon,

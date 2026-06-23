@@ -1,5 +1,5 @@
 import { C } from "../theme.js";
-import { SOURCES, US_STATE_TAX, INTL_TAX, LOCATIONS } from "../../retirementData.js";
+import { SOURCES, US_STATE_TAX, INTL_TAX, LOCATIONS, inheritanceRulesForPlace } from "../../retirementData.js";
 import { residenceTaxForYear } from "../../finance/residenceTax.js";
 
 /**
@@ -17,7 +17,7 @@ import { residenceTaxForYear } from "../../finance/residenceTax.js";
  *
  * De-hardcoded: the government-pension card only appears when the household actually has a
  * pension (`s.pensionOn`); the Form-3520 inheritance line only when a foreign property is
- * inherited (`s.at?.on`). No country is special-cased.
+ * inherited (any `s.properties` entry whose location is foreign). No country is special-cased.
  *
  * Accessible label: "Tax and residency"
  *
@@ -134,14 +134,15 @@ export function DualTaxExposure({ s, steadyIncomeMix }) {
 function buildExposureCards(profile, s) {
   const notes = profile.exposureNotes;
   if (!notes) return [];
-  const filingText = s?.at?.on
+  const hasForeignInheritance = (s?.properties || []).some((p) => p.on && inheritanceRulesForPlace(p.place).foreign);
+  const filingText = hasForeignInheritance
     ? notes.filing
     : "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually.";
   return [
     { key: "worldwide", label: "US worldwide taxation", text: notes.worldwide, href: SOURCES.irsFtc, linkLabel: "IRS Foreign Tax Credit" },
     s?.pensionOn ? { key: "govtPension", label: "Government pension — source rule", text: notes.govtPension, href: SOURCES.usModelTreaty, linkLabel: "US model treaty" } : null,
     { key: "residenceTaxed", label: "Residence-country tax on IRA/401(k)", text: notes.residenceTaxed, href: SOURCES.irsFtc, linkLabel: "IRS Foreign Tax Credit" },
-    { key: "filing", label: "Filing obligations (FBAR / FATCA" + (s?.at?.on ? " / Form 3520)" : ")"), text: filingText, href: SOURCES.irsForm3520, linkLabel: "IRS Form 3520" },
+    { key: "filing", label: "Filing obligations (FBAR / FATCA" + (hasForeignInheritance ? " / Form 3520)" : ")"), text: filingText, href: SOURCES.irsForm3520, linkLabel: "IRS Form 3520" },
   ].filter(Boolean).filter((item) => item.text);
 }
 
