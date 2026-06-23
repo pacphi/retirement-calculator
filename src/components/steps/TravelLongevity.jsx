@@ -3,13 +3,13 @@ import { Field, NumberInput, Segmented, Section } from "../atoms/index.jsx";
 import { usd0 } from "../format.js";
 
 /**
- * Step six — Travel & longevity.
+ * Step nine — Travel & longevity.
  *
  * @param {{ s: object, set: function }} props
  */
 export function TravelLongevity({ s, set }) {
   return (
-    <Section eyebrow="Step six" title="Travel & longevity">
+    <Section eyebrow="Step nine" title="Travel & longevity">
       <Field label={`Travel budget — ${usd0(s.travel.amount)}/yr, ${s.travel.startYear}–${s.travel.endYear}`} hint="Calendar-year window. With taper on, the budget steps down to the slow-go share from the slow-go year onward (the classic go-go / slow-go curve).">
         <div className="rc-inputs">
           <Field label="Amount / yr"><NumberInput value={s.travel.amount} onChange={(v)=>set("travel")({ ...s.travel, amount:Number(v)||0 })} prefix="$" /></Field>

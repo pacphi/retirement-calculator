@@ -4,7 +4,7 @@
 >
 > **Tagline:** This is about your money, your home, and what comes next.
 
-**Version:** 1.0 · **Reference year:** 2026 · **Companion docs:** PRD; Logic & Use‑Case Specification
+**Version:** 1.1 · **Reference year:** 2026 · **Companion docs:** PRD; Logic & Use‑Case Specification
 
 ---
 
@@ -111,6 +111,8 @@ The following features use internally derived assumptions rather than externally
 **Discretionary travel taper.** The default travel budget ($15,000/yr for 15 years, tapering to 50% after year 10) reflects the well-documented go-go / slow-go / no-go pattern in retirement spending research — the observation that real household spending tends to decline in real terms as retirees age and activity levels fall. The specific default amounts are user-overrideable inputs, not cited constants; no single numeric source is authoritative. For supporting context see generally: Blanchett, D. (2014). "Exploring the Retirement Consumption Puzzle." *Journal of Financial Planning* — which found inflation-adjusted retirement spending declines on average 1–2% per year in real terms.
 
 **One-time life events.** Default event amounts (e.g., wedding gifts, home-purchase assistance) are illustrative starting points only. Every amount is a user input. No external source is cited because the figures carry no normative weight; the engine treats them as after-tax outflows that raise the year's spending need and trigger a grossed-up withdrawal via the existing tax solver.
+
+**Places housing-substitution policy (Wave 2.5).** When the household's retirement dwelling is owned or mortgaged, the Places affordability comparison substitutes each location's static basket rent with the household's carrying cost (property tax + insurance + maintenance), held constant across all candidate locations. This "home travels with you" assumption has no single authoritative source; it is a planning-grade simplification. Property tax rates, homeowners insurance, and maintenance costs vary materially by location and property type — users should consult local market data and a financial planner for location-specific ownership costs. The basket rent figures for each location remain sourced as described in Sections 11–13; they are used unchanged for renting households.
 
 ---
 

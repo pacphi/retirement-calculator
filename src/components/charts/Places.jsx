@@ -88,6 +88,12 @@ export function Places({
   // Residence-tax note for the active retirement location (the expanded row).
   const activeLoc = openLoc;
   const residenceTaxNote = computeResidenceTaxNote(activeLoc, stateCode, steadyIncomeMix);
+
+  // Housing classification — sourced from locRows (set by usePlan via retirementDwellingAnnualCost).
+  // All rows carry the same hh object; read from the first row when available.
+  const hh = locRows.length > 0 ? locRows[0].hh : null;
+  const isOwnedHousing = hh && (hh.basis === "own" || hh.basis === "mortgage");
+
   return (
     <div style={{ background:C.panel, border:`1px solid ${C.line}`, borderRadius:14, padding:"16px 18px 20px", marginBottom:16 }}>
       <div style={{ marginBottom:8 }}>
@@ -99,10 +105,45 @@ export function Places({
         <Segmented value={stage} onChange={onStageChange} options={[{label:"Before 65",value:"pre"},{label:"65+ (Medicare)",value:"post"}]} />
       </div>
       <p style={{ margin:"0 0 14px", fontSize:12.5, color:C.slate, lineHeight:1.5 }}>Tap a place for the full monthly breakdown. The gold line is your after-tax income; switch the healthcare basis to see the pre-Medicare years.</p>
+      {/* Part 5 — housing caption */}
+      <p aria-label="Housing cost note" style={{ margin:"0 0 12px", fontSize:11.5, color:C.slate, lineHeight:1.5, background:"#F6F2E8", borderRadius:8, padding:"8px 10px" }}>
+        <b style={{ color:C.brassDeep }}>Home costs across locations.</b>{" "}
+        Owned/mortgaged: your home&apos;s carrying cost is applied across locations — you bring one home. Renting: each location&apos;s local rent is shown. The single/couple multiplier applies to the rest of the basket, not your one home.
+      </p>
       <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
         {locRows.map((l)=>{
           const max = Math.max(steadyNet, locRows[locRows.length-1].cost)*1.05;
-          const open = openLoc===l.name, monthly = monthlyTotal(l,stage)*sFactor, surplus = steadyNet-l.cost;
+          const open = openLoc===l.name, surplus = steadyNet-l.cost;
+
+          // For the expanded breakdown table, build a modified line-items list when
+          // the household owns/mortgages: substitute the location's rent row with
+          // the fixed carrying-cost row so all surfaces stay coherent.
+          const rawItems = lineItems(l, stage);
+          const displayItems = isOwnedHousing
+            ? rawItems.map(([label, val]) => {
+                if (label === "Rent -- 2-3BR, quiet area") {
+                  const hhLabel = hh.basis === "mortgage"
+                    ? "Your home — mortgage P&I + costs"
+                    : "Your home — carrying cost";
+                  // Monthly value: hh.annual is NOT sFactor-scaled (policy: one home isn't halved);
+                  // the /sFactor here cancels the ×sFactor at render so the home line shows hh.annual/12.
+                  const hhMonthly = sFactor > 0 ? hh.annual / 12 / sFactor : hh.annual / 12;
+                  return [hhLabel, hhMonthly];
+                }
+                return [label, val];
+              })
+            : rawItems;
+
+          // Derive the /mo footer from l.cost (the single source of truth for /yr)
+          // so /mo × 12 == /yr by construction.
+          // For renters, monthlyTotal(l, stage) * sFactor is equivalent but we
+          // use l.cost / 12 uniformly so both paths are consistent.
+          // NOTE: the old owned/mortgage path reduced over displayItems then added
+          // healthcare again — double-counting it. l.cost / 12 eliminates that bug.
+          const displayMonthly = isOwnedHousing
+            ? l.cost / 12
+            : monthlyTotal(l, stage) * sFactor;
+
           return (
             <div key={l.name} style={{ border:`1px solid ${open?C.line:"transparent"}`, borderRadius:10, overflow:"hidden", background:open?"#FCFAF4":"transparent" }}>
               <button
@@ -134,16 +175,16 @@ export function Places({
                       <th style={{ textAlign:"right", fontWeight:600 }}>/mo</th><th style={{ textAlign:"right", fontWeight:600 }}>/yr</th>
                     </tr></thead>
                     <tbody>
-                      {lineItems(l,stage).map(([label,val])=>{ const isHC=label.indexOf("Healthcare")===0; return (
-                        <tr key={label} style={{ borderTop:`1px solid ${C.line}`, background:isHC?"#F6F2E8":"transparent" }}>
-                          <td style={{ padding:"5px 0", color:isHC?C.brassDeep:C.inkSoft, fontWeight:isHC?600:400 }}>{label}</td>
+                      {displayItems.map(([label,val])=>{ const isHC=label.indexOf("Healthcare")===0; const isHome=label.startsWith("Your home"); return (
+                        <tr key={label} style={{ borderTop:`1px solid ${C.line}`, background:isHC?"#F6F2E8":isHome?"#EEF4F0":"transparent" }}>
+                          <td style={{ padding:"5px 0", color:isHC?C.brassDeep:isHome?C.viridian:C.inkSoft, fontWeight:(isHC||isHome)?600:400 }}>{label}</td>
                           <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", color:C.ink }}>{usd0(val*sFactor)}</td>
                           <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", color:C.slate }}>{usdK(val*sFactor*12)}</td>
                         </tr>
                       );})}
                       <tr style={{ borderTop:`2px solid ${C.ink}` }}>
                         <td style={{ padding:"6px 0", fontWeight:700, color:C.ink }}>Total cost of living</td>
-                        <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", fontWeight:700, color:C.ink }}>{usd0(monthly)}</td>
+                        <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", fontWeight:700, color:C.ink }}>{usd0(displayMonthly)}</td>
                         <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", fontWeight:700, color:C.ink }}>{usdK(l.cost)}</td>
                       </tr>
                     </tbody>

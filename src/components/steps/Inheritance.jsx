@@ -2,13 +2,13 @@ import { Field, NumberInput, Segmented, Section } from "../atoms/index.jsx";
 import { PROP } from "../../retirementData.js";
 
 /**
- * Step four — Inherited real estate inputs.
+ * Step six — Inherited real estate inputs.
  *
  * @param {{ s: object, set: function, setProp: function }} props
  */
 export function Inheritance({ s, setProp }) {
   return (
-    <Section eyebrow="Step four" title="Inherited real estate">
+    <Section eyebrow="Step six" title="Inherited real estate">
       <div style={{ fontSize:12, color:"#5E6B67", lineHeight:1.5, marginBottom:14 }}>Two homes you may inherit. Set the value, the year, and what you'd do with each — the tax math and the impact on your plan update live.</div>
       {["tx","at"].map(key => {
         const p = s[key];

@@ -4,7 +4,7 @@
 >
 > **Tagline:** This is about your money, your home, and what comes next.
 
-**Version:** 1.1 (Wave 1) · **Reference year:** 2026 · **Companion docs:** PRD; Sources & References
+**Version:** 1.2 (Wave 2.5 — UX/IA) · **Reference year:** 2026 · **Companion docs:** PRD; Sources & References
 
 ---
 
@@ -48,6 +48,22 @@
   - [UC-23 Typed Life Events with Emergent Flag (C3)](#uc-23-typed-life-events-with-emergent-flag-c3)
   - [UC-24 Accumulation Summary Card (A3)](#uc-24-accumulation-summary-card-a3)
   - [UC-25 Live Headroom Read-Out (E1)](#uc-25-live-headroom-read-out-e1)
+- [8. Wave 2 Use Cases (H1–H4, T1–T3, L1–L3)](#8-wave-2-use-cases-h1h4-t1t3-l1l3)
+  - [UC-26 Housing and Mortgage Module (H1)](#uc-26-housing-and-mortgage-module-h1)
+  - [UC-27 Non-Housing Floor Policy and Housing-Explicit Need (H2, H3)](#uc-27-non-housing-floor-policy-and-housing-explicit-need-h2-h3)
+  - [UC-28 Inherited Live-In to Owned Tenure (H4)](#uc-28-inherited-live-in-to-owned-tenure-h4)
+  - [UC-29 Typed Residence Tax — US States (T1)](#uc-29-typed-residence-tax--us-states-t1)
+  - [UC-30 Typed Residence Tax — International and Treaty (T2)](#uc-30-typed-residence-tax--international-and-treaty-t2)
+  - [UC-31 Dual-Tax Exposure Panel (T3)](#uc-31-dual-tax-exposure-panel-t3)
+  - [UC-32 Work-vs-Retire Two-Location Split (L1)](#uc-32-work-vs-retire-two-location-split-l1)
+  - [UC-33 Relocation Home Transition (L2)](#uc-33-relocation-home-transition-l2)
+  - [UC-34 Month-View Housing Itemization (L3)](#uc-34-month-view-housing-itemization-l3)
+- [9. Wave 2.5 Use Cases (IA1–IA5)](#9-wave-25-use-cases-ia1ia5)
+  - [UC-35 Step IA Reorder (IA1)](#uc-35-step-ia-reorder-ia1)
+  - [UC-36 Work / Retire Location Split — UI Placement (IA2)](#uc-36-work--retire-location-split--ui-placement-ia2)
+  - [UC-37 Housing → Places Cost Substitution (IA3)](#uc-37-housing--places-cost-substitution-ia3)
+  - [UC-38 Event Taxonomy Fix (IA4)](#uc-38-event-taxonomy-fix-ia4)
+  - [UC-39 Spending-Basis Reframe (IA5)](#uc-39-spending-basis-reframe-ia5)
 
 ---
 
@@ -1327,3 +1343,165 @@ milestones = [
 **Scenario.** *"The couple wants to see their month-by-month housing cost alongside core living in their early retirement years — and to confirm that the navigator flags the year their mortgage is paid off."* In the navigator for age 65 (pre-payoff), the expense bar shows three segments: Housing ($2,400/mo P&I), Core living ($1,800/mo non-housing lifestyle), and Taxes ($1,200/mo). In the payoff year (age 77), a "Mortgage paid off" badge appears and the Housing segment drops to $580/mo (property tax + insurance only). The headroom figure improves noticeably from that year onward.
 
 **Edge cases.** `tenure = "rent"`: the Housing sub-line shows the rent amount; no payoff badge. `tenure = "own"` (paid off from the start): Housing shows carrying cost only; no payoff badge (payoffYear is undefined). Zero-value sub-lines are suppressed from the bar and legend consistent with existing behavior (UC‑18).
+
+---
+
+## 9. Wave 2.5 Use Cases (IA1–IA5)
+
+Wave 2.5 is a UX/IA wave. **The financial engine and the default headline are unchanged.** The use cases below document presentation, input-ordering, and labelling changes only. No new financial constants or formulas are introduced.
+
+---
+
+### UC-35 Step IA Reorder (IA1)
+
+**Purpose.** Re-sequence the input accordion into a clean 1–10 flow so the location-split and housing inputs appear before the spending and strategy steps, reducing orientation cost for new users.
+
+**Implements.** FR‑IA‑01, FR‑IA‑02, FR‑IA‑03, FR‑IA‑04.
+
+**Inputs.** No new engine inputs. The reorder affects UI step labels and accordion ordering only.
+
+**Logic.** No computation change. The ten steps map to existing input groups as follows.
+
+| Step | Label                              | Key inputs moved / confirmed here                          |
+| ---- | ---------------------------------- | ---------------------------------------------------------- |
+| 1    | Your household, today              | Ages, incomes, savings, contrib, filing status, `workLoc`  |
+| 2    | Your home today                    | Tenure, mortgage params, Sell-vs-Keep, retirement dwelling |
+| 3    | When work stops & benefits begin   | Stop ages, SS claim ages                                   |
+| 4    | Spouse's WA pension                | Plan, years, AFC, pension age                              |
+| 5    | Where you'll retire & local taxes  | `retireLoc`, `relocationYear`, state-rate override         |
+| 6    | Inherited real estate              | TX / AT property toggles and strategies                    |
+| 7    | Retirement spending                | `targetPct`, spending shape, lifestyle level, steps        |
+| 8    | Family milestones                  | Life events                                                |
+| 9    | Travel & longevity                 | Travel budget, LTC, survivor, horizon age                  |
+| 10   | Strategy & assumptions (Advanced)  | Return preset, variability, SWR, RMD share, stress toggle  |
+
+**Outputs.** A numbered, ordered accordion; all existing controls remain present at their new positions. No engine output changes.
+
+**Scenario.** *"A new user opens the tool and works top-to-bottom. By the time they reach Step 7 (spending), they have already specified where they work (Step 1), their home situation (Step 2), and where they plan to retire (Step 5). The spending step can therefore show a housing-aware breakdown without them needing to jump back to a later step."*
+
+**Edge cases.** Users who had bookmarked a specific step by URL fragment may land on a renumbered anchor. All state keys are unchanged so saved query-string state (if any) deserialises correctly. The Advanced step (10) remains collapsed by default.
+
+---
+
+### UC-36 Work / Retire Location Split — UI Placement (IA2)
+
+**Purpose.** Make the two-jurisdiction model self-evident by placing `workLoc` in the household step and the retirement-jurisdiction controls together in a dedicated step, without changing any engine behaviour.
+
+**Implements.** FR‑LOC‑01, FR‑LOC‑02, FR‑LOC‑03.
+
+**Inputs.** `workLoc` (Step 1), `retireLoc` / `relocationYear` / state-rate override (Step 5). State keys unchanged from Wave 2.
+
+**Logic.** No computation change. `activeJurisdiction(i, cal)` (UC‑32) is unmodified; only the form placement of the two controls differs.
+
+**Outputs.** `workLoc` rendered in Step 1 alongside income fields; `retireLoc` + `relocationYear` + override rendered together in Step 5.
+
+**Scenario.** *"A user sets `workLoc = CA` in Step 1 while entering their income. Later, in Step 5, they set `retireLoc = NV` and a relocation year of 2032. They never need to read documentation to understand that the two controls govern different life phases — the step headings make it clear."*
+
+**Edge cases.** When `workLoc === retireLoc` and `relocationYear` is unset, the plan is identical to a single-location scenario (FR‑RELO‑04). The UI may optionally hide `relocationYear` when both locations match, but the engine path is unchanged.
+
+---
+
+### UC-37 Housing → Places Cost Substitution (IA3)
+
+**Purpose.** Replace the static basket-rent figure in the Places affordability comparison with the household's actual resolved retirement-dwelling cost, so owners and mortgage holders see an honest comparison rather than a hypothetical local rent.
+
+**Implements.** FR‑PLACES‑01, FR‑PLACES‑02, FR‑PLACES‑03, FR‑PLACES‑04.
+
+**Inputs.** `housing.tenure`; `housingCostForYear` for the steady-state retirement year (from UC‑26); each location's basket `rent` line item.
+
+**Logic** (Places cost computation, `src/finance/places.js` or equivalent).
+
+```js
+function resolvedHousingForPlaces(tenure, householdCarryingCost, locationRent) {
+  // Own or mortgage: household carrying cost applied uniformly across all locations
+  if (tenure === "own" || tenure === "mortgage") return householdCarryingCost
+  // Rent: use each location's local basket rent
+  return locationRent
+}
+
+annualCost(location) = (sum of basket lines, replacing rent with resolvedHousingForPlaces(...)) * 12 * sFactor
+                     + healthcare
+```
+
+The substitution applies only to the Places bars and comparison table. It does not affect the engine's `need` computation (UC‑27) or any other chart.
+
+**Outputs.** Places bars for owned / mortgaged households show a uniform housing cost across all candidate locations (the household's carrying cost). Renters continue to see location-specific rents. A planning-grade caption is shown beneath the Places section.
+
+**Scenario.** *"The couple owns their home outright. Their annual carrying cost is $14,000/yr. Previously the Places bars showed each location's local rent (e.g. $24,000/yr for US-national, $9,600/yr for Bulgaria), making those locations appear much cheaper than they really are for this household. After the fix, every Places bar shows $14,000/yr for housing — an honest reflection that their home travels with them. The cost difference between locations narrows to non-housing categories only, and several locations that previously appeared 'Comfortable' now appear 'Affluent' for this household."*
+
+**Edge cases.** A renter who switches to `own` tenure mid-session sees the Places bars update immediately to show the uniform carrying cost. A household with `tenure = "mortgage"` where the mortgage is paid off by the steady-state retirement year uses the post-payoff carrying cost (property tax + insurance). The caption always reads "planning-grade" regardless of tenure.
+
+---
+
+### UC-38 Event Taxonomy Fix (IA4)
+
+**Purpose.** Ensure all default life events carry an explicit type, reclassify vehicle and upkeep events as `"purchase"`, and clarify the type option labels so users understand the cash-flow direction without guessing.
+
+**Implements.** FR‑EVTFIX‑01, FR‑EVTFIX‑02, FR‑EVTFIX‑03, FR‑EVTFIX‑04.
+
+**Inputs.** `events[]` default array (seeded in `src/retirementData.js`). No new user inputs.
+
+**Logic** (`src/retirementData.js` — default event definitions).
+
+```js
+// Before (Wave 1): vehicle replacement had no explicit type (defaulted to "gift")
+{ id: "vehicle", label: "Vehicle replacement", on: false, year: 2032, amount: 45000,
+  everyYears: 10 }
+
+// After (Wave 2.5): explicit type = "purchase"
+{ id: "vehicle", label: "Vehicle replacement", on: false, year: 2032, amount: 45000,
+  everyYears: 10, type: "purchase" }
+```
+
+The engine's `effectiveAmount(e)` function (UC‑23) treats `gift` and `purchase` identically as positive outflows. The fix is to data and labels only.
+
+Type option labels in the editor UI:
+
+| Value      | Label displayed            |
+| ---------- | -------------------------- |
+| `gift`     | Gift / support             |
+| `purchase` | Purchase / expense         |
+| `windfall` | Windfall / income received |
+
+**Outputs.** All default events have an explicit `type`. The event editor shows clarified labels. Engine behaviour is unchanged.
+
+**Scenario.** *"A user opens Family milestones and adds a vehicle event. The type dropdown now shows 'Purchase / expense' pre-selected (instead of 'Gift / support'), matching their mental model. They can immediately see that a windfall (e.g. an inheritance deposit) would reduce rather than add to spending need."*
+
+**Edge cases.** User-saved events from before Wave 2.5 that carry `type: "gift"` for a vehicle remain valid — `gift` and `purchase` are engine-equivalent. No migration is needed. The `windfall` path (netting negative) is unchanged from Wave 1.
+
+---
+
+### UC-39 Spending-Basis Reframe (IA5)
+
+**Purpose.** Display the spending control as a familiar total income-replacement ratio (~40% default) instead of the non-housing-only 28% figure, while leaving the engine's `targetPct` and all financial outputs identical.
+
+**Implements.** FR‑SPEND‑01, FR‑SPEND‑02, FR‑SPEND‑03, FR‑SPEND‑04, FR‑SPEND‑05.
+
+**Inputs.** `targetPct` (engine, unchanged default 0.28); `housingShare` (derived: `housingCostForYear / incomeHH` at the steady-state year). No new persisted state.
+
+**Logic** (display layer only — no changes to `src/finance/simulate.js`).
+
+```js
+// Displayed total ratio (presentation only — never written back to engine)
+displayedRatio = targetPct + housingShare   // e.g. 0.28 + 0.12 ≈ 0.40
+
+// Breakdown shown below the slider
+breakdown = {
+  total:      displayedRatio,              // ~40%
+  housing:    housingShare,                // ~12% (varies by tenure / payoff year)
+  nonHousing: targetPct,                   // 0.28 (the engine value)
+}
+
+// Slider interaction: user moves slider → engine targetPct updates; displayedRatio recalculates
+onSliderChange(newDisplayedRatio) {
+  targetPct = newDisplayedRatio - housingShare   // strip housing component back out
+}
+```
+
+The mortgage payoff lowers `housingShare` over time, so the displayed total ratio decreases automatically as the plan matures. If the spending smile is active, the non-housing component tapers; the breakdown caption reflects both effects.
+
+**Outputs.** Slider label reads the total ratio (~40% default). Breakdown caption shows total / housing / non-housing. Engine `targetPct` and all projections are numerically unchanged.
+
+**Scenario.** *"A user reads that financial planners commonly target 70–80% income replacement. The old 28% figure confused them. The new 40% display makes sense: 28% lifestyle spending + 12% housing ≈ 40% total. They adjust the slider to 45% (targeting a more comfortable retirement): the engine receives `targetPct = 0.33`, the housing component stays fixed, and the staircase spending-need line rises proportionally. The headline updates live."*
+
+**Edge cases.** When `housing.tenure = "rent"` and rent is large relative to income, `housingShare` may push `displayedRatio` above 80% even with a low `targetPct`. The slider is clamped to a sensible display range; the engine `targetPct` is always derived by subtracting the current `housingShare`. With `housingShare = 0` (no housing cost modeled), `displayedRatio === targetPct` and the display is unchanged from the pre-Wave-2.5 behavior.

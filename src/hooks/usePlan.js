@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { calculatePlan, monthlyTotal, tierFor } from "../calculatorCore.js";
 import { accumulationSummary } from "../finance/accumulation.js";
+import { retirementDwellingAnnualCost } from "../finance/housing.js";
 import { spendingHeadroom } from "../finance/headroom.js";
+import { buildPlanInputs } from "../finance/plan.js";
 import { simulate } from "../finance/simulate.js";
 import { LOCATIONS, SINGLE_COST_FACTOR } from "../retirementData.js";
 import { C, SRC } from "../components/theme.js";
@@ -34,13 +36,19 @@ export function usePlan(s, couple, stage) {
   const sFactor = couple ? 1 : SINGLE_COST_FACTOR;
 
   const locRows = useMemo(() => {
-    const annualCost = (l) => monthlyTotal(l, stage) * 12 * sFactor;
+    const hh = retirementDwellingAnnualCost(buildPlanInputs(s));
+    const annualCost = (l) => {
+      const base = monthlyTotal(l, stage) * 12 * sFactor;
+      if (hh.basis === "rent") return base; // local rent stands; no substitution
+      const localRentAnnual = (l.m.rent || 0) * 12 * sFactor; // remove this location's rent slice
+      return base - localRentAnnual + hh.annual; // add YOUR fixed carrying cost
+    };
     return LOCATIONS.map(l => {
       const cost = annualCost(l);
       const ratio = steady.net / cost;
-      return { ...l, cost, ratio, tier: tierFor(ratio) };
+      return { ...l, cost, ratio, tier: tierFor(ratio), hh };
     }).sort((a, b) => a.cost - b.cost);
-  }, [steady.net, sFactor, stage]);
+  }, [s, steady.net, sFactor, stage]);
 
   const firstEvent = Math.min(s.stopA, s.stopB + (s.ageA - s.ageB));
 
@@ -92,6 +100,12 @@ export function usePlan(s, couple, stage) {
     [simSS, s.stopA, s.ageA, s.stopB, s.ageB],
   );
 
+  // Year-1 retirement housing annual cost — used by the total-replacement slider.
+  const retireHousingAnnual = useMemo(
+    () => retirementDwellingAnnualCost(buildPlanInputs(s)).annual,
+    [s],
+  );
+
   return {
     calc,
     // calc destructure — exposed with identical names
@@ -108,5 +122,6 @@ export function usePlan(s, couple, stage) {
     sFactor,
     headroom,
     accumulation,
+    retireHousingAnnual,
   };
 }

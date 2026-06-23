@@ -332,17 +332,22 @@ describe("year-by-year navigator", () => {
 });
 
 describe("spending basis toggle", () => {
-  it("defaults to the income-share basis and shows the share slider", () => {
+  it("defaults to the income-share basis and shows the total-replacement slider", () => {
     render(<RetirementCalculator />);
     expect(screen.getByRole("button", { name: "% of income" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText(/Retire on this share of income/i)).toBeInTheDocument();
+    expect(screen.getByText(/Replace this share of income in retirement/i)).toBeInTheDocument();
   });
 
-  it("switches to the location-cost basis, hiding the income share and revealing the lifestyle slider", () => {
+  it("switches to the location-cost basis, hiding the total-replacement slider and revealing the lifestyle slider", () => {
     render(<RetirementCalculator />);
     fireEvent.click(screen.getByRole("button", { name: "Location cost" }));
-    expect(screen.queryByText(/Retire on this share of income/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Replace this share of income in retirement/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Lifestyle —/i)).toBeInTheDocument();
+  });
+
+  it("shows the total-replacement spending control with an accessible label", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByLabelText("Replace this share of income in retirement")).toBeInTheDocument();
   });
 });
 
@@ -520,7 +525,7 @@ describe("Housing step (Wave 2 Task 4)", () => {
   });
 });
 
-describe("LocationTax step (Wave 2 Task 6)", () => {
+describe("RetirementPlace step (Step 5 — Wave 2.5 Task 3a)", () => {
   it("renders the Retirement state select with accessible label", () => {
     render(<RetirementCalculator />);
     expect(screen.getByLabelText(/retirement state/i)).toBeInTheDocument();
@@ -547,9 +552,8 @@ describe("LocationTax step (Wave 2 Task 6)", () => {
     expect(screen.getByText(/California.*effective state income tax/i)).toBeInTheDocument();
   });
 
-  it("renders the work-state select and relocation-year input with accessible labels", () => {
+  it("renders the relocation-year input with an accessible label", () => {
     render(<RetirementCalculator />);
-    expect(screen.getByLabelText(/where you live and earn now|work state/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/relocation year/i)).toBeInTheDocument();
   });
 
@@ -557,6 +561,13 @@ describe("LocationTax step (Wave 2 Task 6)", () => {
     render(<RetirementCalculator />);
     expect(screen.getByText(/transition year is simplified/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Pension Source Tax Act/i })).toBeInTheDocument();
+  });
+
+  it("places work-state in Household and retirement-place controls in Step 5", () => {
+    render(<RetirementCalculator />);
+    expect(screen.getByLabelText("Where you live and earn now")).toBeInTheDocument();
+    expect(screen.getByLabelText("Retirement state")).toBeInTheDocument();
+    expect(screen.getByLabelText("Relocation year")).toBeInTheDocument();
   });
 });
 
@@ -640,6 +651,15 @@ describe("DualTaxExposure panel (Wave 2 Task 6)", () => {
   });
 });
 
+describe("Wave 2.5 — step order and numbering", () => {
+  it("renders steps in the Wave 2.5 order with consistent numbering", () => {
+    render(<RetirementCalculator />);
+    const eyebrows = screen.getAllByText(/^Step (one|two|three|four|five|six|seven|eight|nine)$/i)
+      .map((el) => el.textContent.trim().toLowerCase());
+    expect(eyebrows).toEqual(["step one","step two","step three","step four","step five","step six","step seven","step eight","step nine"]);
+  });
+});
+
 describe("Task 8 — work-vs-retire jurisdiction split UI", () => {
   it("renders the Work state selector with an accessible label", () => {
     render(<RetirementCalculator />);
@@ -655,5 +675,18 @@ describe("Task 8 — work-vs-retire jurisdiction split UI", () => {
     render(<RetirementCalculator />);
     const workStateSelect = screen.getByLabelText(/where you live and earn now/i);
     expect(workStateSelect.value).toBe("WA");
+  });
+});
+
+describe("Places panel — housing caption (Wave 2.5 Part 5)", () => {
+  it("should_renderHousingCostCaption_when_placesAreDisplayed", () => {
+    // Arrange + Act
+    render(<RetirementCalculator />);
+
+    // Assert — the caption is present with its aria-label
+    expect(screen.getByLabelText(/housing cost note/i)).toBeInTheDocument();
+    // Core text confirms owned/mortgage and rent cases are explained
+    expect(screen.getByText(/you bring one home/i)).toBeInTheDocument();
+    expect(screen.getByText(/each location.s local rent is shown/i)).toBeInTheDocument();
   });
 });

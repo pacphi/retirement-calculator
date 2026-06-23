@@ -1,6 +1,6 @@
-import { TAX_YEAR, HOME_SELL_NET, HOME_RENT_YIELD } from "../retirementData.js";
+import { TAX_YEAR } from "../retirementData.js";
 import { composeNeed, spendingComponents, yearReturn } from "./seams.js";
-import { remainingBalance, housingCostForYear } from "./housing.js";
+import { housingCostForYear, resolveDwelling } from "./housing.js";
 import { calculateFederalTaxYear } from "./tax.js";
 import { residenceTaxForYear } from "./residenceTax.js";
 import { ownBenefitAtClaimMonthly, piaFromIncome, spousalBenefitAtClaimMonthly } from "./socialSecurity.js";
@@ -195,68 +195,14 @@ export function simulate(i, ssOpt) {
     const jur = activeJurisdiction(i, cal);
 
     // Resolve the effective housing inputs for this year (Task 8).
-    //
-    // Before relocationYear: the WORK residence (i.housing).
-    // From relocationYear on: the RETIREMENT residence — never i.housing, so a SOLD work
-    // home's mortgage P&I can't leak past the move (I1 fix). Order of precedence:
-    //   inheritedOwnOverride (Task 5 live-in) > i.retireHousing > defaultRetireRent.
-    // defaultRetireRent is a rent config seeded from the retire location's basket; when the
-    // household has no explicit retirement home AND relocation is a real transition (work home
-    // is owned/mortgaged and being sold), this is what they live in post-move.
-    const reloAction = i.housing?.relocation?.action ?? "none";
-    const reloSaleValue = Number(i.housing?.relocation?.saleValue) || 0;
-    const jurisdictionDiffers = i.workLoc !== (i.stateCode ?? i.retireLoc);
-    const workHomeOwned = i.housing?.tenure === "mortgage" || i.housing?.tenure === "own";
-    // A GENUINE relocation transition (the work home is disposed of and the household moves)
-    // requires: a different retire jurisdiction, an owned/mortgaged work home, AND a real
-    // disposition — a "sell" with a positive saleValue, or "keep" (rent it out). A "sell" with
-    // saleValue 0 and no retireHousing means the user simply didn't configure a move, so the
-    // home stays the residence throughout (e.g. a US homeowner who set a stateCode but isn't
-    // relocating). An explicit retireHousing also signals a move.
-    const relocationTransition =
-      jurisdictionDiffers && workHomeOwned
-      && (reloAction === "keep" || (reloAction === "sell" && reloSaleValue > 0) || i.retireHousing != null);
-    const defaultRetireRent = {
-      tenure: "rent",
-      rent: i.retLocObj?.m?.rent ?? i.housing?.rent ?? 0,
-      mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: TAX_YEAR },
-      homeValue: 0, insuranceAnnual: 0, maintenancePct: 0,
-    };
-    // From relocationYear on the residence is NEVER i.housing when a real transition occurred
-    // (so a sold/kept work home's residence cost can't leak — I1). It is retireHousing if set,
-    // else a rent config at the retire location. With no transition, the dwelling is unchanged
-    // (retireHousing if explicitly set, else i.housing).
-    const retireResidence = relocationTransition
-      ? (i.retireHousing ?? defaultRetireRent)
-      : (i.retireHousing ?? i.housing);
-    const baseHousing = cal < i.relocationYear ? i.housing : retireResidence;
-    const effectiveHousing = inheritedOwnOverride ?? baseHousing;
-
-    // Task 8 relocation transition at relocationYear. Only fires when the retire location
-    // genuinely differs and the work home is owned/mortgaged.
-    //   "sell": realize NET proceeds = HOME_SELL_NET × saleValue − remaining mortgage balance,
-    //           added to the portfolio via the existing sellLump bucket. Work P&I stops because
-    //           the residence switched off i.housing above (I1).
-    //   "keep": no lump; the work home is retained as a rental — gross rental income is added and
-    //           the work mortgage P&I continues (as a landlord cost on the kept property).
-    //   "none": no transition.
-    let keepRentalIncome = 0;
-    let keepMortgageCost = 0;
-    if (relocationTransition) {
-      if (reloAction === "sell" && cal === i.relocationYear) {
-        const owed = remainingBalance(i.housing.mortgage, i.relocationYear);
-        sellLump += Math.max(0, HOME_SELL_NET * reloSaleValue - owed);
-      } else if (reloAction === "keep" && cal >= i.relocationYear) {
-        // Kept as a rental from the move on: gross rental income offset by the continuing
-        // work mortgage P&I (deflated, zeroed at payoff — same as housingCostForYear). Only
-        // the P&I component is a landlord cost here; property tax/insurance/maintenance on a
-        // kept rental are out of scope (planning-grade), so we charge P&I only.
-        keepRentalIncome += HOME_RENT_YIELD * (Number(i.housing.homeValue) || 0);
-        if (i.housing.tenure === "mortgage") {
-          keepMortgageCost += housingCostForYear(i.housing, cal, i.inflation, 0).pi;
-        }
-      }
-    }
+    // The inline block has been extracted to resolveDwelling() in housing.js (Wave 2.5 Task 2).
+    // ctx carries the two loop-locals that are also used outside the dwelling block
+    // (inheritedOwnOverride from the inher loop; propertyTaxRate from activeJurisdiction).
+    const dw = resolveDwelling(i, cal, { inheritedOwnOverride, propertyTaxRate: jur.propertyTaxRate });
+    const effectiveHousing = dw.housing;
+    sellLump += dw.sellLump;
+    const keepRentalIncome = dw.keepRentalIncome;
+    const keepMortgageCost = dw.keepMortgageCost;
 
     // Task 8 "keep" transition: the kept work home is a rental. Its gross rental income
     // joins the rental path (taxed as rental, same as inherited-rental income); its
@@ -277,7 +223,7 @@ export function simulate(i, ssOpt) {
     // Task 8: use the jurisdiction's propertyTaxRate (work state in working years,
     // retire state from relocationYear on). Inherited-owned overrides keep rate=0
     // (PROP.ownRate already bundles all carrying costs).
-    const overrideActive = effectiveHousing !== baseHousing;
+    const overrideActive = dw.overrideActive;
     const iEffective = (effectiveHousing !== i.housing) ? { ...i, housing: effectiveHousing } : i;
     // I1 fix: PROP.ownRate already bundles property tax + insurance + maintenance into
     // maintenancePct, so don't apply the state property-tax rate again to an inherited

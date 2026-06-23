@@ -3,28 +3,21 @@ import { Field, NumberInput, Section } from "../atoms/index.jsx";
 import { US_STATE_TAX } from "../../retirementData.js";
 
 /**
- * LocationTax step — work-state / retirement-state jurisdiction split + manual
- * stateRate override for power users.
+ * Step five — Where you'll retire & local taxes.
  *
- * Sets `workLoc` (US_STATE_TAX key, default "WA"), `relocationYear` (the year the
- * household moves to the retirement jurisdiction), `stateCode` (US_STATE_TAX key or
- * "" for the retirement state), and optionally `stateRate` (explicit override that
- * bypasses both location addlTaxRate and the typed profile).
+ * Retirement-state jurisdiction + manual stateRate override for power users.
  *
- * Accessible labels: "Where you live and earn now", "Relocation year", "Retirement state"
+ * Sets `relocationYear` (the year the household moves to the retirement
+ * jurisdiction), `stateCode` (US_STATE_TAX key or "" for the retirement
+ * state), and optionally `stateRate` (explicit override that bypasses both
+ * location addlTaxRate and the typed profile).
+ *
+ * Accessible labels: "Retirement state", "Relocation year", "State rate override"
  *
  * @param {{ s: object, set: function }} props
  */
-export function LocationTax({ s, set }) {
-  const workProfile = s.workLoc ? US_STATE_TAX[s.workLoc] : null;
+export function RetirementPlace({ s, set }) {
   const profile = s.stateCode ? US_STATE_TAX[s.stateCode] : null;
-
-  // Plain-language summary for the work state (wage-tax face only).
-  function workProfileNote(p, name) {
-    if (!p) return null;
-    if (p.wageRate === 0) return `${name}: no wage income tax while working here.`;
-    return `${name}: ~${(p.wageRate * 100).toFixed(2)}% state wage tax applied to employment income before retirement.`;
-  }
 
   // Plain-language summary of the selected state's retirement-income treatment.
   function profileNote(p, name) {
@@ -41,7 +34,6 @@ export function LocationTax({ s, set }) {
     return `${name}: ~${(p.retireRate * 100).toFixed(2)}% effective state income tax on retirement income${exemptions}.`;
   }
 
-  const workNote = workProfile ? workProfileNote(workProfile, workProfile.name) : null;
   const note = profile ? profileNote(profile, profile.name) : null;
   // Manual override is active when stateRate is not null/empty.
   const overrideActive = s.stateRate != null && s.stateRate !== "";
@@ -54,35 +46,7 @@ export function LocationTax({ s, set }) {
   };
 
   return (
-    <Section eyebrow="Location & Tax" title="Work & retirement state">
-      <Field
-        label="Where you live & earn now"
-        hint="Your US state while employed. Sets the wage-tax rate applied to employment income before retirement."
-      >
-        <select
-          aria-label="Where you live and earn now"
-          value={s.workLoc ?? "WA"}
-          onChange={(e) => set("workLoc")(e.target.value || "WA")}
-          style={selectStyle}
-        >
-          {Object.entries(US_STATE_TAX).map(([code, p]) => (
-            <option key={code} value={code}>{p.name}</option>
-          ))}
-        </select>
-      </Field>
-
-      {workNote && (
-        <div
-          role="note"
-          style={{
-            fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5, marginBottom: 14,
-            padding: "8px 10px", background: "#F6F2E8", borderRadius: 8,
-          }}
-        >
-          {workNote}
-        </div>
-      )}
-
+    <Section eyebrow="Step five" title="Where you'll retire & local taxes">
       <Field
         label="Relocation year"
         hint="The calendar year you move to your retirement jurisdiction. Work-state tax applies before this year; retirement-state tax applies from this year on."
