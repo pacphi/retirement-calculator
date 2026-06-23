@@ -55,6 +55,31 @@ Inter / Newsreader / JetBrains Mono).
 7. **Guardrail defaults — Guyton-Klinger canonical.** ±20% guardrail bands, 10% spending
    adjustments (`upperPct:20, lowerPct:20, cutPct:10, raisePct:10`), sourced to Kitces/Morningstar.
 
+## Reconciliation against merged Wave 2.5 (post-merge update, 2026-06-23)
+
+This plan was drafted before Wave 2.5 merged to `main` (squash `874ec6f`). Corrections for the
+current tree — these GOVERN where the plan text below disagrees:
+
+- **Task 0 is DONE** in Wave 2.5 (`src/defaultPlan.js` + `src/defaultPlan.test.js` exist; golden
+  pinned net 139316 / need 66488 / FV 1363146 / startAge 74). Execution STARTS AT TASK 1.
+- **IA is a fixed 1–10**: Household · Housing · Timing · Pension · RetirementPlace · Inheritance ·
+  SpendingStrategy · Milestones · TravelLongevity · Advanced.
+- **Contributions UI = NEW step 2 "Saving"** (inserted after Household → 11 steps) — user decision.
+- **Return-model UI = EXTEND `src/components/steps/Advanced.jsx`** (no new step) — user decision.
+  Task 5's "create `ReturnModel.jsx`" option is dropped.
+- **Guardrails UI = EXTEND existing `src/components/steps/SpendingStrategy.jsx`** (it now hosts the
+  Wave-2.5 total-replacement slider — Task 6 must NOT regress that slider).
+- **`housing.js` already exports `resolveDwelling` + `retirementDwellingAnnualCost`** — Task 3's
+  sale-proceeds→taxable builds on `resolveDwelling`'s `sellLump`; do not fork dwelling resolution.
+- **Line-number drift** (Wave-2.5 `resolveDwelling` extraction shifted the loop EARLIER): the plan's
+  "contribution deposit ~306-320" is now **~252-266** (`plannedContrib` at 252, `defBal += contrib *
+  i.tradFrac` at 266); RMD "~322-388" is now **~269-334**; `steadyState` "~474-510" is now
+  **~437-455**; `simulate.js:29 plannedContribution` is still accurate. **Locate by behavior, not
+  line number.**
+- **`makeDefaultPlan()` must deep-clone every NEW nested field** (`contribStreams`, `employerMatch`,
+  `bucketSplit`, `returnModel`, `guardrails`, `withdrawalOrder`) so React state never mutates the
+  module constant.
+
 ## Global Constraints
 
 (Every task's requirements implicitly include this section — copied from design-spec §3.)
