@@ -302,8 +302,8 @@ Sources added for the five Wave 3 features: multi-vehicle contributions, three-b
 
 ### Contribution Limits (A1/A2)
 
-- **[IRS — 401(k) limit increases to $24,500 for 2026; IRA to $7,500](https://www.irs.gov/newsroom/401k-limit-increases-to-24500-for-2026-ira-limit-increases-to-7500)** **(primary)** (`SOURCES.irsContrib2026`) — 2026 employee contribution limits for 401(k)/403(b) ($23,500 base; $31,000 age-50+ catch-up; $34,750 age-60–63 super catch-up per SECURE 2.0) and IRA ($7,000 base; $8,000 catch-up). Also mirrors the existing Section 6 citation for RMDs.
-- **[Fidelity — 401(k) catch-up contributions for high earners](https://www.fidelity.com/learning-center/personal-finance/401k-catch-up-contributions-high-earners)** (`SOURCES.fidelityCatchup`) — SECURE 2.0 super catch-up mechanics and the $34,750 age-60–63 limit cross-check; employer match interaction notes.
+- **[IRS — 401(k) limit increases to $24,500 for 2026; IRA to $7,500](https://www.irs.gov/newsroom/401k-limit-increases-to-24500-for-2026-ira-limit-increases-to-7500)** **(primary)** (`SOURCES.irsContrib2026`) — 2026 employee contribution limits for 401(k)/403(b) ($24,500 base; $32,500 with the age-50+ catch-up; $35,750 with the age-60–63 super catch-up per SECURE 2.0) and IRA ($7,500 base; $8,600 with the catch-up). Also mirrors the existing Section 6 citation for RMDs.
+- **[Fidelity — 401(k) catch-up contributions for high earners](https://www.fidelity.com/learning-center/personal-finance/401k-catch-up-contributions-high-earners)** (`SOURCES.fidelityCatchup`) — SECURE 2.0 super catch-up mechanics and the $35,750 age-60–63 limit cross-check; employer match interaction notes.
 
 ### 60/40 Portfolio and Glidepath Returns (Advanced)
 
