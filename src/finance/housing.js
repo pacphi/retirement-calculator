@@ -1,4 +1,4 @@
-import { TAX_YEAR } from "../retirementData.js";
+import { TAX_YEAR, HOME_SELL_NET, HOME_RENT_YIELD } from "../retirementData.js";
 
 /**
  * Outstanding mortgage principal at the start of calendar year `cal`.
@@ -69,4 +69,86 @@ export function housingCostForYear(housing, cal, inflation, propertyTaxRate = 0)
   // "own" ⇒ no pi/rent.
   const other = rent + insurance + maintenance;
   return { total: pi + propertyTax + other, pi, propertyTax, other };
+}
+
+/**
+ * Resolve the effective dwelling and relocation cash effects for a given
+ * calendar year. Extracted from simulate.js (lines ~206-259) so both the
+ * projection loop and Places (Task 3) can call the same logic.
+ *
+ * @param {object} i     - Plan inputs (housing, retireHousing, relocationYear,
+ *                         workLoc, stateCode, retireLoc, retLocObj, inher, inflation).
+ * @param {number} cal   - Calendar year being resolved.
+ * @param {object} ctx   - Pre-computed loop locals:
+ *                           inheritedOwnOverride: object|null  (from the inher loop)
+ *                           propertyTaxRate: number            (accepted for caller symmetry;
+ *                             not consumed here — callers apply property tax via housingCostForYear)
+ *
+ * @returns {{
+ *   housing:          object,           // effectiveHousing for this year
+ *   overrideActive:   boolean,          // true when inheritedOwnOverride displaced baseHousing
+ *   sellLump:         number,           // net home-sale proceeds (0 unless sell fires this year)
+ *   keepRentalIncome: number,           // gross rental income from kept work home (0 or HOME_RENT_YIELD × homeValue)
+ *   keepMortgageCost: number,           // landlord P&I on kept mortgage (0 or deflated annual P&I)
+ *   transition:       "none"|"sell"|"keep",
+ * }}
+ */
+export function resolveDwelling(i, cal, ctx) {
+  const { inheritedOwnOverride } = ctx;
+
+  // Determine whether a genuine relocation transition applies.
+  // Mirrors simulate.js verbatim — do not alter the conditions.
+  const reloAction = i.housing?.relocation?.action ?? "none";
+  const reloSaleValue = Number(i.housing?.relocation?.saleValue) || 0;
+  const jurisdictionDiffers = i.workLoc !== (i.stateCode ?? i.retireLoc);
+  const workHomeOwned = i.housing?.tenure === "mortgage" || i.housing?.tenure === "own";
+  const relocationTransition =
+    jurisdictionDiffers && workHomeOwned
+    && (reloAction === "keep" || (reloAction === "sell" && reloSaleValue > 0) || i.retireHousing != null);
+
+  const defaultRetireRent = {
+    tenure: "rent",
+    rent: i.retLocObj?.m?.rent ?? i.housing?.rent ?? 0,
+    mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: TAX_YEAR },
+    homeValue: 0, insuranceAnnual: 0, maintenancePct: 0,
+  };
+
+  // From relocationYear on the residence is NEVER i.housing when a real transition
+  // occurred (I1 fix). Order of precedence:
+  //   inheritedOwnOverride > retireHousing > defaultRetireRent (transition)
+  //                        > retireHousing > i.housing          (no transition)
+  const retireResidence = relocationTransition
+    ? (i.retireHousing ?? defaultRetireRent)
+    : (i.retireHousing ?? i.housing);
+  const baseHousing = cal < i.relocationYear ? i.housing : retireResidence;
+  const effectiveHousing = inheritedOwnOverride ?? baseHousing;
+
+  // Compute relocation cash effects — only when a real transition fired.
+  let sellLump = 0;
+  let keepRentalIncome = 0;
+  let keepMortgageCost = 0;
+  let transition = "none";
+
+  if (relocationTransition) {
+    if (reloAction === "sell" && cal === i.relocationYear) {
+      const owed = remainingBalance(i.housing.mortgage, i.relocationYear);
+      sellLump = Math.max(0, HOME_SELL_NET * reloSaleValue - owed);
+      transition = "sell";
+    } else if (reloAction === "keep" && cal >= i.relocationYear) {
+      keepRentalIncome = HOME_RENT_YIELD * (Number(i.housing.homeValue) || 0);
+      if (i.housing.tenure === "mortgage") {
+        keepMortgageCost = housingCostForYear(i.housing, cal, i.inflation, 0).pi;
+      }
+      transition = "keep";
+    }
+  }
+
+  return {
+    housing: effectiveHousing,
+    overrideActive: effectiveHousing !== baseHousing,
+    sellLump,
+    keepRentalIncome,
+    keepMortgageCost,
+    transition,
+  };
 }
