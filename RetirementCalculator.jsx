@@ -4,6 +4,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { DEFAULT_LIFE, DEFAULT_LIFE_EVENTS, DEFAULT_TRAVEL, INTL_TAX, LOCATIONS, MC_DEFAULTS, SINGLE_COST_FACTOR, SOURCES } from "./src/retirementData.js";
+import { makeDefaultPlan } from "./src/defaultPlan.js";
 import { C, SRC, FONTS } from "./src/components/theme.js";
 import { Chevron, NestLogo } from "./src/components/atoms/index.jsx";
 import {
@@ -48,37 +49,7 @@ export const mcSummaryLines = (mc, horizon = 95) => mc ? [
 
 /* ---------------------------- Main ---------------------------- */
 export default function RetirementCalculator() {
-  const [s, setS] = useState({
-    ageA:57, ageB:48, stopA:65, stopB:56, claimA:65, claimB:65, pensionAge:65,
-    incomeA:0, incomeB:170000, savings:670000, contrib:18000, targetPct:0.28, status:"married",
-    ssModeA:"statement", ssModeB:"statement", ssFraA:50424, ssFraB:31592,
-    pensionOn:true, system:"TRS", plan:3, pYears:22, afc:170000,
-    realReturn:0.05, swr:0.04, tradFrac:0.7, inflation:0.025,
-    ssMode:"trustees", ssHaircut:81, ssCutYear:2034,
-    retireLoc:"Austria", spendBasis:"income", lifestyle:100,
-    tx:{ on:false, value:790000, year:2038, strategy:"rent" },
-    at:{ on:true, value:324000, year:2040, strategy:"live" },
-    travel: { ...DEFAULT_TRAVEL },
-    events: DEFAULT_LIFE_EVENTS.map((e) => ({ ...e })),
-    life: { ...DEFAULT_LIFE },
-    survivor: { on:false, year:2055, pensionPct:0 },
-    ltc: { on:false, startAge:80, years:3, annual:null },
-    horizonAge: 95,
-    stateRate: null,
-    returnPreset: "balanced", volatility: 0.12, showStress: false,
-    spendingShape: { mode: "flat", earlyDecline: 0.01, upturnAge: 85, lateUpturn: 0.01 },
-    lifestyleSteps: [],
-    workLoc: "WA", relocationYear: 2046, stateCode: null,
-    // Wave 2 Task 4: default housing is rent at the retire location (Austria 1650/mo).
-    // targetPct is reframed as non-housing (0.28); the explicit housing line covers rent.
-    // Task 8: relocation defaults to sell with saleValue 0 — a no-op for a renter. The
-    // disposition UI stays hidden unless the work home is owned/mortgaged in a different state.
-    housing: { tenure: "rent", rent: 1650, mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: 2026 }, homeValue: 0, insuranceAnnual: 0, maintenancePct: 0.01, relocation: { action: "sell", saleValue: 0 } },
-    // Task 8: the retirement dwelling after relocation. null ⇒ same dwelling throughout
-    // (no relocation home transition). The Housing step seeds a rent default when the user
-    // configures a genuine move (different state + owned/mortgaged work home).
-    retireHousing: null,
-  });
+  const [s, setS] = useState(makeDefaultPlan);
   const [couple, setCouple] = useState(true);
   const [stage, setStage] = useState("post");
   const [adv, setAdv] = useState(false);
