@@ -125,8 +125,8 @@ export function Places({
                   const hhLabel = hh.basis === "mortgage"
                     ? "Your home — mortgage P&I + costs"
                     : "Your home — carrying cost";
-                  // Monthly value: hh.annual is already sFactor-adjusted via usePlan;
-                  // undo sFactor here because the table re-applies it in the cell render.
+                  // Monthly value: hh.annual is NOT sFactor-scaled (policy: one home isn't halved);
+                  // the /sFactor here cancels the ×sFactor at render so the home line shows hh.annual/12.
                   const hhMonthly = sFactor > 0 ? hh.annual / 12 / sFactor : hh.annual / 12;
                   return [hhLabel, hhMonthly];
                 }
@@ -134,12 +134,14 @@ export function Places({
               })
             : rawItems;
 
-          // Recompute the substituted monthly total for the "Total cost of living" row.
-          // l.cost from usePlan already reflects the substitution; use it for /yr.
-          // For /mo we recompute from displayItems so the table sums correctly.
+          // Derive the /mo footer from l.cost (the single source of truth for /yr)
+          // so /mo × 12 == /yr by construction.
+          // For renters, monthlyTotal(l, stage) * sFactor is equivalent but we
+          // use l.cost / 12 uniformly so both paths are consistent.
+          // NOTE: the old owned/mortgage path reduced over displayItems then added
+          // healthcare again — double-counting it. l.cost / 12 eliminates that bug.
           const displayMonthly = isOwnedHousing
-            ? displayItems.reduce((sum, [, val]) => sum + val * sFactor, 0)
-              + (stage === "pre" ? l.hcPre : l.hcPost) * sFactor
+            ? l.cost / 12
             : monthlyTotal(l, stage) * sFactor;
 
           return (
