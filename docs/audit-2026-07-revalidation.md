@@ -79,8 +79,8 @@ the Social Security statement amounts (the defaults are synthetic).
 | Full Social Security (no trust-fund cut)             |                                                                      $143,762 |      $1,050,290 |            $4,798,541 | never     |
 | 2026 Trustees update (83% from 2034)                 |                                                                      $125,905 |               — |            $3,952,796 | never     |
 | OASI-alone convention (78% from 2033)                |                                                                      $120,639 |               — |            $3,696,550 | never     |
-| Joint-survivor pension priced (×0.884, 50% elected)  |                                                                      $119,218 |        $920,967 |            $3,651,529 | never     |
-| Joint-survivor pension priced (×0.792, 100% elected) |                                                                      $115,849 |               — |            $3,505,023 | never     |
+| Joint-survivor pension priced (×0.968, 50% elected)  |                                                                      $122,586 |               — |            $3,808,520 | never     |
+| Joint-survivor pension priced (×0.939, 100% elected) |                                                                      $121,476 |               — |            $3,770,568 | never     |
 | Monte Carlo (1000 paths, seed 12345)                 | success 95.5% · sustainable income p10 $102,154 / p50 $125,920 / p90 $168,445 |                 |                       |           |
 
 ---
@@ -164,7 +164,7 @@ rather than exactness.
 | ERF <30 yrs (55=0.4092 … 64=0.9085)              | identical                                                                | identical, spot-checked 55/60/64 — **table effective through Dec 31, 2026; 2027 set already published** (55=0.4018, 60=0.6236, 64=0.9069)              | DRS 2026 + 2027 Administrative Factors workbooks                                                                                                                                                                        | VERIFIED (2027 update pending)         |
 | 30+ yr 5% ERF; pre-5/2013 2008-ERF gap           | 5% schedule only                                                         | 5% column identical; 2008 ERF (55=0.80, 62–64=1.00) confirmed for pre-May-2013 hires — code's documented understatement for that cohort confirmed real | same                                                                                                                                                                                                                    | VERIFIED (documented gap)              |
 | DRS COLA cap 3%                                  | **not modeled**                                                          | Confirmed: CPI(Seattle)-based, max 3%/yr, with COLA banking                                                                                            | [DRS COLA](https://www.drs.wa.gov/cola/)                                                                                                                                                                                | confirms finding C                     |
-| Joint-survivor option factors                    | **not modeled** (election is free)                                       | TRS 2/3, beneficiary 9 yrs younger: **100% J&S = 0.792, 66.67% = 0.851, 50% = 0.884** (2026 factors; 2027: 0.803/0.860/0.891)                          | DRS Administrative Factors workbooks, Appx G                                                                                                                                                                            | confirms finding D                     |
+| Joint-survivor option factors                    | **not modeled** (election is free)                                       | TRS 2/3 by member−beneficiary age gap — beneficiary 9 yrs OLDER (the persona): **0.939 / 0.958 / 0.968** (100/66.67/50%); same age: 0.877/0.915/0.935; beneficiary 9 yrs younger: 0.792/0.851/0.884. Pop-up restoration if beneficiary dies first; notarized spousal consent required for Single Life                          | DRS Administrative Factors workbooks, Appx G; DRS retirement application (T 374); WAC 415-02-380                                                                                                                                                                            | confirms finding D                     |
 
 ### 3.3 Market assumptions, cost of living, cross-border
 
@@ -302,15 +302,29 @@ RMD age/divisor; effort M.
 `pensEff = pensHolderDead ? pens × (survPensionPct/100) : pens`
 (`src/finance/simulate.js:190-192`): the member's benefit is never reduced while
 both spouses are alive, but a real WA DRS joint-survivor election costs an
-actuarial reduction from day one. The actual DRS factors (2026 Administrative
-Factors, TRS 2/3, beneficiary 9 years younger — the persona's age gap) are
-**0.884 for the 50% option and 0.792 for the 100% option**. Priced: a 50%
-election costs steady net −$4,581/yr and end balance −$213,627 (rerun at
-×0.884≈0.88); a 100% election costs steady net −$7,950/yr and end balance
-−$345,547 (rerun at ×0.792). The default (`pensionPct 0`) is internally coherent
-— it models a single-life annuity — so this only misleads users who set a
-survivor percentage and see no cost. _Recommendation:_ multiply the base pension
-by the DRS option factor whenever `pensionPct > 0`; effort S.
+actuarial reduction from day one. The factor direction depends on the age gap
+(2026 DRS Administrative Factors workbook, "Joint and Survivor Option Factors:
+TRS 2/3", verified against the parsed workbook and WAC 415-02-380). For the
+default persona the member (spouse B) is 9 years **younger** than her
+beneficiary, so survivor protection is cheap: **0.939 for the 100% option, 0.958
+for 66.67%, 0.968 for 50%**. Priced on the persona: a 100% election costs steady
+net −$2,323/yr and end balance −$80,002 (rerun at ×0.939); a 50% election costs
+−$1,213/yr and −$42,050 (×0.968). For the opposite gap (beneficiary 9 years
+younger than the member) the factors are 0.792/0.851/0.884 and the same probe
+prices a 100% election at −$7,950/yr. DRS also confirms a "pop-up" restoration
+to the single-life amount if the beneficiary dies first, and that notarized
+spousal consent is required to choose Single Life at all. The default
+(`pensionPct 0`) is internally coherent — it models a single-life annuity — so
+this only misleads users who set a survivor percentage and see no cost.
+_Recommendation:_ multiply the base pension by the DRS option factor (keyed to
+the member−beneficiary age difference) whenever `pensionPct > 0`; effort S.
+
+Related gap found while verifying: if a vested member **dies before retiring**,
+RCW 41.32.895 grants the surviving spouse a lifetime annuity (the member's
+earned benefit, reduced for 100% J&S and early retirement) — the engine instead
+pays $0 pension forever in that scenario, understating an early-death survivor
+outcome. Low priority (the default persona's life model has no pre-retirement
+death), but worth documenting in the pension step.
 
 ### H. Death-year filing status flips to single immediately — GAP, conservative
 
