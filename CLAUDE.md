@@ -9,6 +9,7 @@ The app is still planning-grade, not advice-grade. Keep the in-app disclaimer an
 ## Current structure
 
 - `RetirementCalculator.jsx` - React UI and chart/table rendering.
+- `src/components/theme.js` - the only source of UI color. Light and dark palettes live as CSS variables (`THEME_CSS`); every exported color is a `var(--…)` reference, so never concatenate hex alpha onto them — use the `tint()` helper instead. The header toggle stamps `data-theme` on `<html>`; the default follows `prefers-color-scheme`, and print always forces light. Categorical series colors are entity-fixed (salary blue, pension aqua, Social Security yellow/green, portfolio withdrawal violet, rental orange) and validated for colorblind separation in both modes.
 - `src/retirementData.js` - source-linked 2026 constants and planning assumptions.
 - `src/calculatorCore.js` - pure calculation engine.
 - `src/calculatorCore.test.js` - deterministic formula and simulation tests.

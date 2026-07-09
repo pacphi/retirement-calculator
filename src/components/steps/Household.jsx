@@ -118,7 +118,7 @@ export function Household({ s, set, deferredMode, onDeferredModeChange, incomeHH
           role="note"
           style={{
             fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5, marginBottom: 14,
-            padding: "8px 10px", background: "#F6F2E8", borderRadius: 8,
+            padding: "8px 10px", background: "var(--surface-2)", borderRadius: 8,
           }}
         >
           {workNote}

@@ -6,7 +6,7 @@ import { spendingHeadroom } from "../finance/headroom.js";
 import { buildPlanInputs } from "../finance/plan.js";
 import { simulate } from "../finance/simulate.js";
 import { LOCATIONS, SINGLE_COST_FACTOR } from "../retirementData.js";
-import { C, SRC } from "../components/theme.js";
+import { SRC } from "../components/theme.js";
 
 /**
  * usePlan(s)
@@ -58,8 +58,8 @@ export function usePlan(s, couple, stage) {
       age: r.aA, ageB: r.aB,
       "Salary (you)": Math.round(r.salA), "Salary (spouse)": Math.round(r.salB),
       "Rental": Math.round(r.rent), "Pension": Math.round(r.pens),
-      "SS (you)": Math.round(r.ssA), "SS (spouse)": Math.round(r.ssB),
-      "Portfolio": (r.wdSpend ?? r.wd), need: r.need, extraSpend: r.extraSpend || 0,
+      "Social Security (you)": Math.round(r.ssA), "Social Security (spouse)": Math.round(r.ssB),
+      "Portfolio withdrawal": (r.wdSpend ?? r.wd), need: r.need, extraSpend: r.extraSpend || 0,
     })), [simSS, firstEvent]);
 
   const hasEmergent = (s.events || []).some(e => e.on && e.emergent);
@@ -88,13 +88,15 @@ export function usePlan(s, couple, stage) {
     rmd: r.rmd || 0,
     // Wave 3 D2: years where guaranteed income exceeds need; surplus reinvested into taxable.
     reinvest: r.reinvest || 0,
+    // After-tax remainder of a forced RMD, recycled into the taxable bucket.
+    rmdReinvest: r.rmdReinvest || 0,
   })), [simSS]);
 
   const incomeStack = useMemo(() => [
-    { name: "Savings draw", value: Math.round(steady.wd), color: C.brass },
+    { name: "Portfolio withdrawal", value: Math.round(steady.wd), color: SRC.wd },
     ...(steady.rentInc > 0 ? [{ name: "Rental", value: Math.round(steady.rentInc), color: SRC.rent }] : []),
-    { name: "Social Security", value: Math.round(steady.ssHouse), color: C.viridian },
-    ...(s.pensionOn ? [{ name: "WA pension", value: Math.round(steady.pension), color: C.ink }] : []),
+    { name: "Social Security", value: Math.round(steady.ssHouse), color: SRC.ssA },
+    ...(s.pensionOn ? [{ name: "DRS pension", value: Math.round(steady.pension), color: SRC.pension }] : []),
   ], [steady.wd, steady.rentInc, steady.ssHouse, steady.pension, s.pensionOn]);
 
   const headroom = useMemo(

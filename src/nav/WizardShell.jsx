@@ -14,7 +14,7 @@ export function WizardShell({ steps, nav }) {
   const btn = (primary) => ({
     cursor: "pointer", padding: "9px 18px", borderRadius: 9, fontSize: 13.5, fontWeight: 600,
     fontFamily: "'Inter', system-ui, sans-serif",
-    color: primary ? "#fff" : C.ink,
+    color: primary ? "var(--on-ink)" : C.ink,
     background: primary ? C.ink : C.panel,
     border: `1px solid ${primary ? C.ink : C.line}`,
   });

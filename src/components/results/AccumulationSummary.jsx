@@ -14,10 +14,10 @@ export function AccumulationSummary({ accumulation, retYear }) {
     <div
       className="rc-stat"
       style={{
-        background: C.ink,
+        background: "var(--header-bg)",
         borderRadius: 14,
         padding: "22px 24px",
-        color: "#F4F1E8",
+        color: "var(--header-ink)",
         marginBottom: 16,
       }}
     >
@@ -48,15 +48,15 @@ export function AccumulationSummary({ accumulation, retYear }) {
             fontSize: 42,
             fontWeight: 600,
             lineHeight: 1,
-            color: "#fff",
+            color: "var(--header-ink)",
           }}
         >
           {usd0(balAtRet)}
         </div>
-        <div style={{ fontSize: 13, color: "#C9D3CF" }}>at retirement · today's dollars</div>
+        <div style={{ fontSize: 13, color: "var(--header-mut)" }}>at retirement · today's dollars</div>
       </div>
 
-      <div style={{ marginTop: 6, fontSize: 13.5, color: "#C9D3CF" }}>
+      <div style={{ marginTop: 6, fontSize: 13.5, color: "var(--header-mut)" }}>
         Projected balance at retirement around {retYear}
       </div>
 
@@ -67,7 +67,7 @@ export function AccumulationSummary({ accumulation, retYear }) {
           gap: 24,
           flexWrap: "wrap",
           fontSize: 13,
-          color: "#C9D3CF",
+          color: "var(--header-mut)",
         }}
       >
         <div>
@@ -90,7 +90,7 @@ export function AccumulationSummary({ accumulation, retYear }) {
         </div>
       </div>
 
-      <div style={{ marginTop: 8, fontSize: 11.5, color: "#9FB0AB", lineHeight: 1.5 }}>
+      <div style={{ marginTop: 8, fontSize: 11.5, color: "var(--header-mut)", lineHeight: 1.5 }}>
         Contributions and portfolio growth summed over years while at least one spouse is still working.
         Blended return is a geometric estimate over the accumulation period — not a guarantee.
       </div>

@@ -994,6 +994,17 @@ describe("required minimum distributions", () => {
     expect(r.bal).toBeGreaterThan(1_000_000 - r.forcedRmd);
   });
 
+  it("exposes the after-tax RMD recycling as rmdReinvest on the row", () => {
+    const r = calculatePlan({ ...rmdBase, tradFrac: 1 }).simChosen.rows.find((r) => r.cal === 2026);
+    // The recycled amount is the forced gross minus its incremental tax: positive,
+    // never more than the forced draw itself.
+    expect(r.rmdReinvest).toBeGreaterThan(0);
+    expect(r.rmdReinvest).toBeLessThanOrEqual(r.forcedRmd);
+    // No forced RMD -> nothing recycled.
+    const r0 = calculatePlan({ ...rmdBase, tradFrac: 0 }).simChosen.rows.find((r) => r.cal === 2026);
+    expect(r0.rmdReinvest).toBe(0);
+  });
+
   it("exposes the bucket and flow fields the investments chart reads", () => {
     const r = calculatePlan({ ...rmdBase, tradFrac: 1 }).simChosen.rows.find((r) => r.cal === 2026);
     // Total draw splits into the spending portion plus the forced RMD.

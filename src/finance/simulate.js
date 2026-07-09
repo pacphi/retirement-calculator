@@ -366,6 +366,7 @@ export function simulate(i, ssOpt) {
     // draw is the deferred PORTION of the spending draw under the active order.
     const needDeferredDraw = wdSplit.deferred;
     let forcedRmd = 0;
+    let rmdReinvest = 0; // after-tax remainder of the forced RMD, recycled into taxable
     if (rmd > needDeferredDraw) {
       // Mirror the pre-Wave-3 cap exactly: deferred-pre-spending = buckets.deferred (now
       // post-spending) + needDeferredDraw; total = current `bal` (post-spending draw).
@@ -424,6 +425,7 @@ export function simulate(i, ssOpt) {
         // is reinvested into the taxable bucket (the gross leaves the tax-deferred pool).
         buckets.deferred = Math.max(0, buckets.deferred - forcedRmd);
         buckets.taxable += afterTaxForced;
+        rmdReinvest = afterTaxForced;
       }
     }
     defBal = Math.max(0, buckets.deferred);
@@ -467,7 +469,7 @@ export function simulate(i, ssOpt) {
       wd: Math.round(wdTotal), wdSpend: Math.round(wd), reinvest: Math.round(reinvest), bal: Math.round(bal), need: Math.round(need),
       extraSpend: Math.round(extraSpend),
       tax: Math.round(tax), contrib: Math.round(contrib), sellLump: Math.round(sellLump),
-      rmd: Math.round(rmd), forcedRmd: Math.round(forcedRmd), defBal: Math.round(defBal),
+      rmd: Math.round(rmd), forcedRmd: Math.round(forcedRmd), rmdReinvest: Math.round(rmdReinvest), defBal: Math.round(defBal),
       // Wave 3 D1: explicit per-bucket composition so steadyState + the chart can read
       // the same buckets the rows drew from (SINGLE-TAX-SOURCE). defBal === deferredBal.
       taxableBal: Math.round(buckets.taxable),

@@ -29,6 +29,7 @@ import { ChartFrame } from "./chartFrame.jsx";
  */
 export function Staircase({
   compRows,
+  benefitsOnAge,
   depAge,
   floorAtDep,
   needAtDep,
@@ -61,13 +62,16 @@ export function Staircase({
   const mpiMo = isMortgage ? monthlyPI(m?.principal, m?.ratePct, m?.termYears) : 0;
   const pOff = isMortgage ? payoffYear(m) : null;
   const pOffAge = pOff != null ? ageA + (pOff - TAX_YEAR) : null;
+  // First plotted year with no salary at all — the "paychecks end" milestone.
+  const payEndAge = (compRows || []).find((r) =>
+    (r["Salary (you)"] || 0) + (r["Salary (spouse)"] || 0) === 0)?.age ?? null;
 
   return (
     <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 14, padding: "16px 14px 12px", marginBottom: 16 }}>
       <div style={{ padding: "0 4px 6px" }}>
         <div style={{ fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: C.brassDeep, fontWeight: 700 }}>The staircase</div>
         <h3 style={{ margin: "2px 0 2px", fontFamily: "'Newsreader',serif", fontWeight: 500, fontSize: 19 }}>Income by source, year by year</h3>
-        <p style={{ margin: "2px 0 8px", fontSize: 12.5, color: C.slate, lineHeight: 1.5 }}>The dashed line is your spending need — it rises in the pre-65 years to cover full-price healthcare, then drops when Medicare/local cover kicks in. The portfolio (gold) fills whatever the other sources don&apos;t.{depAge != null ? <> At the dotted line (<b style={{ color: C.clay }}>age {depAge}</b>) the gold runs out — savings are spent and you live on the guaranteed floor (SS{pensionOn ? " + pension" : ""}{hasRental ? " + rental" : ""}) of about <b style={{ color: C.clay }}>{usd0(floorAtDep)}/yr</b>{floorAtDep < needAtDep ? <>, roughly <b style={{ color: C.clay }}>{usd0(needAtDep - floorAtDep)}/yr short</b> of the need</> : <>, which still covers the need</>}.</> : <> The savings are never fully drawn down in this plan.</>}</p>
+        <p style={{ margin: "2px 0 8px", fontSize: 12.5, color: C.slate, lineHeight: 1.5 }}>The dashed line is your spending need — it rises in the pre-65 years to cover full-price healthcare, then drops when Medicare/local cover kicks in. The portfolio (violet) fills whatever the other sources don&apos;t.{depAge != null ? <> At the dotted line (<b style={{ color: C.clay }}>age {depAge}</b>) the violet band runs out — savings are spent and you live on the guaranteed floor (SS{pensionOn ? " + pension" : ""}{hasRental ? " + rental" : ""}) of about <b style={{ color: C.clay }}>{usd0(floorAtDep)}/yr</b>{floorAtDep < needAtDep ? <>, roughly <b style={{ color: C.clay }}>{usd0(needAtDep - floorAtDep)}/yr short</b> of the need</> : <>, which still covers the need</>}.</> : <> The savings are never fully drawn down in this plan.</>}</p>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
           <span style={{ fontSize: 11.5, color: C.slate, fontWeight: 600 }}>{spendBasis === "location" ? "Cost-of-living basis:" : "Healthcare basis:"}</span>
           <div style={{ minWidth: 200, flex: "1 1 200px" }}><Select value={retireLoc} onChange={onRetireLocChange} options={LOCATIONS.map(l => l.name).sort((a, b) => a.localeCompare(b))} /></div>
@@ -95,21 +99,25 @@ export function Staircase({
           <Area type="stepAfter" dataKey="Salary (spouse)" stackId="1" stroke="none" fill={SRC.salB} />
           <Area type="stepAfter" dataKey="Rental" stackId="1" stroke="none" fill={SRC.rent} />
           <Area type="stepAfter" dataKey="Pension" stackId="1" stroke="none" fill={SRC.pension} />
-          <Area type="stepAfter" dataKey="SS (you)" stackId="1" stroke="none" fill={SRC.ssA} />
-          <Area type="stepAfter" dataKey="SS (spouse)" stackId="1" stroke="none" fill={SRC.ssB} />
-          <Area type="stepAfter" dataKey="Portfolio" stackId="1" stroke="none" fill={SRC.wd} />
+          <Area type="stepAfter" dataKey="Social Security (you)" stackId="1" stroke="none" fill={SRC.ssA} />
+          <Area type="stepAfter" dataKey="Social Security (spouse)" stackId="1" stroke="none" fill={SRC.ssB} />
+          <Area type="stepAfter" dataKey="Portfolio withdrawal" stackId="1" stroke="none" fill={SRC.wd} />
           <Line type="stepAfter" dataKey="need" stroke={C.clay} strokeWidth={1.6} strokeDasharray="5 4" dot={false} />
           {compRows.filter(r => r.extraSpend > 0).map((r, i) => (
-            <ReferenceDot key={`ev${i}`} x={r.age} y={r.need} r={3.5} fill={C.brass} stroke="#fff" strokeWidth={1.2} ifOverflow="extendDomain" />
+            <ReferenceDot key={`ev${i}`} x={r.age} y={r.need} r={3.5} fill={C.brass} stroke="var(--surface)" strokeWidth={1.2} ifOverflow="extendDomain" />
           ))}
           {depAge != null && <ReferenceLine x={depAge} stroke={C.clay} strokeWidth={1.4} strokeDasharray="2 2"
             label={{ value: `savings gone · age ${depAge}`, position: "insideTopRight", fontSize: 10.5, fill: C.clay }} />}
           {relocAge != null && <ReferenceLine x={relocAge} stroke={C.viridian} strokeWidth={1.2} strokeDasharray="4 3"
             label={{ value: `leave ${workLoc ?? "work"} · age ${relocAge}`, position: "insideTopLeft", fontSize: 10, fill: C.viridian }} />}
+          {payEndAge != null && <ReferenceLine x={payEndAge} stroke={C.slate} strokeWidth={1.2} strokeDasharray="4 3"
+            label={{ value: `paychecks end · ${payEndAge}`, position: "insideTop", fontSize: 10, fill: C.slate }} />}
+          {benefitsOnAge != null && benefitsOnAge !== payEndAge && <ReferenceLine x={benefitsOnAge} stroke={C.slate} strokeWidth={1.2} strokeDasharray="4 3"
+            label={{ value: `all benefits online · ${benefitsOnAge}`, position: "insideTopRight", fontSize: 10, fill: C.slate }} />}
         </ComposedChart>
       </ChartFrame>
       <div style={{ display: "flex", gap: "6px 14px", flexWrap: "wrap", padding: "8px 6px 2px" }}>
-        {[["Salary (you)", SRC.salA], ["Salary (spouse)", SRC.salB], ...(hasRental ? [["Rental", SRC.rent]] : []), ["Pension", SRC.pension], ["SS (you)", SRC.ssA], ["SS (spouse)", SRC.ssB], ["Portfolio draw", SRC.wd]].map(([n, c]) => (
+        {[["Salary (you)", SRC.salA], ["Salary (spouse)", SRC.salB], ...(hasRental ? [["Rental", SRC.rent]] : []), ["Pension", SRC.pension], ["Social Security (you)", SRC.ssA], ["Social Security (spouse)", SRC.ssB], ["Portfolio withdrawal", SRC.wd]].map(([n, c]) => (
           <span key={n} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, color: C.slate }}><span style={{ width: 11, height: 11, borderRadius: 3, background: c }} />{n}</span>
         ))}
         <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, color: C.slate }}><span style={{ width: 14, height: 0, borderTop: `2px dashed ${C.clay}` }} />spending need</span>

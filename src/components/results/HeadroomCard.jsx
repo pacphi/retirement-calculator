@@ -12,7 +12,7 @@ export function HeadroomCard({ headroom, horizon }) {
   const { delta, depAge } = headroom;
   const positive = delta >= 0;
   const color = positive ? C.viridian : C.clay;
-  const bg = positive ? "rgba(30,122,94,.12)" : "rgba(190,74,43,.12)";
+  const bg = positive ? "color-mix(in srgb, var(--pos) 12%, transparent)" : "color-mix(in srgb, var(--neg) 12%, transparent)";
 
   return (
     <div

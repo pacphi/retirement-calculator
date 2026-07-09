@@ -28,7 +28,7 @@ export function ReportShell({ sections, nav, pinnedVerdict, onPrint }) {
             type="button"
             onClick={onPrint}
             title="Opens your browser's print dialog — choose Save as PDF and the paper size there"
-            style={{ ...barBtn, display: "inline-flex", alignItems: "center", gap: 7, color: "#fff", background: C.ink, border: `1px solid ${C.ink}` }}
+            style={{ ...barBtn, display: "inline-flex", alignItems: "center", gap: 7, color: "var(--on-ink)", background: C.ink, border: `1px solid ${C.ink}` }}
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
               <path d="M4 6V2h8v4M4 12H3a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1M4 10h8v4H4z"

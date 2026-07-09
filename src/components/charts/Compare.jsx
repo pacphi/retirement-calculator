@@ -41,7 +41,7 @@ export function Compare({
   const SummaryCard = ({ name }) => {
     const l = locByName(name), tot = annualCost(l), surplus = steadyNet - tot, tier = tierFor(steadyNet / tot);
     return (
-      <div style={{ flex:"1 1 160px", background:"#fff", border:`1px solid ${C.line}`, borderRadius:10, padding:"11px 13px" }}>
+      <div style={{ flex:"1 1 160px", background:"var(--surface)", border:`1px solid ${C.line}`, borderRadius:10, padding:"11px 13px" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:6 }}>
           <span style={{ fontSize:12.5, fontWeight:700, color:C.ink }}>{name}</span>
           <span style={{ fontSize:10.5, fontWeight:700, color:tier.color, background:tier.color+"18", padding:"1px 7px", borderRadius:999 }}>{tier.label}</span>
@@ -67,7 +67,7 @@ export function Compare({
         <tbody>
           {lineItems(A,stage).map(([label,va],idx)=>{
             const vb=lineItems(B,stage)[idx][1], av=va*sFactor, bv=vb*sFactor, isHC=label.indexOf("Healthcare")===0;
-            return (<tr key={label} style={{ borderTop:`1px solid ${C.line}`, background:isHC?"#F6F2E8":"transparent" }}>
+            return (<tr key={label} style={{ borderTop:`1px solid ${C.line}`, background:isHC?"var(--surface-2)":"transparent" }}>
               <td style={{ padding:"5px 0", color:isHC?C.brassDeep:C.inkSoft, fontWeight:isHC?600:400 }}>{label.replace(" -- before 65","").replace(" -- 65+","")}{isHC?` (${stage==="pre"?"<65":"65+"})`:""}</td>
               <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", color:av<=bv?C.viridian:C.ink, fontWeight:av<=bv?600:400 }}>{usd0(av)}</td>
               <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", color:bv<av?C.viridian:C.ink, fontWeight:bv<av?600:400 }}>{usd0(bv)}</td>

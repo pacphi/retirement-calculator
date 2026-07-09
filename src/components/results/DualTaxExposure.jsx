@@ -53,7 +53,7 @@ export function DualTaxExposure({ s, steadyIncomeMix }) {
     <section
       aria-label="Tax and residency"
       style={{
-        background: "#FBF8F0",
+        background: "var(--surface-2)",
         border: `1px solid ${C.brassDeep}44`,
         borderRadius: 14,
         padding: "16px 18px 18px",
@@ -84,13 +84,13 @@ export function DualTaxExposure({ s, steadyIncomeMix }) {
       )}
 
       {taxNote && (
-        <div role="note" style={{ marginBottom: cards.length ? 12 : 0, padding: "9px 12px", background: "#F6F2E8", borderRadius: 8, fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5 }}>
+        <div role="note" style={{ marginBottom: cards.length ? 12 : 0, padding: "9px 12px", background: "var(--surface-2)", borderRadius: 8, fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5 }}>
           {taxNote}
         </div>
       )}
 
       {loc?.note && !intlProfile && (
-        <div role="note" style={{ padding: "9px 12px", background: "#F6F2E8", borderRadius: 8, fontSize: 12, color: C.slate, lineHeight: 1.5 }}>
+        <div role="note" style={{ padding: "9px 12px", background: "var(--surface-2)", borderRadius: 8, fontSize: 12, color: C.slate, lineHeight: 1.5 }}>
           {loc.note}
         </div>
       )}
@@ -112,7 +112,7 @@ export function DualTaxExposure({ s, steadyIncomeMix }) {
       )}
 
       {intlProfile && (
-        <div style={{ marginTop: 14, padding: "9px 12px", background: "#F6F2E8", borderRadius: 8, fontSize: 11.5, color: C.slate, lineHeight: 1.5 }}>
+        <div style={{ marginTop: 14, padding: "9px 12px", background: "var(--surface-2)", borderRadius: 8, fontSize: 11.5, color: C.slate, lineHeight: 1.5 }}>
           <strong style={{ color: C.brassDeep }}>FBAR / FATCA reminders.</strong>{" "}
           Foreign bank accounts over $10k require annual FinCEN 114 (FBAR). FATCA thresholds
           are higher ($50k–$200k depending on status). Neither is a tax — they are reporting

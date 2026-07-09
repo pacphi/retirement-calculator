@@ -167,7 +167,7 @@ export function Housing({ s, set }) {
             </Field>
           </div>
           {mpi > 0 && (
-            <div role="note" style={{ fontSize: 11.5, color: C.slate, lineHeight: 1.55, marginBottom: 10, padding: "8px 10px", background: "#F6F2E8", borderRadius: 8 }}>
+            <div role="note" style={{ fontSize: 11.5, color: C.slate, lineHeight: 1.55, marginBottom: 10, padding: "8px 10px", background: "var(--surface-2)", borderRadius: 8 }}>
               Monthly P&amp;I <b style={{ color: C.ink }}>${Math.round(mpi).toLocaleString()}</b>
               {" · "}paid off <b style={{ color: C.ink }}>{payoff}</b>
               {yearsLeft > 0 ? ` (${yearsLeft} yr${yearsLeft !== 1 ? "s" : ""})` : " — already paid off"}
@@ -234,7 +234,7 @@ export function Housing({ s, set }) {
             </Field>
           </div>
           {ownCostMo > 0 && (
-            <div role="note" style={{ fontSize: 11.5, color: C.slate, lineHeight: 1.55, marginBottom: 10, padding: "8px 10px", background: "#F6F2E8", borderRadius: 8 }}>
+            <div role="note" style={{ fontSize: 11.5, color: C.slate, lineHeight: 1.55, marginBottom: 10, padding: "8px 10px", background: "var(--surface-2)", borderRadius: 8 }}>
               Estimated carrying cost: ≈&nbsp;<b style={{ color: C.ink }}>${ownCostMo.toLocaleString()}/mo</b> (property tax + insurance + maintenance)
               {showPropTax && (
                 <>
@@ -270,7 +270,7 @@ export function Housing({ s, set }) {
           </Field>
 
           {reloc.action === "keep" ? (
-            <div role="note" style={{ fontSize: 11.5, color: C.slate, lineHeight: 1.55, marginBottom: 12, padding: "8px 10px", background: "#F6F2E8", borderRadius: 8 }}>
+            <div role="note" style={{ fontSize: 11.5, color: C.slate, lineHeight: 1.55, marginBottom: 12, padding: "8px 10px", background: "var(--surface-2)", borderRadius: 8 }}>
               Kept as a rental — rental income is added and the work mortgage continues as a
               landlord cost. <b style={{ color: C.ink }}>Carrying cost continues in retirement</b>{" "}
               (property tax, insurance, and upkeep on the kept home are not yet separately
@@ -291,7 +291,7 @@ export function Housing({ s, set }) {
                   step={10000}
                 />
               </Field>
-              <div role="note" style={{ fontSize: 11.5, color: C.slate, lineHeight: 1.55, marginBottom: 12, padding: "8px 10px", background: "#F6F2E8", borderRadius: 8 }}>
+              <div role="note" style={{ fontSize: 11.5, color: C.slate, lineHeight: 1.55, marginBottom: 12, padding: "8px 10px", background: "var(--surface-2)", borderRadius: 8 }}>
                 You estimate the market value. ~7% selling costs and the remaining mortgage
                 {balanceAtRelo > 0 && (
                   <> (≈&nbsp;<b style={{ color: C.ink }}>${Math.round(balanceAtRelo).toLocaleString()}</b> balance at {reloYear})</>

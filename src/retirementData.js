@@ -219,12 +219,14 @@ export const UNIFORM_LIFETIME = {
   100:6.4,
 };
 
+// Tier badge colors come from the validated UI palette (see src/components/theme.js).
+// Kept as literal hex (not var()) because badge chips tint them via hex+alpha concat.
 export const TIERS = [
-  { max:0.8, label:"Tight", color:"#BE4A2B" },
-  { max:1.15, label:"Modest", color:"#C7972F" },
-  { max:1.7, label:"Comfortable", color:"#1E7A5E" },
-  { max:2.6, label:"Affluent", color:"#14302E" },
-  { max:Infinity, label:"Luxurious", color:"#7A4FA0" },
+  { max:0.8, label:"Tight", color:"#d03b3b" },
+  { max:1.15, label:"Modest", color:"#b97e00" },
+  { max:1.7, label:"Comfortable", color:"#128a60" },
+  { max:2.6, label:"Affluent", color:"#2a78d6" },
+  { max:Infinity, label:"Luxurious", color:"#6a58c9" },
 ];
 
 // --- Wave 2: location tax + housing ------------------------------------------

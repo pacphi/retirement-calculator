@@ -10,7 +10,7 @@ function PropCard({ p, idx, setProperty }) {
   const opts = [["sell", "Sell"], ["rent", "Rent out"], ["live", "Live in"]];
   const chosen = p.strategy;
   return (
-    <div style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: "14px 15px", marginBottom: 12, background: "#FCFAF4" }}>
+    <div style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: "14px 15px", marginBottom: 12, background: "var(--surface-2)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 2 }}>
         <h4 style={{ margin: 0, fontFamily: "'Newsreader',serif", fontWeight: 500, fontSize: 17, color: C.ink }}>{p.label}</h4>
         <span style={{ fontSize: 11, color: C.mut }}>arrives {p.year}</span>
@@ -22,14 +22,14 @@ function PropCard({ p, idx, setProperty }) {
           const num = v === "sell" ? e.sell : v === "rent" ? e.rent : e.live;
           const unit = v === "sell" ? "net" : "/yr";
           return (
-            <button key={v} onClick={() => setProperty(idx, "strategy")(v)} style={{ flex: 1, textAlign: "left", border: `1.5px solid ${on ? C.brass : C.line}`, background: on ? "#fff" : "transparent", borderRadius: 9, padding: "9px 10px", cursor: "pointer", fontFamily: "inherit" }}>
+            <button key={v} onClick={() => setProperty(idx, "strategy")(v)} style={{ flex: 1, textAlign: "left", border: `1.5px solid ${on ? C.brass : C.line}`, background: on ? "var(--surface)" : "transparent", borderRadius: 9, padding: "9px 10px", cursor: "pointer", fontFamily: "inherit" }}>
               <div style={{ fontSize: 11.5, fontWeight: 700, color: on ? C.brassDeep : C.slate, marginBottom: 3 }}>{lab}</div>
               <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, fontWeight: 600, color: num < 0 ? C.clay : C.ink }}>{usd0(num)}<span style={{ fontSize: 10, color: C.mut, fontWeight: 400 }}>{unit}</span></div>
             </button>
           );
         })}
       </div>
-      <div style={{ fontSize: 11.5, color: C.slate, lineHeight: 1.5, background: "#F1EEE5", borderRadius: 8, padding: "8px 10px" }}>
+      <div style={{ fontSize: 11.5, color: C.slate, lineHeight: 1.5, background: "var(--track)", borderRadius: 8, padding: "8px 10px" }}>
         <b style={{ color: C.ink }}>{chosen === "sell" ? "If sold:" : chosen === "rent" ? "If rented:" : "If you live in it:"}</b> {rules.notes[chosen]}
       </div>
     </div>
