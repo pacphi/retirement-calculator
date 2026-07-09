@@ -108,6 +108,18 @@ describe("RetirementCalculator UI", () => {
     expect(screen.getByRole("heading", { name:/Nest & Next/i })).toBeInTheDocument();
   });
 
+  it("prices the DRS survivor election in the longevity step", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    await user.click(screen.getByRole("button", { name: "Travel", exact: true }));
+    // Default election is 0% -> single-life note with the consent warning.
+    expect(screen.getByText(/notarized consent/i)).toBeInTheDocument();
+    // Elect 100%: the note shows the DRS factor for the default 9-year age gap.
+    await user.click(screen.getByRole("button", { name: "100%" }));
+    expect(screen.getByText(/×0\.939/)).toBeInTheDocument();
+    expect(screen.getByText(/pops back up to the single-life amount/i)).toBeInTheDocument();
+  });
+
   it("toggles between light and dark themes from the header", async () => {
     const user = userEvent.setup();
     delete document.documentElement.dataset.theme;

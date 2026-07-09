@@ -1,4 +1,5 @@
 import { C } from "../theme.js";
+import { survivorOptionFactor } from "../../calculatorCore.js";
 import { Field, NumberInput, Segmented, Section } from "../atoms/index.jsx";
 import { usd0 } from "../format.js";
 
@@ -52,9 +53,22 @@ export function TravelLongevity({ s, set }) {
               );
             })()}
             <div style={{ marginTop:6 }}>
-              <span style={{ display:"block", fontSize:11.5, color:C.slate, marginBottom:4 }}>Pension continues to survivor at (if the pension-holder dies first)</span>
+              <span style={{ display:"block", fontSize:11.5, color:C.slate, marginBottom:4 }}>Pension survivor option (if the pension-holder dies first)</span>
               <Segmented value={s.life.pensionPct} onChange={(v)=>set("life")({ ...s.life, pensionPct:v })}
-                options={[{label:"0% (life-only)",value:0},{label:"50%",value:50},{label:"100%",value:100}]} />
+                options={[{label:"0% (single life)",value:0},{label:"50%",value:50},{label:"66.67%",value:66.67},{label:"100%",value:100}]} />
+              {(() => {
+                const gap = Number(s.ageB) - Number(s.ageA); // member (spouse B) minus beneficiary
+                const factor = survivorOptionFactor(s.life.pensionPct, gap);
+                const gapWord = gap === 0 ? "the same age" : `${Math.abs(gap)} yr${Math.abs(gap) === 1 ? "" : "s"} ${gap < 0 ? "older" : "younger"} than the member`;
+                return (
+                  <span role="note" style={{ display:"block", fontSize:11, color:C.mut, marginTop:5, lineHeight:1.5 }}>
+                    {Number(s.life.pensionPct) > 0
+                      ? <>Priced like DRS prices it: electing {s.life.pensionPct}% reduces the pension to <b style={{ color:C.ink }}>×{factor.toFixed(3)}</b> from day one (2026 TRS 2/3 factor; beneficiary {gapWord}), and the survivor then receives {s.life.pensionPct}% of that reduced benefit. If the beneficiary dies first, the benefit pops back up to the single-life amount.</>
+                      : <>Single life pays the most while the pension-holder lives but stops at their death — DRS requires the spouse&apos;s notarized consent for this choice.</>}
+                    {" "}If the pension-holder dies before the pension starts, the surviving spouse receives the statutory lifetime annuity (RCW 41.32.895) — modeled automatically.
+                  </span>
+                );
+              })()}
             </div>
           </div>
         )}

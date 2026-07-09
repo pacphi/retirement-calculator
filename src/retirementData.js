@@ -147,6 +147,26 @@ export const DRS_ERF_30_PLUS = {
   60: .75, 61: .80, 62: .85, 63: .90, 64: .95, 65: 1,
 };
 
+/* WA DRS joint-and-survivor option factors — TRS Plans 2/3.
+   Source: DRS 2026 Administrative Factors workbook, sheet "Appx G (J&S)",
+   table "Joint and Survivor Option Factors: TRS 2/3"
+   (https://www.drs.wa.gov/sitemap/adminfactors/), verified 2026-07-09; see
+   also WAC 415-02-380. Keyed by AGE DIFFERENCE = member age − beneficiary age
+   (negative = beneficiary older, smaller reduction). Electing a survivor
+   option permanently reduces the member's benefit by these factors; if the
+   beneficiary dies first, DRS restores the single-life amount ("pop-up"). */
+export const DRS_SURVIVOR_FACTORS = {
+  minDiff: -20,
+  maxDiff: 40,
+  // Option 2 — 100% survivor
+  j100: [0.972, 0.970, 0.967, 0.965, 0.962, 0.960, 0.957, 0.953, 0.950, 0.947, 0.943, 0.939, 0.935, 0.930, 0.925, 0.920, 0.915, 0.910, 0.902, 0.891, 0.877, 0.860, 0.848, 0.841, 0.828, 0.820, 0.813, 0.806, 0.799, 0.792, 0.785, 0.778, 0.771, 0.764, 0.758, 0.752, 0.746, 0.740, 0.734, 0.729, 0.723, 0.718, 0.713, 0.708, 0.704, 0.699, 0.695, 0.691, 0.687, 0.684, 0.680, 0.677, 0.674, 0.671, 0.668, 0.665, 0.662, 0.660, 0.657, 0.655, 0.653],
+  // Option 4 — 66.67% survivor
+  j66: [0.981, 0.980, 0.978, 0.976, 0.975, 0.973, 0.971, 0.968, 0.966, 0.964, 0.961, 0.958, 0.955, 0.952, 0.949, 0.945, 0.942, 0.938, 0.932, 0.925, 0.915, 0.902, 0.893, 0.888, 0.878, 0.873, 0.867, 0.862, 0.856, 0.851, 0.845, 0.840, 0.835, 0.830, 0.825, 0.820, 0.815, 0.810, 0.805, 0.801, 0.797, 0.793, 0.789, 0.785, 0.781, 0.777, 0.774, 0.771, 0.767, 0.764, 0.761, 0.759, 0.756, 0.753, 0.751, 0.748, 0.746, 0.744, 0.742, 0.740, 0.738],
+  // Option 3 — 50% survivor
+  j50: [0.986, 0.985, 0.983, 0.982, 0.981, 0.979, 0.978, 0.976, 0.974, 0.973, 0.971, 0.968, 0.966, 0.964, 0.961, 0.959, 0.956, 0.953, 0.948, 0.942, 0.935, 0.925, 0.918, 0.913, 0.906, 0.901, 0.897, 0.893, 0.888, 0.884, 0.879, 0.875, 0.871, 0.866, 0.862, 0.858, 0.854, 0.850, 0.847, 0.843, 0.839, 0.836, 0.833, 0.829, 0.826, 0.823, 0.820, 0.817, 0.815, 0.812, 0.810, 0.807, 0.805, 0.803, 0.801, 0.799, 0.797, 0.795, 0.793, 0.791, 0.790],
+};
+
+
 export const LOCATIONS = [
   { name:"Bulgaria / Romania", region:"Europe", ltcAnnual:14000, addlTaxRate:0, hcPre:280, hcPost:220, m:{rent:550,groceries:400,utilities:160,transport:100,dining:200,entertainment:120,misc:170}, vat:"20%", incomeTax:"Flat 10% -- among the EU's lowest", note:"Lowest-cost EU. More cultural adjustment, fewer English services." },
   { name:"Greece", region:"Europe", ltcAnnual:22000, addlTaxRate:0, hcPre:380, hcPost:300, m:{rent:780,groceries:500,utilities:200,transport:120,dining:300,entertainment:170,misc:250}, vat:"24%", incomeTax:"7% flat on foreign income for 15 yrs", note:"Treaty + 7% regime make pensions cheap to receive here." },
