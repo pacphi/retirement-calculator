@@ -1,4 +1,4 @@
-import { C } from "../theme.js";
+import { C, FIGURE } from "../theme.js";
 import { usd0 } from "../format.js";
 import { resolveReturn } from "../../finance/returns.js";
 
@@ -12,16 +12,16 @@ export function Headline({ steady, s, mc, onTrack, effHaircut, effCutYear }) {
   // preset overrides the raw realReturn slider), so the caption matches the numbers.
   const effReturn = resolveReturn(s.returnPreset, s.realReturn);
   return (
-    <div className="rc-stat" style={{ background:"var(--header-bg)", borderRadius:14, padding:"22px 24px", color:"var(--header-ink)", marginBottom:16 }}>
-      <div style={{ fontSize:11, letterSpacing:1.5, textTransform:"uppercase", color:"var(--header-accent)", fontWeight:700, marginBottom:6 }}>Sustainable income after benefits start</div>
+    <div className="rc-stat" style={{ background:"var(--header-bg)", borderRadius:14, borderTop:"3px double var(--header-accent)", padding:"22px 24px", color:"var(--header-ink)", marginBottom:16 }}>
+      <div style={{ fontSize:11, letterSpacing:1.8, textTransform:"uppercase", color:"var(--header-accent)", fontWeight:700, marginBottom:8 }}>Sustainable income after benefits start</div>
       <div style={{ display:"flex", alignItems:"baseline", gap:12, flexWrap:"wrap" }}>
-        <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:42, fontWeight:600, lineHeight:1, color:"var(--header-ink)" }}>{usd0(steady.net)}</div>
+        <div style={{ ...FIGURE, fontSize:46, color:"var(--header-ink)" }}>{usd0(steady.net)}</div>
         <div style={{ fontSize:13, color:"var(--header-mut)" }}>/ yr after federal tax · today's dollars</div>
       </div>
-      <div style={{ marginTop:6, fontSize:13.5, color:"var(--header-mut)" }}>
+      <div style={{ marginTop:8, fontSize:13.5, lineHeight:1.55, color:"var(--header-mut)", maxWidth:"72ch" }}>
         {usd0(steady.net/12)}/mo starting around your age {steady.startAgeA} · spending need then {usd0(steady.targetNeed)}/yr{steady.liveSav>0?` · includes ${usd0(steady.liveSav)}/yr lower housing cost`:""}
       </div>
-      <div style={{ fontSize:12, color:"var(--header-mut)", marginTop:4 }}>
+      <div style={{ fontSize:12.5, lineHeight:1.6, color:"var(--header-mut)", marginTop:6, maxWidth:"72ch" }}>
         You're modeling spending of <b>{usd0(steady.modeledSpend)}/yr</b>. At your withdrawal rate the plan can sustain up to <b>{usd0(steady.sustainableCapacity)}/yr</b> — assuming your base return holds, so this ceiling moves with the markets and isn't guaranteed.{steady.surplus>0 ? ` The ${usd0(steady.surplus)}/yr you don't spend stays invested as a buffer against weak returns, taxes, or long-term care — not a separate pot to draw on.` : ""}
       </div>
       <div style={{ marginTop:14, display:"inline-flex", alignItems:"center", gap:8, background:onTrack?"color-mix(in srgb, var(--pos) 22%, transparent)":"color-mix(in srgb, var(--neg) 22%, transparent)", border:`1px solid ${onTrack?C.viridian:C.clay}`, borderRadius:999, padding:"6px 13px", fontSize:13, fontWeight:600 }}>

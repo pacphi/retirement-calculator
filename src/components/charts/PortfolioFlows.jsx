@@ -6,6 +6,7 @@ import { BUCKETS, C, FLOWS } from "../theme.js";
 import { Segmented, Select } from "../atoms/index.jsx";
 import { usd0, usdK } from "../format.js";
 import { ChartFrame } from "./chartFrame.jsx";
+import { milestoneLabel } from "./annotations.jsx";
 
 const invName = {
   growth: "Growth",
@@ -105,7 +106,7 @@ export function PortfolioFlows({ invRows, firstRmdAge, view, onViewChange, withd
             <Bar dataKey="contribMo" stackId="r" fill={FLOWS.contrib} />
             <Bar dataKey="reinvestMo" stackId="r" fill={FLOWS.reinvest} />
             <Bar dataKey="rmdRecycleMo" stackId="r" fill={FLOWS.rmdRecycle} />
-            {firstRmdAge != null && <ReferenceLine x={firstRmdAge} stroke={C.clay} strokeWidth={1.2} strokeDasharray="2 2" label={{ value: `RMDs · ${firstRmdAge}`, position: "insideTopRight", fontSize: 10.5, fill: C.clay }} />}
+            {firstRmdAge != null && <ReferenceLine x={firstRmdAge} stroke={C.clay} strokeWidth={1.2} strokeDasharray="2 2" label={milestoneLabel(`RMDs · ${firstRmdAge}`, { anchor: "start", color: C.clay })} />}
           </ComposedChart>
         ) : view === "flow" ? (
           <ComposedChart data={invRows} margin={{ top: 6, right: 12, left: 4, bottom: 0 }} stackOffset="sign">
@@ -120,7 +121,7 @@ export function PortfolioFlows({ invRows, firstRmdAge, view, onViewChange, withd
             <Bar dataKey="reinvest" stackId="f" fill={FLOWS.reinvest} />
             <Bar dataKey="spendDraw" stackId="f" fill={FLOWS.spendDraw} />
             <Bar dataKey="forcedRmd" stackId="f" fill={FLOWS.forcedRmd} />
-            {firstRmdAge != null && <ReferenceLine x={firstRmdAge} stroke={C.clay} strokeWidth={1.2} strokeDasharray="2 2" label={{ value: `RMDs · ${firstRmdAge}`, position: "insideTopRight", fontSize: 10.5, fill: C.clay }} />}
+            {firstRmdAge != null && <ReferenceLine x={firstRmdAge} stroke={C.clay} strokeWidth={1.2} strokeDasharray="2 2" label={milestoneLabel(`RMDs · ${firstRmdAge}`, { anchor: "start", color: C.clay })} />}
           </ComposedChart>
         ) : (
           <ComposedChart data={invRows} margin={{ top: 6, right: 12, left: 4, bottom: 0 }}>
@@ -133,7 +134,7 @@ export function PortfolioFlows({ invRows, firstRmdAge, view, onViewChange, withd
             <Area yAxisId="bal" type="monotone" dataKey="rothBal" stackId="bal" stroke="none" fill={BUCKETS.roth} fillOpacity={0.9} />
             {view === "bucketsRmd" && <YAxis yAxisId="rmd" orientation="right" tickFormatter={usdK} tick={{ fontSize: 11, fill: C.clay }} tickLine={false} axisLine={false} width={42} />}
             {view === "bucketsRmd" && <Line yAxisId="rmd" type="monotone" dataKey="rmd" stroke="var(--c6)" strokeWidth={2} dot={false} />}
-            {firstRmdAge != null && <ReferenceLine yAxisId="bal" x={firstRmdAge} stroke={C.clay} strokeWidth={1.2} strokeDasharray="2 2" label={{ value: `RMDs · ${firstRmdAge}`, position: "insideTopRight", fontSize: 10.5, fill: C.clay }} />}
+            {firstRmdAge != null && <ReferenceLine yAxisId="bal" x={firstRmdAge} stroke={C.clay} strokeWidth={1.2} strokeDasharray="2 2" label={milestoneLabel(`RMDs · ${firstRmdAge}`, { anchor: "start", color: C.clay })} />}
           </ComposedChart>
         )}
       </ChartFrame>

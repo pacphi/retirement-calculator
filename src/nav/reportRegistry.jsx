@@ -1,3 +1,4 @@
+import { Gauge, TrendingUp, PieChart, Landmark, ShieldAlert, BookOpen } from "lucide-react";
 import { C } from "../components/theme.js";
 import { SOURCES } from "../retirementData.js";
 import { Staircase } from "../components/charts/Staircase.jsx";
@@ -27,7 +28,7 @@ export function buildReportSections(ctx) {
   const { s } = ctx;
   return [
     {
-      id: "verdict", num: 1, title: "Verdict",
+      id: "verdict", num: 1, title: "Verdict", icon: Gauge,
       render: () => (
         <>
           <HeadroomCard headroom={ctx.headroom} horizon={ctx.horizon} />
@@ -36,7 +37,7 @@ export function buildReportSections(ctx) {
       ),
     },
     {
-      id: "income", num: 2, title: "Income",
+      id: "income", num: 2, title: "Income", icon: TrendingUp,
       render: () => (
         <>
           <Staircase
@@ -57,7 +58,7 @@ export function buildReportSections(ctx) {
       ),
     },
     {
-      id: "portfolio", num: 3, title: "Portfolio",
+      id: "portfolio", num: 3, title: "Portfolio", icon: PieChart,
       render: () => (
         <>
           {ctx.yearsToRet > 0 && <AccumulationSummary accumulation={ctx.accumulation} retYear={ctx.retYear} />}
@@ -76,7 +77,7 @@ export function buildReportSections(ctx) {
       ),
     },
     {
-      id: "taxes", num: 4, title: "Taxes & Location",
+      id: "taxes", num: 4, title: "Taxes & Location", icon: Landmark,
       render: () => (
         <>
           <DualTaxExposure
@@ -108,7 +109,7 @@ export function buildReportSections(ctx) {
       ),
     },
     {
-      id: "risks", num: 5, title: "Risks",
+      id: "risks", num: 5, title: "Risks", icon: ShieldAlert,
       render: () => (
         <>
           <RiskTable
@@ -119,7 +120,7 @@ export function buildReportSections(ctx) {
         </>
       ),
     },
-    { id: "reference", num: 6, title: "Reference", render: () => <ReferenceSection s={s} /> },
+    { id: "reference", num: 6, title: "Reference", icon: BookOpen, render: () => <ReferenceSection s={s} /> },
   ];
 }
 

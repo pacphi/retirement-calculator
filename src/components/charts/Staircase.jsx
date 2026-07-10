@@ -8,6 +8,7 @@ import { Select } from "../atoms/index.jsx";
 import { usd0, usdK } from "../format.js";
 import { monthlyPI, payoffYear } from "../../finance/housing.js";
 import { ChartFrame } from "./chartFrame.jsx";
+import { milestoneLabel } from "./annotations.jsx";
 
 /**
  * Staircase chart panel — income by source, year by year.
@@ -107,13 +108,13 @@ export function Staircase({
             <ReferenceDot key={`ev${i}`} x={r.age} y={r.need} r={3.5} fill={C.brass} stroke="var(--surface)" strokeWidth={1.2} ifOverflow="extendDomain" />
           ))}
           {depAge != null && <ReferenceLine x={depAge} stroke={C.clay} strokeWidth={1.4} strokeDasharray="2 2"
-            label={{ value: `savings gone · age ${depAge}`, position: "insideTopRight", fontSize: 10.5, fill: C.clay }} />}
+            label={milestoneLabel(`savings gone · age ${depAge}`, { row: 1, anchor: "end", color: C.clay })} />}
           {relocAge != null && <ReferenceLine x={relocAge} stroke={C.viridian} strokeWidth={1.2} strokeDasharray="4 3"
-            label={{ value: `leave ${workLoc ?? "work"} · age ${relocAge}`, position: "insideTopLeft", fontSize: 10, fill: C.viridian }} />}
+            label={milestoneLabel(`leave ${workLoc ?? "work"} · age ${relocAge}`, { row: 1, anchor: "start", color: C.viridian })} />}
           {payEndAge != null && <ReferenceLine x={payEndAge} stroke={C.slate} strokeWidth={1.2} strokeDasharray="4 3"
-            label={{ value: `paychecks end · ${payEndAge}`, position: "insideTop", fontSize: 10, fill: C.slate }} />}
+            label={milestoneLabel(`paychecks end · ${payEndAge}`, { row: 0, anchor: "end", color: C.slate })} />}
           {benefitsOnAge != null && benefitsOnAge !== payEndAge && <ReferenceLine x={benefitsOnAge} stroke={C.slate} strokeWidth={1.2} strokeDasharray="4 3"
-            label={{ value: `all benefits online · ${benefitsOnAge}`, position: "insideTopRight", fontSize: 10, fill: C.slate }} />}
+            label={milestoneLabel(`all benefits online · ${benefitsOnAge}`, { row: 0, anchor: "start", color: C.slate })} />}
         </ComposedChart>
       </ChartFrame>
       <div style={{ display: "flex", gap: "6px 14px", flexWrap: "wrap", padding: "8px 6px 2px" }}>
