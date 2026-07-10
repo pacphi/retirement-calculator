@@ -8,6 +8,8 @@ import { RealizedSpending } from "../components/charts/RealizedSpending.jsx";
 import { Places } from "../components/charts/Places.jsx";
 import { Compare } from "../components/charts/Compare.jsx";
 import { IncomeMix } from "../components/charts/IncomeMix.jsx";
+import { ClaimTiming } from "../components/charts/ClaimTiming.jsx";
+import { BridgeSummary } from "../components/results/BridgeSummary.jsx";
 import { HeadroomCard } from "../components/results/HeadroomCard.jsx";
 import { AccumulationSummary } from "../components/results/AccumulationSummary.jsx";
 import { Stats } from "../components/results/Stats.jsx";
@@ -38,13 +40,14 @@ export function buildReportSections(ctx) {
       render: () => (
         <>
           <Staircase
-            compRows={ctx.compRows} depAge={ctx.simSS.depAge} floorAtDep={ctx.floorAtDep} needAtDep={ctx.needAtDep}
+            compRows={ctx.compRows} benefitsOnAge={ctx.steady.startAgeA} depAge={ctx.simSS.depAge} floorAtDep={ctx.floorAtDep} needAtDep={ctx.needAtDep}
             hasRental={ctx.hasRental} pensionOn={s.pensionOn} spendBasis={s.spendBasis} retireLoc={s.retireLoc}
             onRetireLocChange={ctx.set("retireLoc")} ageA={s.ageA} onYbyOpen={ctx.setYbyOpen} onSelectYear={ctx.setSelYear}
             compTip={ctx.compTip} spendingShape={s.spendingShape} housing={s.housing} relocationYear={s.relocationYear} workLoc={s.workLoc}
             printWidth={ctx.printWidth}
           />
           <IncomeMix incomeStack={ctx.incomeStack} steadyGross={ctx.steady.gross} />
+          <ClaimTiming s={s} rows={ctx.simSS.rows} steadyNet={ctx.steady.net} printWidth={ctx.printWidth} />
           <YearByYear
             rows={ctx.simSS.rows} depAge={ctx.depAge} inputs={s} selYear={ctx.selYear} onYearChange={ctx.setSelYear}
             playing={ctx.playing} onSetPlaying={ctx.setPlaying} view={ctx.ybyView} onViewChange={ctx.setYbyView}
@@ -58,6 +61,7 @@ export function buildReportSections(ctx) {
       render: () => (
         <>
           {ctx.yearsToRet > 0 && <AccumulationSummary accumulation={ctx.accumulation} retYear={ctx.retYear} />}
+          <BridgeSummary rows={ctx.simSS.rows} steadyStartAge={ctx.steady.startAgeA} />
           <PortfolioFlows
             invRows={ctx.invRows} firstRmdAge={ctx.firstRmdAge} view={ctx.invView} onViewChange={ctx.setInvView}
             withdrawalOrder={s.withdrawalOrder} onWithdrawalOrderChange={ctx.set("withdrawalOrder")} printWidth={ctx.printWidth}
@@ -123,7 +127,7 @@ export function buildReportSections(ctx) {
 function ReferenceSection({ s }) {
   return (
     <>
-      <div style={{ background: "#F6F4EC", border: `1px solid ${C.line}`, borderRadius: 14, padding: "16px 18px" }}>
+      <div style={{ background: "var(--surface-2)", border: `1px solid ${C.line}`, borderRadius: 14, padding: "16px 18px" }}>
         <h3 style={{ margin: "0 0 10px", fontFamily: "'Newsreader',serif", fontWeight: 500, fontSize: 18, color: C.ink }}>Planner's notes</h3>
         {[
           ["Texas: sell or rent, don't just hold.", "The US basis step-up wipes out capital-gains tax on a near-term sale, and Texas has no estate/inheritance/income tax — so selling nets ~93% of value, free to invest. Renting yields ~3.5% net. Living in it saves little because Texas property tax (~1.7%/yr) roughly equals the rent you'd avoid."],

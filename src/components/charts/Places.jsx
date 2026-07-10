@@ -106,7 +106,7 @@ export function Places({
       </div>
       <p style={{ margin:"0 0 14px", fontSize:12.5, color:C.slate, lineHeight:1.5 }}>Tap a place for the full monthly breakdown. The gold line is your after-tax income; switch the healthcare basis to see the pre-Medicare years.</p>
       {/* Part 5 — housing caption */}
-      <p aria-label="Housing cost note" style={{ margin:"0 0 12px", fontSize:11.5, color:C.slate, lineHeight:1.5, background:"#F6F2E8", borderRadius:8, padding:"8px 10px" }}>
+      <p aria-label="Housing cost note" style={{ margin:"0 0 12px", fontSize:11.5, color:C.slate, lineHeight:1.5, background:"var(--surface-2)", borderRadius:8, padding:"8px 10px" }}>
         <b style={{ color:C.brassDeep }}>Home costs across locations.</b>{" "}
         Owned/mortgaged: your home&apos;s carrying cost is applied across locations — you bring one home. Renting: each location&apos;s local rent is shown. The single/couple multiplier applies to the rest of the basket, not your one home.
       </p>
@@ -145,7 +145,7 @@ export function Places({
             : monthlyTotal(l, stage) * sFactor;
 
           return (
-            <div key={l.name} style={{ border:`1px solid ${open?C.line:"transparent"}`, borderRadius:10, overflow:"hidden", background:open?"#FCFAF4":"transparent" }}>
+            <div key={l.name} style={{ border:`1px solid ${open?C.line:"transparent"}`, borderRadius:10, overflow:"hidden", background:open?"var(--surface-2)":"transparent" }}>
               <button
                 type="button"
                 className="rc-loc"
@@ -161,8 +161,8 @@ export function Places({
                     <span style={{ fontSize:11, fontWeight:700, color:l.tier.color, background:l.tier.color+"18", padding:"2px 8px", borderRadius:999 }}>{l.tier.label}</span>
                   </span>
                 </div>
-                <div style={{ position:"relative", height:12, background:"#F1EEE5", borderRadius:6, overflow:"hidden" }}>
-                  <div style={{ position:"absolute", inset:0, width:`${Math.min(100,(l.cost/max)*100)}%`, background:"#D9D2C2", borderRadius:6 }} />
+                <div style={{ position:"relative", height:12, background:"var(--track)", borderRadius:6, overflow:"hidden" }}>
+                  <div style={{ position:"absolute", inset:0, width:`${Math.min(100,(l.cost/max)*100)}%`, background:"var(--track-fill)", borderRadius:6 }} />
                   <div style={{ position:"absolute", top:0, bottom:0, left:`${Math.min(100,(steadyNet/max)*100)}%`, width:2.5, background:C.brass }} />
                 </div>
               </button>
@@ -176,7 +176,7 @@ export function Places({
                     </tr></thead>
                     <tbody>
                       {displayItems.map(([label,val])=>{ const isHC=label.indexOf("Healthcare")===0; const isHome=label.startsWith("Your home"); return (
-                        <tr key={label} style={{ borderTop:`1px solid ${C.line}`, background:isHC?"#F6F2E8":isHome?"#EEF4F0":"transparent" }}>
+                        <tr key={label} style={{ borderTop:`1px solid ${C.line}`, background:isHC?"var(--surface-2)":isHome?"var(--surface-2)":"transparent" }}>
                           <td style={{ padding:"5px 0", color:isHC?C.brassDeep:isHome?C.viridian:C.inkSoft, fontWeight:(isHC||isHome)?600:400 }}>{label}</td>
                           <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", color:C.ink }}>{usd0(val*sFactor)}</td>
                           <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", color:C.slate }}>{usdK(val*sFactor*12)}</td>
@@ -190,21 +190,21 @@ export function Places({
                     </tbody>
                   </table>
                   <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginTop:12 }}>
-                    <div style={{ flex:"1 1 150px", background:"#fff", border:`1px solid ${C.line}`, borderRadius:9, padding:"9px 11px" }}>
+                    <div style={{ flex:"1 1 150px", background:"var(--surface)", border:`1px solid ${C.line}`, borderRadius:9, padding:"9px 11px" }}>
                       <div style={{ fontSize:10.5, color:C.mut, fontWeight:600, marginBottom:3 }}>YOUR INCOME vs THIS BUDGET</div>
                       <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:15, fontWeight:600, color:surplus>=0?C.viridian:C.clay }}>{surplus>=0?"+":""}{usd0(surplus)}/yr</div>
                       <div style={{ fontSize:11, color:C.slate, marginTop:2 }}>{surplus>=0?`${(steadyNet/l.cost).toFixed(1)}× the local budget`:"income falls short here"}</div>
                     </div>
-                    <div style={{ flex:"1 1 150px", background:"#fff", border:`1px solid ${C.line}`, borderRadius:9, padding:"9px 11px" }}>
+                    <div style={{ flex:"1 1 150px", background:"var(--surface)", border:`1px solid ${C.line}`, borderRadius:9, padding:"9px 11px" }}>
                       <div style={{ fontSize:10.5, color:C.mut, fontWeight:600, marginBottom:3 }}>SAME BUDGET IN {retYear}</div>
                       <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:15, fontWeight:600, color:C.ink }}>{usd0(l.cost*inflFactor)}/yr</div>
                       <div style={{ fontSize:11, color:C.slate, marginTop:2 }}>at {(inflation*100).toFixed(1)}% inflation over {yearsToRet} yrs</div>
                     </div>
                   </div>
-                  <div style={{ marginTop:10, fontSize:11.5, color:C.slate, lineHeight:1.5, background:"#F6F2E8", borderRadius:8, padding:"8px 10px" }}><b style={{ color:C.brassDeep }}>Healthcare by age.</b> {phaseNote(l, sFactor)}</div>
-                  <div style={{ marginTop:8, fontSize:11.5, color:C.slate, lineHeight:1.5, background:"#F1EEE5", borderRadius:8, padding:"8px 10px" }}><b style={{ color:C.ink }}>Tax profile.</b> Consumption: {l.vat}. Income: {l.incomeTax}.</div>
+                  <div style={{ marginTop:10, fontSize:11.5, color:C.slate, lineHeight:1.5, background:"var(--surface-2)", borderRadius:8, padding:"8px 10px" }}><b style={{ color:C.brassDeep }}>Healthcare by age.</b> {phaseNote(l, sFactor)}</div>
+                  <div style={{ marginTop:8, fontSize:11.5, color:C.slate, lineHeight:1.5, background:"var(--track)", borderRadius:8, padding:"8px 10px" }}><b style={{ color:C.ink }}>Tax profile.</b> Consumption: {l.vat}. Income: {l.incomeTax}.</div>
                   {residenceTaxNote && l.name === activeLoc && (
-                    <div style={{ marginTop:6, fontSize:11.5, color:C.inkSoft, lineHeight:1.5, background:"#F6F2E8", borderRadius:8, padding:"8px 10px" }}>
+                    <div style={{ marginTop:6, fontSize:11.5, color:C.inkSoft, lineHeight:1.5, background:"var(--surface-2)", borderRadius:8, padding:"8px 10px" }}>
                       <b style={{ color:C.brassDeep }}>Residence tax on your income mix.</b> {residenceTaxNote}
                     </div>
                   )}

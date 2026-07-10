@@ -36,8 +36,8 @@ export function Stepper({ items, activeId, completedIds, onSelect, ariaLabel = "
               flex: "0 0 auto", scrollSnapAlign: "start", display: "inline-flex", alignItems: "center", gap: 7,
               cursor: "pointer", padding: "6px 12px 6px 8px", borderRadius: 999, fontSize: 12.5, fontWeight: 600,
               fontFamily: "'Inter', system-ui, sans-serif",
-              color: isActive ? "#fff" : (isDone ? C.ink : C.slate),
-              background: isActive ? C.ink : (isDone ? "#F1ECDD" : C.panel),
+              color: isActive ? "var(--on-ink)" : (isDone ? C.ink : C.slate),
+              background: isActive ? C.ink : (isDone ? "var(--surface-2)" : C.panel),
               border: `1px solid ${isActive ? C.ink : (isDone ? C.brass : C.line)}`,
             }}
           >
@@ -46,7 +46,7 @@ export function Stepper({ items, activeId, completedIds, onSelect, ariaLabel = "
               style={{
                 display: "inline-flex", alignItems: "center", justifyContent: "center",
                 width: 20, height: 20, borderRadius: 999, fontSize: 11, fontWeight: 700,
-                color: isActive ? C.ink : "#fff",
+                color: "var(--on-accent)",
                 background: isActive ? C.brass : (isDone ? C.viridian : C.mut),
               }}
             >

@@ -18,6 +18,7 @@ import {
   ownBenefitAtClaimMonthly,
   pensionERF,
   resolveAfc,
+  survivorOptionFactor,
   runMonteCarlo,
   simulate,
   spendingNeed,
@@ -355,6 +356,82 @@ describe("life expectancy", () => {
     const after = sim.rows.find((r) => r.cal === 2045); // after B's death, A survives
     expect(after.survivor).toBe(true);
     expect(after.pens).toBeCloseTo(before.pens * 0.5, 0);
+    // And the pre-death benefit itself carries the J&S price (member 5 yrs younger).
+    const noElection = simulate({ ...aSurvives, life: { ...aSurvives.life, pensionPct: 0 } }, { haircut: 1, cutYear: 9999 });
+    const j50 = survivorOptionFactor(50, aSurvives.ageB - aSurvives.ageA);
+    expect(before.pens).toBeCloseTo(noElection.rows.find((r) => r.cal === 2040).pens * j50, 0);
+  });
+});
+
+describe("DRS joint-survivor option pricing", () => {
+  it("matches the published 2026 TRS 2/3 factors at the anchor age differences", () => {
+    expect(survivorOptionFactor(100, -9)).toBe(0.939);
+    expect(survivorOptionFactor(50, -9)).toBe(0.968);
+    expect(survivorOptionFactor(66.67, -9)).toBe(0.958);
+    expect(survivorOptionFactor(100, 0)).toBe(0.877);
+    expect(survivorOptionFactor(100, 9)).toBe(0.792);
+    expect(survivorOptionFactor(0, 9)).toBe(1); // single life is unreduced
+  });
+
+  it("clamps outside the published -20..+40 range and stays monotonic in the gap", () => {
+    expect(survivorOptionFactor(100, -40)).toBe(survivorOptionFactor(100, -20));
+    expect(survivorOptionFactor(100, 99)).toBe(survivorOptionFactor(100, 40));
+    expect(survivorOptionFactor(100, -9)).toBeGreaterThan(survivorOptionFactor(100, 0));
+    expect(survivorOptionFactor(100, 0)).toBeGreaterThan(survivorOptionFactor(100, 9));
+  });
+
+  const priced = {
+    ...baseState,
+    ageA: 65, ageB: 60, stopA: 65, stopB: 60, claimA: 65, claimB: 65, pensionAge: 60,
+    pensionOn: true, plan: 2, pYears: 30, afc: 78000, savings: 1_500_000, contrib: 0,
+    ssModeA: "statement", ssModeB: "statement", ssFraA: 36000, ssFraB: 24000,
+    travel: { on: false }, events: [], survivor: { on: false, year: 9999, pensionPct: 0 },
+    horizonAge: 95,
+  };
+
+  it("restores the single-life benefit when the beneficiary dies first (pop-up)", () => {
+    // A (beneficiary) dies 2041; B (member) lives to 2056 with a 100% election.
+    const sim = simulate({ ...priced, life: { on: true, deathAgeA: 80, deathAgeB: 90, pensionPct: 100 } }, { haircut: 1, cutYear: 9999 });
+    const noElect = simulate({ ...priced, life: { on: true, deathAgeA: 80, deathAgeB: 90, pensionPct: 0 } }, { haircut: 1, cutYear: 9999 });
+    const j100 = survivorOptionFactor(100, priced.ageB - priced.ageA);
+    const before = (s2) => s2.rows.find((r) => r.cal === 2040).pens;
+    const after = (s2) => s2.rows.find((r) => r.cal === 2045).pens;
+    expect(before(sim)).toBeCloseTo(before(noElect) * j100, 0); // priced while both alive
+    expect(after(sim)).toBeCloseTo(after(noElect), 0);          // pop-up after A's death
+  });
+
+  // Pre-retirement-death fixture: member B is 50 now and dies at 58, before her
+  // pension age of 60; spouse A (55 now) survives to 95.
+  const preDeath = { ...priced, ageA: 55, ageB: 50, stopA: 62, stopB: 55, claimA: 67, claimB: 67, pensionAge: 60 };
+
+  it("pays the RCW 41.32.895 survivor annuity when the member dies before her pension starts", () => {
+    // 30 service years -> early-eligible at 58: annuity = 2% x 30 x AFC x ERF(58) x j100.
+    const sim = simulate({ ...preDeath, life: { on: true, deathAgeA: 95, deathAgeB: 58, pensionPct: 0 } }, { haircut: 1, cutYear: 9999 });
+    const deathCal = 2026 + (58 - preDeath.ageB);
+    const rowBefore = sim.rows.find((r) => r.cal === deathCal - 1);
+    const rowAfter = sim.rows.find((r) => r.cal === deathCal);
+    const expected = 0.02 * 30 * preDeath.afc * pensionERF(58, 30, 2) * survivorOptionFactor(100, preDeath.ageB - preDeath.ageA);
+    expect(rowBefore.pens).toBe(0); // pension had not started
+    expect(rowAfter.pens).toBeCloseTo(expected, 0);
+    // The statutory annuity is NOT multiplied by the elected survivor percentage.
+    const elected = simulate({ ...preDeath, life: { on: true, deathAgeA: 95, deathAgeB: 58, pensionPct: 50 } }, { haircut: 1, cutYear: 9999 });
+    expect(elected.rows.find((r) => r.cal === deathCal).pens).toBeCloseTo(expected, 0);
+  });
+
+  it("defers the pre-retirement death annuity to the member's would-be 65 when not early-eligible", () => {
+    // Plan 2 with only 15 service years: no early retirement before 65, so the
+    // survivor annuity starts unreduced when the member would have turned 65.
+    const few = { ...preDeath, pYears: 15, pensionAge: 65, life: { on: true, deathAgeA: 95, deathAgeB: 58, pensionPct: 0 } };
+    const sim = simulate(few, { haircut: 1, cutYear: 9999 });
+    const would65 = 2026 + (65 - few.ageB);
+    const expected = 0.02 * 15 * few.afc * 1 * survivorOptionFactor(100, few.ageB - few.ageA);
+    expect(sim.rows.find((r) => r.cal === would65 - 1).pens).toBe(0);
+    expect(sim.rows.find((r) => r.cal === would65).pens).toBeCloseTo(expected, 0);
+  });
+
+  it("leaves the default plan untouched (no survivor election)", () => {
+    const { steady } = calculatePlan(makeDefaultPlan());
+    expect(Math.round(steady.net)).toBe(123799); // golden pin unchanged
   });
 });
 
@@ -507,12 +584,16 @@ describe("survivor pension reduction", () => {
   };
   const pensAt = (sim, cal) => sim.rows.find((r) => r.cal === cal).pens;
 
-  it("reduces the pension by the elected survivor percentage", () => {
+  it("reduces the pension by the elected survivor percentage of the PRICED benefit", () => {
     const full = simulate({ ...base, survivor: { on: false, year: 9999, pensionPct: 0 } }, { haircut: 1, cutYear: 9999 });
     const half = simulate({ ...base, survivor: { on: true, year: 2030, pensionPct: 50 } }, { haircut: 1, cutYear: 9999 });
     const none = simulate({ ...base, survivor: { on: true, year: 2030, pensionPct: 0 } }, { haircut: 1, cutYear: 9999 });
     expect(pensAt(full, 2030)).toBeGreaterThan(0);
-    expect(pensAt(half, 2030)).toBeCloseTo(pensAt(full, 2030) * 0.5, 6);
+    // Electing 50% costs the DRS option factor while both are alive, then the
+    // survivor receives 50% of that reduced benefit (same-age couple: j50 = 0.935).
+    const j50 = survivorOptionFactor(50, base.ageB - base.ageA);
+    expect(pensAt(half, 2029)).toBeCloseTo(pensAt(full, 2029) * j50, 6);
+    expect(pensAt(half, 2030)).toBeCloseTo(pensAt(full, 2030) * j50 * 0.5, 6);
     expect(pensAt(none, 2030)).toBe(0);
   });
 });
@@ -992,6 +1073,17 @@ describe("required minimum distributions", () => {
     // after-tax cash were discarded the balance would drop by the entire gross draw;
     // reinvestment keeps it above that floor (only the incremental tax leaves the plan).
     expect(r.bal).toBeGreaterThan(1_000_000 - r.forcedRmd);
+  });
+
+  it("exposes the after-tax RMD recycling as rmdReinvest on the row", () => {
+    const r = calculatePlan({ ...rmdBase, tradFrac: 1 }).simChosen.rows.find((r) => r.cal === 2026);
+    // The recycled amount is the forced gross minus its incremental tax: positive,
+    // never more than the forced draw itself.
+    expect(r.rmdReinvest).toBeGreaterThan(0);
+    expect(r.rmdReinvest).toBeLessThanOrEqual(r.forcedRmd);
+    // No forced RMD -> nothing recycled.
+    const r0 = calculatePlan({ ...rmdBase, tradFrac: 0 }).simChosen.rows.find((r) => r.cal === 2026);
+    expect(r0.rmdReinvest).toBe(0);
   });
 
   it("exposes the bucket and flow fields the investments chart reads", () => {

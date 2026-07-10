@@ -107,6 +107,36 @@ describe("RetirementCalculator UI", () => {
     await user.click(screen.getByRole("button", { name:/collapse header/i }));
     expect(screen.getByRole("heading", { name:/Nest & Next/i })).toBeInTheDocument();
   });
+
+  it("prices the DRS survivor election in the longevity step", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    await user.click(screen.getByRole("button", { name: "Travel", exact: true }));
+    // Default election is 0% -> single-life note with the consent warning.
+    expect(screen.getByText(/notarized consent/i)).toBeInTheDocument();
+    // Elect 100%: the note shows the DRS factor for the default 9-year age gap.
+    await user.click(screen.getByRole("button", { name: "100%" }));
+    expect(screen.getByText(/×0\.939/)).toBeInTheDocument();
+    expect(screen.getByText(/pops back up to the single-life amount/i)).toBeInTheDocument();
+  });
+
+  it("toggles between light and dark themes from the header", async () => {
+    const user = userEvent.setup();
+    delete document.documentElement.dataset.theme;
+    render(<RetirementCalculator />);
+    // Without matchMedia (jsdom) the app resolves the "auto" theme as light.
+    const toggle = screen.getByRole("button", { name:/switch to dark theme/i });
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(toggle);
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    const back = screen.getByRole("button", { name:/switch to light theme/i });
+    expect(back).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(back);
+    expect(document.documentElement.dataset.theme).toBe("light");
+    delete document.documentElement.dataset.theme;
+  });
 });
 
 describe("reframed headline", () => {
@@ -398,6 +428,19 @@ describe("investments chart view toggle", () => {
     fireEvent.click(buckets);
     expect(buckets).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Cash flow" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("offers the reinvestment view with a dynamic three-engines caption", async () => {
+    const user = userEvent.setup();
+    render(<RetirementCalculator />);
+    await openReport(user);
+    await gotoSection(user, /portfolio/i);
+    const reinvest = screen.getByRole("button", { name: "Money going back in" });
+    fireEvent.click(reinvest);
+    expect(reinvest).toHaveAttribute("aria-pressed", "true");
+    // Caption is derived from the simulated rows: the gap years and the restart age.
+    expect(screen.getByText(/Three engines refill the portfolio/i)).toBeInTheDocument();
+    expect(screen.getByText(/nothing goes back in/i)).toBeInTheDocument();
   });
 });
 

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { makeDefaultPlan } from "./src/defaultPlan.js";
-import { C } from "./src/components/theme.js";
+import { C, THEME_CSS } from "./src/components/theme.js";
 import { Chevron, NestLogo } from "./src/components/atoms/index.jsx";
 import { afcIsAuto, resolveAfc } from "./src/calculatorCore.js";
 import { Headline } from "./src/components/results/Headline.jsx";
@@ -141,7 +141,7 @@ export default function RetirementCalculator() {
   const compTip = ({ active, payload, label }) => {
     if (!active || !payload || !payload.length) return null;
     const row = payload[0].payload;
-    return (<div style={{ background:"#fff", border:`1px solid ${C.line}`, borderRadius:8, padding:"8px 10px", fontSize:12, fontFamily:"'JetBrains Mono',monospace" }}>
+    return (<div style={{ background:"var(--surface)", border:`1px solid ${C.line}`, borderRadius:8, padding:"8px 10px", fontSize:12, fontFamily:"'JetBrains Mono',monospace" }}>
       <div style={{ fontWeight:600, marginBottom:4 }}>You {label} · Spouse {row.ageB}</div>
       {payload.filter(p=>p.value>0 && p.dataKey!=="need").map(p=>(
         <div key={p.name} style={{ display:"flex", justifyContent:"space-between", gap:14, color:p.color }}><span>{p.name}</span><span>{usd0(p.value)}</span></div>
@@ -184,8 +184,20 @@ export default function RetirementCalculator() {
   );
   const { reportRef, printing, print } = useReportExport();
 
+  // Theme: "auto" follows the OS via prefers-color-scheme; the header toggle stamps an
+  // explicit data-theme on <html> that THEME_CSS's overrides honor in both directions.
+  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || "auto");
+  const isDark = theme === "dark"
+    || (theme === "auto" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const toggleTheme = () => {
+    const next = isDark ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    setTheme(next);
+  };
+
   return (
     <div style={{ background:C.paper, minHeight:"100%", color:C.ink, fontFamily:"'Inter', system-ui, sans-serif", WebkitFontSmoothing:"antialiased", paddingBottom:40 }}>
+      <style>{THEME_CSS}</style>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
         * { box-sizing:border-box; }
@@ -198,7 +210,7 @@ export default function RetirementCalculator() {
         .rc-stat { animation:rise .5s ease both; }
         @keyframes rise { from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;} }
         @media (prefers-reduced-motion:reduce){ .rc-stat,.rc-exp{ animation:none; transition:none; } }
-        .rc-loc:hover { background:#F6F2E8; }
+        .rc-loc:hover { background:var(--surface-2); }
         .rc-loc:focus-visible { outline:2px solid ${C.brass}; outline-offset:2px; }
         .rc-exp { animation:exp .25s ease both; }
         @keyframes exp { from{opacity:0;} to{opacity:1;} }
@@ -223,29 +235,37 @@ export default function RetirementCalculator() {
         }
       `}</style>
 
-      <header ref={headerRef} style={{ position:"fixed", top:0, left:0, right:0, zIndex:50, background:C.ink, color:"#F4F1E8", padding: headerCollapsed ? "9px 22px" : "30px 22px 26px" }}>
+      <header ref={headerRef} style={{ position:"fixed", top:0, left:0, right:0, zIndex:50, background:"var(--header-bg)", color:"var(--header-ink)", padding: headerCollapsed ? "9px 22px" : "30px 22px 26px" }}>
         <div style={{ maxWidth:1160, margin:"0 auto", display:"flex", alignItems:"center", gap:16 }}>
           <NestLogo size={headerCollapsed ? 34 : 46} />
           <div style={{ flex:1, minWidth:0 }}>
             {!headerCollapsed &&
-              <div style={{ fontSize:11, letterSpacing:2.5, textTransform:"uppercase", color:C.brass, fontWeight:700 }}>Retirement planner · 2026 figures</div>}
+              <div style={{ fontSize:11, letterSpacing:2.5, textTransform:"uppercase", color:"var(--header-accent)", fontWeight:700 }}>Retirement planner · 2026 figures</div>}
             <h1 style={{ fontFamily:"'Newsreader', serif", fontWeight:400, fontSize: headerCollapsed ? 21 : 34, lineHeight:1.1, margin: headerCollapsed ? 0 : "8px 0 10px", letterSpacing:-.5 }}>Nest &amp; Next</h1>
             {!headerCollapsed && <>
-              <p style={{ margin:"0 0 8px", maxWidth:680, fontSize:16, lineHeight:1.45, color:"#F4F1E8" }}>
+              <p style={{ margin:"0 0 8px", maxWidth:680, fontSize:16, lineHeight:1.45, color:"var(--header-ink)" }}>
                 This is about your money, your home, and what comes next.
               </p>
-              <p style={{ margin:0, maxWidth:680, fontSize:14.5, lineHeight:1.55, color:"#C9D3CF" }}>
+              <p style={{ margin:0, maxWidth:680, fontSize:14.5, lineHeight:1.55, color:"var(--header-mut)" }}>
                 Every income stream mapped year by year — salaries, two Social Security checks, the spouse's Washington
                 pension, two inherited homes — against the cost of living from Sofia to the Bahamas, with the
                 pre-Medicare healthcare gap and cross-border inheritance taxes built in.
               </p>
             </>}
           </div>
+          <button onClick={toggleTheme}
+            aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"} aria-pressed={isDark}
+            title={isDark ? "Switch to light theme" : "Switch to dark theme"}
+            style={{ flexShrink:0, alignSelf: headerCollapsed ? "center" : "flex-start", display:"inline-flex", alignItems:"center",
+              justifyContent:"center", width:34, height:34, padding:0, cursor:"pointer", color:"var(--header-ink)", fontSize:15,
+              background:"rgba(244,241,232,.08)", border:"1px solid rgba(244,244,239,.25)", borderRadius:8 }}>
+            <span aria-hidden="true">{isDark ? "☀" : "☾"}</span>
+          </button>
           <button onClick={() => setHeaderCollapsed(c => !c)}
             aria-label={headerCollapsed ? "Expand header" : "Collapse header"} aria-expanded={!headerCollapsed}
             style={{ flexShrink:0, alignSelf: headerCollapsed ? "center" : "flex-start", display:"inline-flex", alignItems:"center",
-              justifyContent:"center", width:34, height:34, padding:0, cursor:"pointer", color:"#F4F1E8",
-              background:"rgba(244,241,232,.08)", border:`1px solid ${C.inkSoft}`, borderRadius:8 }}>
+              justifyContent:"center", width:34, height:34, padding:0, cursor:"pointer", color:"var(--header-ink)",
+              background:"rgba(244,241,232,.08)", border:"1px solid rgba(244,244,239,.25)", borderRadius:8 }}>
             <Chevron up={!headerCollapsed} />
           </button>
         </div>
@@ -267,7 +287,7 @@ export default function RetirementCalculator() {
         document.body,
       )}
 
-      <footer style={{ position:"fixed", left:0, right:0, bottom:0, zIndex:50, background:C.ink, color:C.paper,
+      <footer style={{ position:"fixed", left:0, right:0, bottom:0, zIndex:50, background:"var(--header-bg)", color:"var(--header-ink)",
         display:"flex", justifyContent:"center", alignItems:"center", gap:10, flexWrap:"wrap",
         padding:"7px 16px", fontSize:11, letterSpacing:0.3, borderTop:`1px solid ${C.inkSoft}` }}>
         <span>Nest &amp; Next · v{import.meta.env.VITE_APP_VERSION}</span>

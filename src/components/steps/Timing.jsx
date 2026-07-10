@@ -1,4 +1,4 @@
-import { C } from "../theme.js";
+import { C, tint } from "../theme.js";
 import { Field, NumberInput, Segmented, Section } from "../atoms/index.jsx";
 import { ownBenefitAtClaimMonthly, proratedFraEstimate } from "../../calculatorCore.js";
 import { usd0 } from "../format.js";
@@ -26,7 +26,7 @@ export function Timing({ s, set, sFull }) {
         <Segmented value={s.ssModeB} onChange={set("ssModeB")} options={[{label:"Income estimate",value:"estimate"},{label:"SSA statement",value:"statement"}]} />
       </Field>
       {(s.ssModeA==="estimate" || s.ssModeB==="estimate") && (
-        <div role="note" style={{ fontSize:12, color:C.clay, background:"#FBEFEC", border:`1px solid ${C.clay}40`, borderRadius:8, padding:"9px 11px", lineHeight:1.5, marginTop:8 }}>
+        <div role="note" style={{ fontSize:12, color:C.clay, background:"color-mix(in srgb, var(--neg) 8%, var(--surface))", border:`1px solid ${tint(C.clay, 25)}`, borderRadius:8, padding:"9px 11px", lineHeight:1.5, marginTop:8 }}>
           ⚠ The income estimate assumes a full 35-year Social Security career. It <b>overstates</b> the benefit for a shorter covered career and <b>understates</b> it for anyone not currently earning. Prefer your SSA statement.
         </div>
       )}
@@ -50,7 +50,7 @@ export function Timing({ s, set, sFull }) {
           </div>
         </>
       )}
-      <div style={{ fontSize:12, color:C.slate, background:"#F6F4EC", borderRadius:8, padding:"9px 11px", lineHeight:1.5 }}>
+      <div style={{ fontSize:12, color:C.slate, background:"var(--surface-2)", borderRadius:8, padding:"9px 11px", lineHeight:1.5 }}>
         Scheduled benefits: your SS <b style={{fontFamily:"'JetBrains Mono',monospace",color:C.ink}}>{usd0(sFull.ssA)}</b>, spouse SS <b style={{fontFamily:"'JetBrains Mono',monospace",color:C.ink}}>{usd0(sFull.ssB)}</b>/yr at full funding. The income estimate uses SSA bend points; your SSA statement is usually more reliable.
       </div>
       <div style={{ marginTop:14 }}>

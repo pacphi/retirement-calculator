@@ -65,7 +65,7 @@ export function RetirementPlace({ s, set }) {
         role="note"
         style={{
           fontSize: 11.5, color: C.mut, lineHeight: 1.5, marginBottom: 14,
-          padding: "7px 10px", background: "#F1EEE5", borderRadius: 8,
+          padding: "7px 10px", background: "var(--track)", borderRadius: 8,
         }}
       >
         This is when the tax and cost basis switches to your retirement jurisdiction.
@@ -106,7 +106,7 @@ export function RetirementPlace({ s, set }) {
           role="note"
           style={{
             fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5, marginBottom: 14,
-            padding: "8px 10px", background: "#F6F2E8", borderRadius: 8,
+            padding: "8px 10px", background: "var(--surface-2)", borderRadius: 8,
           }}
         >
           {note}
@@ -133,7 +133,7 @@ export function RetirementPlace({ s, set }) {
           role="note"
           style={{
             fontSize: 11.5, color: C.mut, lineHeight: 1.5, marginBottom: 10,
-            padding: "7px 10px", background: "#F1EEE5", borderRadius: 8,
+            padding: "7px 10px", background: "var(--track)", borderRadius: 8,
           }}
         >
           Rate override active — applied as a flat percentage on federal taxable income,

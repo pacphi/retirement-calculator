@@ -21,7 +21,7 @@ export function NestLogo({ size = 46 }) {
         <circle cx="15" cy="11.4" r="2.6" />
         <path d="M17.2 10.8 L19.8 11.6 L17.2 12.6 Z" />
       </g>
-      <g fill="#F4F1E8">
+      <g fill="var(--header-ink)">
         <ellipse cx="24" cy="17" rx="3.4" ry="4.6" />
         <circle cx="24" cy="11.4" r="2.6" />
         <path d="M21.8 10.8 L19.2 11.6 L21.8 12.6 Z" />
@@ -87,9 +87,9 @@ export function Select({ value, onChange, options, "aria-label": ariaLabel }) {
   </select>);
 }
 export function Segmented({ value, onChange, options, "aria-label": ariaLabel }) {
-  return (<div role={ariaLabel ? "group" : undefined} aria-label={ariaLabel} style={{ display:"flex", flex:"1 1 auto", minWidth:0, gap:4, background:"#F1EEE5", padding:4, borderRadius:9 }}>
+  return (<div role={ariaLabel ? "group" : undefined} aria-label={ariaLabel} style={{ display:"flex", flex:"1 1 auto", minWidth:0, gap:4, background:"var(--track)", padding:4, borderRadius:9 }}>
     {options.map(o => { const on=value===o.value; return (
-      <button key={String(o.value)} type="button" aria-pressed={on} onClick={()=>onChange(o.value)} style={{ flex:1, minWidth:0, padding:"7px 8px", border:"none", borderRadius:6, cursor:"pointer", whiteSpace:"normal", textAlign:"center", lineHeight:1.2, fontSize:12, fontWeight:600, fontFamily:"inherit", background:on?C.ink:"transparent", color:on?"#fff":C.slate, transition:"all .15s" }}>{o.label}</button>
+      <button key={String(o.value)} type="button" aria-pressed={on} onClick={()=>onChange(o.value)} style={{ flex:1, minWidth:0, padding:"7px 8px", border:"none", borderRadius:6, cursor:"pointer", whiteSpace:"normal", textAlign:"center", lineHeight:1.2, fontSize:12, fontWeight:600, fontFamily:"inherit", background:on?C.ink:"transparent", color:on?"var(--on-ink)":C.slate, transition:"all .15s" }}>{o.label}</button>
     ); })}
   </div>);
 }

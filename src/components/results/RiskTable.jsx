@@ -33,7 +33,7 @@ export function RiskTable({ sFull, sTrust, sNone, simFull, simTrust, simNone, s,
         </tr></thead>
         <tbody>
           {rows.map(r=>(
-            <tr key={r.key} style={{ borderTop:`1px solid ${C.line}`, background:r.on?"#FCF6E8":"transparent" }}>
+            <tr key={r.key} style={{ borderTop:`1px solid ${C.line}`, background:r.on?"var(--surface-2)":"transparent" }}>
               <td style={{ padding:"7px 0", color:C.inkSoft, fontWeight:r.on?700:400 }}>{r.on?"▸ ":""}{r.lab}</td>
               <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", color:C.slate }}>{usd0(r.st.ssHouse)}</td>
               <td style={{ textAlign:"right", fontFamily:"'JetBrains Mono',monospace", color:C.ink, fontWeight:600 }}>{usd0(r.st.net)}</td>
@@ -42,7 +42,7 @@ export function RiskTable({ sFull, sTrust, sNone, simFull, simTrust, simNone, s,
           ))}
         </tbody>
       </table>
-      <div style={{ marginTop:12, fontSize:12.5, color:C.inkSoft, lineHeight:1.55, background:"#F6F4EC", borderRadius:9, padding:"10px 12px" }}>
+      <div style={{ marginTop:12, fontSize:12.5, color:C.inkSoft, lineHeight:1.55, background:"var(--surface-2)", borderRadius:9, padding:"10px 12px" }}>
         Social Security is about <b style={{color:C.ink}}>{Math.round(ssShare*100)}%</b> of your retirement income, so the realistic 81% case trims roughly <b style={{color:C.ink}}>{usd0(drop)}/yr</b> — and you'd still be <b style={{color:okTrust?C.viridian:C.clay}}>{okTrust?"on track":"short of your goal"}</b>. Even if it were eliminated entirely (a deliberate worst case, not a forecast), your pension and savings would carry you {okNone?"and still meet the goal":`to age ${simNone.depAge||95}`}. Her Washington pension is the ballast here — it isn't affected by any of this.
       </div>
     </div>

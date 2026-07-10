@@ -36,7 +36,7 @@ export function Inheritance({ s, addProperty, removeProperty, setProperty }) {
         const e = propEcon(p.place, value);
         const rules = inheritanceRulesForPlace(p.place);
         return (
-          <div key={p.id} style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 13px", marginBottom: 12, background: "#FCFAF4" }}>
+          <div key={p.id} style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 13px", marginBottom: 12, background: "var(--surface-2)" }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
               <input
                 aria-label="Property name"

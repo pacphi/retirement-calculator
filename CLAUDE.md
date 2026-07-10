@@ -9,6 +9,7 @@ The app is still planning-grade, not advice-grade. Keep the in-app disclaimer an
 ## Current structure
 
 - `RetirementCalculator.jsx` - React UI and chart/table rendering.
+- `src/components/theme.js` - the only source of UI color. Light and dark palettes live as CSS variables (`THEME_CSS`); every exported color is a `var(--…)` reference, so never concatenate hex alpha onto them — use the `tint()` helper instead. The header toggle stamps `data-theme` on `<html>`; the default follows `prefers-color-scheme`, and print always forces light. Categorical series colors are entity-fixed (salary blue, pension aqua, Social Security yellow/green, portfolio withdrawal violet, rental orange) and validated for colorblind separation in both modes.
 - `src/retirementData.js` - source-linked 2026 constants and planning assumptions.
 - `src/calculatorCore.js` - pure calculation engine.
 - `src/calculatorCore.test.js` - deterministic formula and simulation tests.
@@ -24,6 +25,7 @@ The app is still planning-grade, not advice-grade. Keep the in-app disclaimer an
 - Prefer SSA statement inputs for Social Security. The income-based PIA estimate is only a fallback.
 - Spousal Social Security benefits cap at 50% of the worker PIA at FRA and do not receive delayed retirement credits.
 - Use current WA DRS early-retirement factors and service-year eligibility guards.
+- A DRS survivor election is never free: electing a survivor percentage applies the published TRS 2/3 joint-and-survivor factor (member−beneficiary age difference, `DRS_SURVIVOR_FACTORS`) to the benefit from day one; the survivor receives the elected share of the reduced benefit; the benefit pops back to single life if the beneficiary dies first; and a vested member's pre-retirement death pays the RCW 41.32.895 survivor annuity regardless of the election.
 - Keep rental income separate from guaranteed lifetime benefits.
 - Monthly views are an honest per-month rate (the year's annual figure ÷ 12); the engine has no intra-year timing, so genuinely one-time items (home sale, first RMD, age-65, survivor) are flagged as year milestones, not placed in a month. Derivation lives in `src/finance/breakdown.js` and is unit-tested; chart layout is not.
 

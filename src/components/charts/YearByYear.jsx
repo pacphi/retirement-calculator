@@ -4,7 +4,7 @@ import {
 } from "recharts";
 import { ChartFrame } from "./chartFrame.jsx";
 import { monthlyBreakdown, yearMilestones } from "../../finance/breakdown.js";
-import { C, SRC } from "../theme.js";
+import { C, SRC, tint } from "../theme.js";
 import { Segmented, Chevron } from "../atoms/index.jsx";
 import { usd0, usdK } from "../format.js";
 
@@ -54,8 +54,8 @@ export function YearByYear({
   const mbInc = mb ? [
     ["Salary (you)", sc(mb.income.salA), SRC.salA], ["Salary (spouse)", sc(mb.income.salB), SRC.salB],
     ["Rental", sc(mb.income.rent), SRC.rent], ["Pension", sc(mb.income.pens), SRC.pension],
-    ["SS (you)", sc(mb.income.ssA), SRC.ssA], ["SS (spouse)", sc(mb.income.ssB), SRC.ssB],
-    ["Portfolio draw", sc(mb.draw), SRC.wd],
+    ["Social Security (you)", sc(mb.income.ssA), SRC.ssA], ["Social Security (spouse)", sc(mb.income.ssB), SRC.ssB],
+    ["Portfolio withdrawal", sc(mb.draw), SRC.wd],
   ].filter(([, v]) => v > 0) : [];
   // Task 9: housing label — "Rent (Location)" for renters, "Mortgage P&I" for owners.
   const housingTenure = inputs?.housing?.tenure;
@@ -67,15 +67,15 @@ export function YearByYear({
     : "Housing";
   const mbExp = mb ? [
     ["Living", sc(mb.expenses.living), C.slate],
-    [housingLabel, sc(mb.expenses.housing), "#6B7FA3"],
-    ["Travel / one-time", sc(mb.expenses.extra), "#A98B5A"],
+    [housingLabel, sc(mb.expenses.housing), "var(--c1-deep)"],
+    ["Travel / one-time", sc(mb.expenses.extra), "var(--c7)"],
     ["Taxes", sc(mb.expenses.tax), C.clay],
   ].filter(([, v]) => v > 0) : [];
   const monthBar = mb ? [{ name: "mo",
     ...Object.fromEntries(mbInc.map(([n, v]) => [n, v])),
     ...Object.fromEntries(mbExp.map(([n, v]) => [n, -v])),
   }] : [];
-  const milestoneColor = { income: SRC.ssA, life: C.brassDeep, tax: C.clay, spend: "#A98B5A" };
+  const milestoneColor = { income: SRC.ssA, life: C.brassDeep, tax: C.clay, spend: "var(--c7)" };
 
   return (
     <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 14, padding: "16px 14px 14px", marginBottom: 16 }}>
@@ -108,7 +108,7 @@ export function YearByYear({
           style={{ border: `1px solid ${C.line}`, background: C.panel, borderRadius: 8, width: 32, height: 32, cursor: activeYear >= yrMax ? "default" : "pointer", color: C.ink, fontSize: 15, opacity: activeYear >= yrMax ? 0.4 : 1 }}>▶</button>
         <button type="button" aria-label={playing ? "pause" : "play"} aria-pressed={playing}
           onClick={() => { if (playing) { onSetPlaying(false); } else { onYearChange(activeYear >= yrMax ? yrMin : activeYear); onSetPlaying(true); } }}
-          style={{ border: `1px solid ${C.line}`, background: playing ? C.ink : C.panel, color: playing ? "#fff" : C.ink, borderRadius: 8, padding: "0 12px", height: 32, cursor: "pointer", fontSize: 12.5, fontWeight: 600 }}>{playing ? "❚❚ Pause" : "▶ Play"}</button>
+          style={{ border: `1px solid ${C.line}`, background: playing ? C.ink : C.panel, color: playing ? "var(--on-ink)" : C.ink, borderRadius: 8, padding: "0 12px", height: 32, cursor: "pointer", fontSize: 12.5, fontWeight: 600 }}>{playing ? "❚❚ Pause" : "▶ Play"}</button>
         <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, fontWeight: 600, color: C.ink, minWidth: 150 }}>{activeYear} · You {selRow?.aA} · Spouse {selRow?.aB}</span>
       </div>
 
@@ -117,7 +117,7 @@ export function YearByYear({
         {milestones.length === 0
           ? <span style={{ fontSize: 11.5, color: C.mut }}>No notable events this year — a steady year.</span>
           : milestones.map(ev => (
-            <span key={ev.key} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, color: milestoneColor[ev.kind] || C.slate, background: (milestoneColor[ev.kind] || C.slate) + "18", border: `1px solid ${(milestoneColor[ev.kind] || C.slate)}40`, borderRadius: 999, padding: "3px 9px" }}>
+            <span key={ev.key} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, color: milestoneColor[ev.kind] || C.slate, background: tint(milestoneColor[ev.kind] || C.slate, 10), border: `1px solid ${tint(milestoneColor[ev.kind] || C.slate, 25)}`, borderRadius: 999, padding: "3px 9px" }}>
               {ev.label}{ev.amount ? ` · ${usd0(ev.amount)}` : ""}
             </span>
           ))}
@@ -151,12 +151,12 @@ export function YearByYear({
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
             {[[`Income${ybyUnit}`, mb ? (mb.incomeTotalMo + mb.draw) * ybyScale : 0, C.viridian],
               [`Expenses${ybyUnit}`, mb ? mb.expenseTotalMo * ybyScale : 0, C.clay]].map(([k, v, col]) => (
-              <div key={k} style={{ background: "#FCFAF4", border: `1px solid ${C.line}`, borderRadius: 9, padding: "8px 10px" }}>
+              <div key={k} style={{ background: "var(--surface-2)", border: `1px solid ${C.line}`, borderRadius: 9, padding: "8px 10px" }}>
                 <div style={{ fontSize: 10.5, color: C.slate, fontWeight: 600 }}>{k}</div>
                 <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 16, fontWeight: 600, color: col }}>{usd0(v)}</div>
               </div>
             ))}
-            <div style={{ gridColumn: "1 / -1", background: (mb && mb.netMo >= -1 ? C.viridian : C.clay) + "12", border: `1px solid ${(mb && mb.netMo >= -1 ? C.viridian : C.clay)}40`, borderRadius: 9, padding: "8px 10px" }}>
+            <div style={{ gridColumn: "1 / -1", background: tint(mb && mb.netMo >= -1 ? C.viridian : C.clay, 8), border: `1px solid ${tint(mb && mb.netMo >= -1 ? C.viridian : C.clay, 25)}`, borderRadius: 9, padding: "8px 10px" }}>
               <div style={{ fontSize: 10.5, color: C.slate, fontWeight: 600 }}>{selRow && (selRow.salA > 0 || selRow.salB > 0) ? `Surplus${ybyUnit} (to savings)` : "Net after the savings draw"}</div>
               <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 16, fontWeight: 600, color: mb && mb.netMo >= -1 ? C.viridian : C.clay }}>{mb ? (mb.netMo >= 0 ? "+" : "") + usd0(mb.netMo * ybyScale) : "$0"}{mb && Math.abs(mb.netMo * ybyScale) < 1 ? "  ·  balanced" : ""}</div>
             </div>

@@ -5,7 +5,7 @@ import { housingCostForYear, resolveDwelling } from "./housing.js";
 import { calculateFederalTaxYear } from "./tax.js";
 import { residenceTaxForYear } from "./residenceTax.js";
 import { ownBenefitAtClaimMonthly, piaFromIncome, spousalBenefitAtClaimMonthly } from "./socialSecurity.js";
-import { drsEligibilityNote, pensionERF, resolveAfc } from "./pension.js";
+import { drsEligibilityNote, pensionERF, resolveAfc, survivorOptionFactor } from "./pension.js";
 import { ltcSpendForYear, oneTimeSpendForYear, travelSpendForYear } from "./events.js";
 import { requiredMinimum, rmdStartAge } from "./rmd.js";
 import { activeJurisdiction } from "./jurisdiction.js";
@@ -153,6 +153,38 @@ export function simulate(i, ssOpt) {
   const firstDeathCal = Math.min(dYearA, dYearB);
   const survivorIsA = dYearA >= dYearB; // A outlives (or ties) B
   const lifePensionPct = lifeOn ? Number(i.life.pensionPct ?? 0) : 0;
+
+  // DRS joint-and-survivor pricing. Electing a survivor percentage is not free:
+  // the member's benefit is permanently reduced by the published option factor
+  // (member − beneficiary age difference; the member is spouse B). If the
+  // beneficiary (A) dies first, DRS restores the single-life amount ("pop-up").
+  const survElectPct = lifeOn ? lifePensionPct : Number(i.survivor?.pensionPct ?? 0);
+  const jsElected = !!i.pensionOn && survElectPct > 0 && (lifeOn || !!(i.survivor && i.survivor.on));
+  const jsFactor = jsElected ? survivorOptionFactor(survElectPct, i.ageB - i.ageA) : 1;
+
+  // RCW 41.32.895-style pre-retirement death benefit: if the vested member (B)
+  // dies before her pension starts and the spouse survives her, the spouse is
+  // entitled to a LIFETIME annuity — the earned benefit reduced as a 100%
+  // joint-survivor election, early-retirement-reduced if she wasn't yet
+  // eligible (deferred to her would-be 65 for an unreduced benefit when the
+  // early-eligibility guards fail). Planning-grade; not gated on the elected
+  // survivor percentage because the statute grants it regardless.
+  let preRetSurv = null;
+  if (lifeOn && i.pensionOn && dYearB < dYearA && Number(i.life.deathAgeB) < i.pensionAge) {
+    const vested = i.pYears >= (i.plan === 3 ? 10 : 5);
+    if (vested) {
+      const deathAgeB = Number(i.life.deathAgeB);
+      const earlyStartAge = Math.max(55, deathAgeB);
+      const erfEarly = pensionERF(earlyStartAge, i.pYears, i.plan);
+      const startAgeB = erfEarly > 0 ? earlyStartAge : 65;
+      const erfAtStart = erfEarly > 0 ? erfEarly : 1;
+      const mult = i.plan === 3 ? 0.01 : 0.02;
+      preRetSurv = {
+        startCal: TAX_YEAR + (startAgeB - i.ageB),
+        annual: mult * i.pYears * (resolveAfc(i) / 12) * erfAtStart * 12 * survivorOptionFactor(100, i.ageB - i.ageA),
+      };
+    }
+  }
   const endEff = lifeOn
     ? Math.min(end, Math.max(0, Math.max(dYearA, dYearB) - TAX_YEAR))
     : end;
@@ -168,7 +200,11 @@ export function simulate(i, ssOpt) {
     const salA = workA ? i.incomeA : 0;
     const salB = workB ? i.incomeB : 0;
     const wages = salA + salB;
-    const pens = i.pensionOn && aB >= i.pensionAge ? pensFull : 0;
+    // Pop-up: beneficiary (A) died first while the member (B) lives — restore single life.
+    const jsPopUp = lifeOn && cal >= dYearA && cal < dYearB;
+    const pens = preRetSurv && cal >= dYearB
+      ? (cal >= preRetSurv.startCal ? preRetSurv.annual : 0)
+      : (i.pensionOn && aB >= i.pensionAge ? pensFull * (jsPopUp ? 1 : jsFactor) : 0);
     const ssFac = cal >= cutYear ? haircut : 1;
     const ssAy = aA >= i.claimA ? ssAfull * ssFac : 0;
     const ssBy = aB >= i.claimB ? ssBfull * ssFac : 0;
@@ -189,7 +225,9 @@ export function simulate(i, ssOpt) {
     // year as before.
     const pensHolderDead = lifeOn ? cal >= dYearB : isSurvivor;
     const survPensionPct = lifeOn ? lifePensionPct : Number(i.survivor?.pensionPct ?? 0);
-    const pensEff = pensHolderDead ? pens * (survPensionPct / 100) : pens;
+    const pensEff = preRetSurv && cal >= dYearB
+      ? pens
+      : (pensHolderDead ? pens * (survPensionPct / 100) : pens);
     let rent = 0;
     let sellLump = 0;
     // Task 5 (Wave 2): track the first active "live" entry so we can build an
@@ -366,6 +404,7 @@ export function simulate(i, ssOpt) {
     // draw is the deferred PORTION of the spending draw under the active order.
     const needDeferredDraw = wdSplit.deferred;
     let forcedRmd = 0;
+    let rmdReinvest = 0; // after-tax remainder of the forced RMD, recycled into taxable
     if (rmd > needDeferredDraw) {
       // Mirror the pre-Wave-3 cap exactly: deferred-pre-spending = buckets.deferred (now
       // post-spending) + needDeferredDraw; total = current `bal` (post-spending draw).
@@ -424,6 +463,7 @@ export function simulate(i, ssOpt) {
         // is reinvested into the taxable bucket (the gross leaves the tax-deferred pool).
         buckets.deferred = Math.max(0, buckets.deferred - forcedRmd);
         buckets.taxable += afterTaxForced;
+        rmdReinvest = afterTaxForced;
       }
     }
     defBal = Math.max(0, buckets.deferred);
@@ -467,7 +507,7 @@ export function simulate(i, ssOpt) {
       wd: Math.round(wdTotal), wdSpend: Math.round(wd), reinvest: Math.round(reinvest), bal: Math.round(bal), need: Math.round(need),
       extraSpend: Math.round(extraSpend),
       tax: Math.round(tax), contrib: Math.round(contrib), sellLump: Math.round(sellLump),
-      rmd: Math.round(rmd), forcedRmd: Math.round(forcedRmd), defBal: Math.round(defBal),
+      rmd: Math.round(rmd), forcedRmd: Math.round(forcedRmd), rmdReinvest: Math.round(rmdReinvest), defBal: Math.round(defBal),
       // Wave 3 D1: explicit per-bucket composition so steadyState + the chart can read
       // the same buckets the rows drew from (SINGLE-TAX-SOURCE). defBal === deferredBal.
       taxableBal: Math.round(buckets.taxable),

@@ -136,9 +136,11 @@ The following features use internally derived assumptions rather than externally
 - **[Washington DRS — Plan 2 vs Plan 3 choice](https://www.drs.wa.gov/choice/)** **(primary)** — plan structure comparison.
 - **[Washington DRS — Administrative / early‑retirement factors](https://www.drs.wa.gov/sitemap/adminfactors/)** **(primary)** — the early‑retirement factor (ERF) tables.
 - **[Washington Administrative Code 415‑02‑320 (early‑retirement factors)](https://app.leg.wa.gov/wac/default.aspx?cite=415-02-320)** **(primary)** — the legal ERF schedule.
+- **[Washington Administrative Code 415‑02‑380 (survivor option factors)](https://app.leg.wa.gov/wac/default.aspx?cite=415-02-380)** **(primary)** — joint‑and‑survivor option mechanics, including the "pop‑up" restoration when the beneficiary dies first. The numeric TRS 2/3 factor table in `DRS_SURVIVOR_FACTORS` (`src/retirementData.js`) was extracted from the DRS 2026 Administrative Factors workbook, sheet "Appx G (J&S)", on 2026‑07‑09 (fetched via the Administrative Factors page above).
+- **[RCW 41.32.895 — TRS Plan 3 pre‑retirement death benefit](https://app.leg.wa.gov/RCW/default.aspx?cite=41.32.895)** **(primary)** — a vested member's surviving spouse receives a lifetime annuity (the earned benefit, reduced as a 100% joint‑and‑survivor election, plus an early‑retirement reduction if the member wasn't yet eligible). Modeled when the life model shows the pension‑holder dying before her pension starts.
 - **[Washington State Auditor — Note X, state‑sponsored DRS pension plans](https://sao.wa.gov/bars-annual-filing/bars-gaap-manual/reporting/notes-financial-statements/note-x-pensions-state-sponsored-drs-plans)** **(primary)** — plan accounting context.
 
-**Verified against current DRS docs (see `docs/archive/audits/drs-verification.md`):** the 2% (Plan 2) / 1% (Plan 3 DB) multipliers, AFC = highest 60 consecutive months, 5-yr (Plan 2) / 10-yr (Plan 3) vesting, age-65 normal retirement, age-55 early eligibility (Plan 2 ≥20 yrs, Plan 3 ≥10 yrs), and the under-30-year ERF table all match. **Known limitation:** for members with **30+ years** of service, DRS publishes two ERF schedules by hire date — the gentler **2008 ERF** (hired before May 1, 2013; e.g. unreduced at 62) and the **5% ERF** (hired on/after May 1, 2013). This engine implements only the 5% schedule, so it **understates** the pension for pre-2013 hires with 30+ years. (Does not affect a member retiring with fewer than 30 years.)
+**Verified against current DRS docs (see `docs/archive/audit-drs-verification.md`):** the 2% (Plan 2) / 1% (Plan 3 DB) multipliers, AFC = highest 60 consecutive months, 5-yr (Plan 2) / 10-yr (Plan 3) vesting, age-65 normal retirement, age-55 early eligibility (Plan 2 ≥20 yrs, Plan 3 ≥10 yrs), and the under-30-year ERF table all match. **Known limitation:** for members with **30+ years** of service, DRS publishes two ERF schedules by hire date — the gentler **2008 ERF** (hired before May 1, 2013; e.g. unreduced at 62) and the **5% ERF** (hired on/after May 1, 2013). This engine implements only the 5% schedule, so it **understates** the pension for pre-2013 hires with 30+ years. (Does not affect a member retiring with fewer than 30 years.) **Survivor options are priced:** electing a survivor percentage reduces the member's benefit by the published TRS 2/3 joint‑and‑survivor factor for the member−beneficiary age difference from the first payment, the survivor then receives the elected share of that reduced benefit, and the benefit pops back up to single life if the beneficiary dies first.
 
 ---
 
@@ -263,7 +265,7 @@ modeled figure is conservative for those.
 Austria <https://www.oesterreich.gv.at/en/themen/pflege/2/Seite.360542>; Netherlands
 <https://particulierewoonzorg.nl/kosten-particuliere-woonzorg/>; Portugal
 <https://withportugal.com/en/blog/lares-de-idosos>. Full per-location source list and
-method notes: `docs/archive/audits/ltc-research.md`.
+method notes: `docs/archive/audit-ltc-research.md`.
 
 **Caveats.** Greece and the Bahamas are low-confidence estimates. Figures are private-pay
 and pre-subsidy. The model applies LTC as one episode (default 3 years from the older
@@ -294,7 +296,7 @@ A US citizen owes **US federal** income tax everywhere (always modeled). On top 
 | Netherlands | 8% | Box system; effective rate well above US |
 | Bahamas | 0% | No income tax |
 
-**Treaty & FTC mechanics.** US citizens are taxed on worldwide income regardless of residence, but the Foreign Tax Credit (Form 1116) credits foreign income tax against US liability, and treaties allocate taxing rights — together preventing double taxation. The practical result for retirement income is "pay the higher of the two," which is why most foreign additional rates above are 0. Per-location sources and method notes: `docs/archive/audits/tax-research.md`. **Caveats:** these are single-rate effective simplifications (not marginal); cross-border tax is highly fact-specific — confirm with a qualified cross-border professional. Key sources: IRS FTC/Form 1116 (<https://www.irs.gov/individuals/international-taxpayers/foreign-tax-credit>), PwC Worldwide Tax Summaries (<https://taxsummaries.pwc.com/>), and per-country guides listed in `docs/archive/audits/tax-research.md`.
+**Treaty & FTC mechanics.** US citizens are taxed on worldwide income regardless of residence, but the Foreign Tax Credit (Form 1116) credits foreign income tax against US liability, and treaties allocate taxing rights — together preventing double taxation. The practical result for retirement income is "pay the higher of the two," which is why most foreign additional rates above are 0. Per-location sources and method notes: `docs/archive/audit-tax-research.md`. **Caveats:** these are single-rate effective simplifications (not marginal); cross-border tax is highly fact-specific — confirm with a qualified cross-border professional. Key sources: IRS FTC/Form 1116 (<https://www.irs.gov/individuals/international-taxpayers/foreign-tax-credit>), PwC Worldwide Tax Summaries (<https://taxsummaries.pwc.com/>), and per-country guides listed in `docs/archive/audit-tax-research.md`.
 
 ## 19. Wave 3 Engine-Depth Sources
 
@@ -317,7 +319,7 @@ Sources added for the five Wave 3 features: multi-vehicle contributions, three-b
 
 ### Austria Net-of-Treaty Rate (T7)
 
-The Austria rate update (`INTL_TAX.Austria.retireRate` 0.0 → 0.05) relies on the existing cross-border sources in Section 14 (Greenback, PBMares, TaxesForExpats, PwC Worldwide Tax Summaries cited via `docs/archive/audits/tax-research.md`) and the Section 18 Income Tax by Location table (Austria row: 5% net-of-treaty, consistent with `LOCATIONS.Austria.addlTaxRate`). No new external sources are required; the change aligns the typed residence-tax path with the flat path already sourced and cited.
+The Austria rate update (`INTL_TAX.Austria.retireRate` 0.0 → 0.05) relies on the existing cross-border sources in Section 14 (Greenback, PBMares, TaxesForExpats, PwC Worldwide Tax Summaries cited via `docs/archive/audit-tax-research.md`) and the Section 18 Income Tax by Location table (Austria row: 5% net-of-treaty, consistent with `LOCATIONS.Austria.addlTaxRate`). No new external sources are required; the change aligns the typed residence-tax path with the flat path already sourced and cited.
 
 ---
 
