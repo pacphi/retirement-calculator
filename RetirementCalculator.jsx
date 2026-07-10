@@ -294,7 +294,7 @@ export default function RetirementCalculator() {
         document.body,
       )}
 
-      <footer style={{ background:"var(--header-bg)", color:"var(--header-mut)",
+      <footer style={{ position:"fixed", bottom:0, left:0, right:0, zIndex:50, background:"var(--header-bg)", color:"var(--header-mut)",
         display:"flex", justifyContent:"center", alignItems:"center", gap:10, flexWrap:"wrap",
         padding:"10px 16px", fontSize:11.5, letterSpacing:0.3, borderTop:"1px solid color-mix(in srgb, var(--header-accent) 35%, transparent)" }}>
         <span>Nest &amp; Next · v{import.meta.env.VITE_APP_VERSION}</span>
