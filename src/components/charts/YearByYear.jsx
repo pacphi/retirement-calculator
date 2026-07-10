@@ -166,7 +166,10 @@ export function YearByYear({
 
       {/* Annual context line */}
       {selRow && <div style={{ fontSize: 11.5, color: C.slate, padding: "10px 6px 0", lineHeight: 1.5 }}>
-        <b style={{ color: C.ink }}>{activeYear} in full:</b> income {usd0((selRow.salA + selRow.salB + selRow.rent + selRow.pens + selRow.ssA + selRow.ssB) + (selRow.wdSpend ?? selRow.wd))}/yr · spending {usd0(selRow.need)}/yr · taxes {usd0(selRow.tax)}/yr · savings draw {usd0(selRow.wdSpend ?? selRow.wd)}/yr · portfolio left {usd0(selRow.bal)}.
+        <b style={{ color: C.ink }}>{activeYear} in full:</b> income {usd0((selRow.salA + selRow.salB + selRow.rent + selRow.pens + selRow.ssA + selRow.ssB) + (selRow.wdSpend ?? selRow.wd))}/yr · spending {usd0(selRow.need)}/yr · taxes {usd0(selRow.taxExRmd ?? selRow.tax)}/yr · savings draw {usd0(selRow.wdSpend ?? selRow.wd)}/yr · portfolio left {usd0(selRow.bal)}.
+        {(Number(selRow.forcedRmd) || 0) > 0 && <>
+          {" "}A required minimum distribution of {usd0(selRow.forcedRmd)} also came out this year — its own {usd0(Math.max(0, (selRow.tax || 0) - (selRow.taxExRmd ?? selRow.tax)))} in tax was paid from the distribution itself, and the {usd0(selRow.rmdReinvest)} left over was reinvested into the taxable portfolio (not spent).
+        </>}
       </div>}
 
       {/* Legend */}
