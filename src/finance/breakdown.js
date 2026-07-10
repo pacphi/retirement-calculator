@@ -39,7 +39,13 @@ export function monthlyBreakdown(row) {
   };
   // living = (need − extraSpend − housing) / 12 — housing is now its own line.
   const living = m((Number(row.need) || 0) - (Number(row.extraSpend) || 0) - housingAnnual);
-  const tax = m(row.tax);
+  // A forced RMD's incremental tax is paid out of the RMD's own proceeds (see simulate.js),
+  // not out of guaranteed income — so it isn't a cost the household's other income needs to
+  // cover. taxExRmd (falls back to tax pre-RMD-support) keeps the monthly reconciliation
+  // honest; rmdTax below surfaces the self-funded remainder for display, separately.
+  const taxExRmd = Number(row.taxExRmd ?? row.tax) || 0;
+  const tax = m(taxExRmd);
+  const rmdTax = m(Math.max(0, (Number(row.tax) || 0) - taxExRmd));
   const expenses = { living, extra, housing, housingDetail, tax };
   const incomeTotalMo = income.salA + income.salB + income.rent + income.pens + income.ssA + income.ssB;
   const expenseTotalMo = living + extra + housing + tax;
@@ -47,7 +53,7 @@ export function monthlyBreakdown(row) {
   // less everything going out. ~0 when the draw is sized to meet the need; positive in
   // working years where income exceeds need (the surplus the engine can contribute).
   const netMo = incomeTotalMo + draw - expenseTotalMo;
-  return { income, draw, expenses, incomeTotalMo, expenseTotalMo, netMo };
+  return { income, draw, expenses, incomeTotalMo, expenseTotalMo, netMo, rmdTax };
 }
 
 // Detect the notable events that land in a given year by comparing against the prior row.

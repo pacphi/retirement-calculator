@@ -392,6 +392,12 @@ export function simulate(i, ssOpt) {
     // taxable principal are not ordinary. The solver computes its tax with this same split.
     const tradFracForDraw = (D) => splitWithdrawal(D, buckets, order).ordinaryShare;
     let { withdrawal: wd, tax } = solveWithdrawal(i, aA, aB, wages, pensEff, rent, ssAyEff + ssByEff, need, bal, yearStatus, cal, yearProfile, flatStateRate, tradFracForDraw);
+    // The tax attributable to guaranteed income + the need-based draw, BEFORE any RMD
+    // floor tops it up. A forced RMD's incremental tax (below) is paid out of the RMD's
+    // own proceeds — not out of guaranteed income — so this is the true cash-flow tax
+    // the household's other income needs to cover. Row consumers (monthlyBreakdown) use
+    // this instead of the final `tax` to avoid double-charging a self-funded RMD tax bill.
+    const taxExRmd = tax;
     // Split the solved spending draw across buckets in order and decrement each.
     const wdSplit = splitWithdrawal(wd, buckets, order);
     buckets.taxable -= wdSplit.taxable;
@@ -506,7 +512,7 @@ export function simulate(i, ssOpt) {
       aA, aB, cal, salA, salB, rent, pens: pensEff, ssA: ssAyEff, ssB: ssByEff, survivor: isSurvivor,
       wd: Math.round(wdTotal), wdSpend: Math.round(wd), reinvest: Math.round(reinvest), bal: Math.round(bal), need: Math.round(need),
       extraSpend: Math.round(extraSpend),
-      tax: Math.round(tax), contrib: Math.round(contrib), sellLump: Math.round(sellLump),
+      tax: Math.round(tax), taxExRmd: Math.round(taxExRmd), contrib: Math.round(contrib), sellLump: Math.round(sellLump),
       rmd: Math.round(rmd), forcedRmd: Math.round(forcedRmd), rmdReinvest: Math.round(rmdReinvest), defBal: Math.round(defBal),
       // Wave 3 D1: explicit per-bucket composition so steadyState + the chart can read
       // the same buckets the rows drew from (SINGLE-TAX-SOURCE). defBal === deferredBal.

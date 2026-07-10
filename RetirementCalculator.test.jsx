@@ -929,13 +929,13 @@ describe("two-stage wizard navigation", () => {
     expect(screen.getByLabelText(/where you live and earn now/i).value).toBe("TX");
   });
 
-  it("navigates the six report sections via their bubbles", async () => {
+  it("navigates the seven report sections via their bubbles", async () => {
     const user = userEvent.setup();
     render(<RetirementCalculator />);
     await openReport(user);
     const nav = screen.getByRole("navigation", { name: /report sections/i });
     const titles = within(nav).getAllByRole("button").map((b) => b.textContent.replace(/^[0-9✓]+/, "").trim());
-    expect(titles).toEqual(["Verdict", "Income", "Portfolio", "Taxes & Location", "Risks", "Reference"]);
+    expect(titles).toEqual(["Verdict", "Income", "Portfolio", "Taxes & Location", "Estate", "Risks", "Reference"]);
   });
 });
 

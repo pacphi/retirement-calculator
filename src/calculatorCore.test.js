@@ -1117,7 +1117,8 @@ describe("monthly breakdown (year-by-year navigator)", () => {
     const b = monthlyBreakdown(row);
     expect(b.expenses.extra).toBeCloseTo(row.extraSpend / 12, 6);
     expect(b.expenses.living).toBeCloseTo((row.need - row.extraSpend - (row.housing ?? 0)) / 12, 6);
-    expect(b.expenses.tax).toBeCloseTo(row.tax / 12, 6);
+    // taxExRmd excludes a forced RMD's self-funded incremental tax; equals row.tax when no RMD forced.
+    expect(b.expenses.tax).toBeCloseTo((row.taxExRmd ?? row.tax) / 12, 6);
   });
 
   it("reconciles to ~zero net in a binding retirement year (draw funds the gap)", () => {
@@ -1133,6 +1134,33 @@ describe("monthly breakdown (year-by-year navigator)", () => {
     const row = rows.find((r) => r.salA > 0 || r.salB > 0); // a working year
     const b = monthlyBreakdown(row);
     expect(b.netMo).toBeGreaterThan(0);
+  });
+
+  // Regression: a forced RMD's incremental tax is self-funded by the RMD's own proceeds
+  // (simulate.js reinvests the after-tax remainder), not paid out of guaranteed income.
+  // Charging that tax against guaranteed income manufactured a phantom monthly deficit
+  // even in years where guaranteed income comfortably covered the spending need.
+  it("does not manufacture a deficit from a forced RMD's self-funded tax", () => {
+    const rmdBase = {
+      ...baseState,
+      ageA: 96, ageB: 87, stopA: 62, stopB: 60, claimA: 67, claimB: 67,
+      pensionOn: false, savings: 3_000_000, contrib: 0,
+      targetPct: 0.25, realReturn: 0,
+      ssModeA: "statement", ssModeB: "statement", ssFraA: 50000, ssFraB: 22000,
+      tx: { on: false }, at: { on: false },
+      travel: { on: false }, events: [], horizonAge: 97,
+      housing: { tenure: "rent", rent: 1200, mortgage: { principal: 0, ratePct: 0, termYears: 0, startYear: 2026 }, homeValue: 0, insuranceAnnual: 0, maintenancePct: 0 },
+    };
+    const row = calculatePlan({ ...rmdBase, tradFrac: 1 }).simChosen.rows.find((r) => r.cal === 2026);
+    expect(row.forcedRmd).toBeGreaterThan(0); // sanity: RMD forcing is actually exercised
+    expect(row.wdSpend).toBe(0); // guaranteed income covers the spending need
+    expect(row.taxExRmd).toBeLessThan(row.tax); // the RMD added incremental tax on top
+
+    const b = monthlyBreakdown(row);
+    // Guaranteed income covers spending: the household is NOT in a monthly deficit.
+    expect(b.netMo).toBeGreaterThanOrEqual(0);
+    // The RMD's self-funded tax is surfaced separately, not folded into expenses.
+    expect(b.rmdTax).toBeGreaterThan(0);
   });
 });
 

@@ -1,4 +1,4 @@
-import { Gauge, TrendingUp, PieChart, Landmark, ShieldAlert, BookOpen } from "lucide-react";
+import { Gauge, TrendingUp, PieChart, Landmark, ShieldAlert, BookOpen, Home } from "lucide-react";
 import { C } from "../components/theme.js";
 import { SOURCES } from "../retirementData.js";
 import { Staircase } from "../components/charts/Staircase.jsx";
@@ -109,18 +109,19 @@ export function buildReportSections(ctx) {
       ),
     },
     {
-      id: "risks", num: 5, title: "Risks", icon: ShieldAlert,
+      id: "estate", num: 5, title: "Estate", icon: Home,
+      render: () => <InheritanceResult s={s} setProperty={ctx.setProperty} />,
+    },
+    {
+      id: "risks", num: 6, title: "Risks", icon: ShieldAlert,
       render: () => (
-        <>
-          <RiskTable
-            sFull={ctx.sFull} sTrust={ctx.sTrust} sNone={ctx.sNone} simFull={ctx.simFull} simTrust={ctx.simTrust}
-            simNone={ctx.simNone} s={s} effHaircut={ctx.effHaircut} horizon={ctx.horizon}
-          />
-          <InheritanceResult s={s} setProperty={ctx.setProperty} />
-        </>
+        <RiskTable
+          sFull={ctx.sFull} sTrust={ctx.sTrust} sNone={ctx.sNone} simFull={ctx.simFull} simTrust={ctx.simTrust}
+          simNone={ctx.simNone} s={s} effHaircut={ctx.effHaircut} horizon={ctx.horizon}
+        />
       ),
     },
-    { id: "reference", num: 6, title: "Reference", icon: BookOpen, render: () => <ReferenceSection s={s} /> },
+    { id: "reference", num: 7, title: "Reference", icon: BookOpen, render: () => <ReferenceSection s={s} /> },
   ];
 }
 
