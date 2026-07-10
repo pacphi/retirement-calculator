@@ -60,6 +60,7 @@ export function usePlan(s, couple, stage) {
       "Rental": Math.round(r.rent), "Pension": Math.round(r.pens),
       "Social Security (you)": Math.round(r.ssA), "Social Security (spouse)": Math.round(r.ssB),
       "Portfolio withdrawal": (r.wdSpend ?? r.wd), need: r.need, extraSpend: r.extraSpend || 0,
+      survivor: !!r.survivor,
     })), [simSS, firstEvent]);
 
   const hasEmergent = (s.events || []).some(e => e.on && e.emergent);

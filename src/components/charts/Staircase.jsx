@@ -66,6 +66,11 @@ export function Staircase({
   // First plotted year with no salary at all — the "paychecks end" milestone.
   const payEndAge = (compRows || []).find((r) =>
     (r["Salary (you)"] || 0) + (r["Salary (spouse)"] || 0) === 0)?.age ?? null;
+  // First plotted year the survivor transition is in effect — the age at which the
+  // pension (if any survivor % is elected) steps down, filing status flips to single,
+  // and the smaller Social Security check drops off. Mirrors YearByYear's "Survivor
+  // year begins" badge so the same milestone is visible on the income chart too.
+  const survivorAge = (compRows || []).find((r) => r.survivor)?.age ?? null;
 
   return (
     <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 14, padding: "16px 14px 12px", marginBottom: 16 }}>
@@ -115,6 +120,8 @@ export function Staircase({
             label={milestoneLabel(`paychecks end · ${payEndAge}`, { row: 0, anchor: "end", color: C.slate })} />}
           {benefitsOnAge != null && benefitsOnAge !== payEndAge && <ReferenceLine x={benefitsOnAge} stroke={C.slate} strokeWidth={1.2} strokeDasharray="4 3"
             label={milestoneLabel(`all benefits online · ${benefitsOnAge}`, { row: 0, anchor: "start", color: C.slate })} />}
+          {survivorAge != null && <ReferenceLine x={survivorAge} stroke={C.brassDeep} strokeWidth={1.2} strokeDasharray="4 3"
+            label={milestoneLabel(`survivor begins · ${survivorAge}`, { row: 2, anchor: "middle", color: C.brassDeep })} />}
         </ComposedChart>
       </ChartFrame>
       <div style={{ display: "flex", gap: "6px 14px", flexWrap: "wrap", padding: "8px 6px 2px" }}>
