@@ -137,7 +137,7 @@ export function YearByYear({
           </ComposedChart>
         </ChartFrame>
         <div>
-          <div style={{ height: 150 }}>
+          <div>
             <ChartFrame printWidth={printWidth ? 220 : undefined} height={150}>
               <PieChart>
                 <Pie data={mbInc.map(([n, v, c]) => ({ name: n, value: Math.round(v), color: c }))} dataKey="value" nameKey="name" innerRadius={40} outerRadius={62} paddingAngle={2} stroke="none">
@@ -146,9 +146,9 @@ export function YearByYear({
                 <Tooltip formatter={(v, n) => [usd0(v) + ybyUnit, n]} contentStyle={{ borderRadius: 8, border: `1px solid ${C.line}`, fontSize: 12, fontFamily: "'JetBrains Mono',monospace" }} />
               </PieChart>
             </ChartFrame>
-            <div style={{ textAlign: "center", fontSize: 10.5, color: C.mut, marginTop: -2 }}>where the money comes from</div>
+            <div style={{ textAlign: "center", fontSize: 10.5, color: C.mut, marginTop: 6 }}>where the money comes from</div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 16 }}>
             {[[`Income${ybyUnit}`, mb ? (mb.incomeTotalMo + mb.draw) * ybyScale : 0, C.viridian],
               [`Expenses${ybyUnit}`, mb ? mb.expenseTotalMo * ybyScale : 0, C.clay]].map(([k, v, col]) => (
               <div key={k} style={{ background: "var(--surface-2)", border: `1px solid ${C.line}`, borderRadius: 9, padding: "8px 10px" }}>
