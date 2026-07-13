@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { Check } from "lucide-react";
 import { C, FONTS } from "../components/theme.js";
 
@@ -12,9 +13,24 @@ import { C, FONTS } from "../components/theme.js";
  *   completedIds — Set<string> | array of ids to mark visited (checkmark)
  *   onSelect     — (id: string) => void
  *   ariaLabel    — accessible label for the nav landmark (default "Steps")
+ *   breakAfter   — optional row sizes, e.g. [5] to force a line break after the 5th pill
+ *                  (leaving the remainder on the next line), instead of relying on the
+ *                  browser's natural flex-wrap, which can strand a single trailing pill
+ *                  alone on its own row. A narrow viewport may still wrap earlier within
+ *                  a row; this only caps how many pills can share a row, never forces more.
  */
-export function Stepper({ items, activeId, completedIds, onSelect, ariaLabel = "Steps" }) {
+export function Stepper({ items, activeId, completedIds, onSelect, ariaLabel = "Steps", breakAfter }) {
   const done = completedIds instanceof Set ? completedIds : new Set(completedIds || []);
+  // Convert row sizes (e.g. [5]) into the 0-based item indices after which to force a
+  // line break, skipping a break after the last item (nothing to wrap onto).
+  const breakPoints = new Set();
+  if (breakAfter?.length) {
+    let cumulative = 0;
+    for (const size of breakAfter) {
+      cumulative += size;
+      if (cumulative < items.length) breakPoints.add(cumulative - 1);
+    }
+  }
   return (
     <nav
       aria-label={ariaLabel}
@@ -22,13 +38,13 @@ export function Stepper({ items, activeId, completedIds, onSelect, ariaLabel = "
         display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 6, padding: "4px 2px 12px",
       }}
     >
-      {items.map((it) => {
+      {items.map((it, idx) => {
         const isActive = it.id === activeId;
         const isDone = done.has(it.id) && !isActive;
         const Icon = it.icon;
         return (
+          <Fragment key={it.id}>
           <button
-            key={it.id}
             type="button"
             onClick={() => onSelect(it.id)}
             aria-current={isActive ? "step" : undefined}
@@ -59,6 +75,8 @@ export function Stepper({ items, activeId, completedIds, onSelect, ariaLabel = "
             </span>
             <span style={{ whiteSpace: "nowrap" }}>{it.title}</span>
           </button>
+          {breakPoints.has(idx) && <span aria-hidden="true" style={{ flexBasis: "100%", width: 0, height: 0 }} />}
+          </Fragment>
         );
       })}
     </nav>

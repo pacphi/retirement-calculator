@@ -4,13 +4,13 @@ import { Field, NumberInput, Segmented, Section, AssumptionIcon } from "../atoms
 import { usd0 } from "../format.js";
 
 /**
- * Step four — Spouse's Washington State pension.
+ * Step five — Spouse's Washington State pension.
  *
  * @param {{ s: object, set: function, setProp: function, afcAuto: boolean, afcEff: number, steady: object }} props
  */
 export function Pension({ s, set, afcAuto, afcEff, steady }) {
   return (
-    <Section eyebrow="Step four" title="Spouse's Washington State pension">
+    <Section eyebrow="Step five" title="Spouse's Washington State pension">
       <Field label="Include the DRS pension"><Segmented value={s.pensionOn} onChange={set("pensionOn")} options={[{label:"Include",value:true},{label:"Skip",value:false}]} /></Field>
       {s.pensionOn && (<>
         <div className="rc-inputs">

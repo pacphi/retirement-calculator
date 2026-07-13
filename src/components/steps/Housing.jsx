@@ -4,7 +4,7 @@ import { monthlyPI, payoffYear, remainingBalance } from "../../finance/housing.j
 import { LOCATIONS, TAX_YEAR, US_STATE_TAX } from "../../retirementData.js";
 
 /**
- * Step two — Your home today.
+ * Step three — Your home today.
  *
  * Tenure selection (Rent / Mortgage / Own) with mode-specific inputs and a
  * live mortgage payoff read-out.
@@ -89,7 +89,7 @@ export function Housing({ s, set }) {
     set("retireHousing")({ ...rh, mortgage: { ...(rh.mortgage ?? {}), [field]: v } });
 
   return (
-    <Section eyebrow="Step two" title="Housing & mortgage today">
+    <Section eyebrow="Step three" title="Housing & mortgage today">
       <Field label="Tenure">
         <Segmented
           value={h.tenure}

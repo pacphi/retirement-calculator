@@ -17,7 +17,7 @@ const ACCOUNT_TYPE_OPTIONS = [
 ];
 
 /**
- * Step eleven — Investments. Risk tolerance and an optional accredited-investor
+ * Step two — Investments. Risk tolerance and an optional accredited-investor
  * self-attestation (aggressive tier only) drive which curated funds the report
  * recommends; the account list drives the per-account allocation breakdown.
  * Everything here is optional — an empty account list still produces allocation
@@ -29,7 +29,7 @@ export function Investments({ s, set, addAccount, removeAccount, setAccount }) {
   const accounts = s.investmentAccounts || [];
 
   return (
-    <Section eyebrow="Step eleven" title="Investments">
+    <Section eyebrow="Step two" title="Investments">
       <div style={{ fontSize: 12, color: C.slate, lineHeight: 1.5, marginBottom: 14 }}>
         Risk tolerance and your account list drive the curated fund recommendations in the
         report — a separate set for while you're still working and for once you've retired.

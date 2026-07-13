@@ -33,8 +33,8 @@ async function gotoStep(user, re) {
   await user.click(screen.getByRole("button", { name: re }));
 }
 async function openReport(user) {
-  // The Investments bubble is the last step, which surfaces "Generate report".
-  await user.click(screen.getByRole("button", { name: /investments/i }));
+  // The Assumptions bubble is the last step, which surfaces "Generate report".
+  await user.click(screen.getByRole("button", { name: /assumptions/i }));
   await user.click(screen.getByRole("button", { name: /generate report/i }));
 }
 async function editInputs(user) {
@@ -910,8 +910,8 @@ describe("two-stage wizard navigation", () => {
     const nav = screen.getByRole("navigation", { name: /input steps/i });
     const titles = within(nav).getAllByRole("button").map((b) => b.textContent.replace(/^[0-9✓]+/, "").trim());
     expect(titles).toEqual([
-      "Income", "Housing", "Timing", "Pension", "Retiring to",
-      "Real Estate", "Spending", "Milestones", "Travel", "Assumptions", "Investments",
+      "Income", "Investments", "Housing", "Timing", "Pension", "Retiring to",
+      "Real Estate", "Spending", "Milestones", "Travel", "Assumptions",
     ]);
   });
 

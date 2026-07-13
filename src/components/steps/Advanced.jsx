@@ -12,7 +12,7 @@ const locByName = (n) => LOCATIONS.find(l => l.name === n);
  */
 export function Advanced({ s, set }) {
   return (
-      <Section eyebrow="Step ten" title="Strategy & assumptions">
+      <Section eyebrow="Step eleven" title="Strategy & assumptions">
         <Field label="Return assumption">
           <Segmented
             value={s.returnPreset}
