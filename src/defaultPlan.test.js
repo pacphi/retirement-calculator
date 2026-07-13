@@ -9,9 +9,14 @@ describe("default plan — golden headline", () => {
     // 0.7→0.9, rent 1650→3800/mo, relocationYear 2046→2035, travel slow/end years pushed out.
     // Higher spending + earlier residence tax + more deferred lower net & FV; need rises.
     // net 148312 → 123799, targetNeed 66488 → 75294, FV 1401304 → 924585. startAgeA unchanged.
-    expect(Math.round(steady.net)).toBe(123799);
+    // pension-location-data phase 2 re-baseline: pensionOn true→false (most US households have
+    // no employer DB pension; see docs/research/pension-systems-data.md §1 and defaultPlan.js's
+    // comment). Losing the DRS pension income lowers net and FV; targetNeed is unaffected (it's
+    // driven by targetPct/income, not by guaranteed income sources). net 123799 → 89021,
+    // FV 924585 → 888968. targetNeed and startAgeA unchanged.
+    expect(Math.round(steady.net)).toBe(89021);
     expect(Math.round(steady.targetNeed)).toBe(75294);
-    expect(Math.round(steady.FV)).toBe(924585);
+    expect(Math.round(steady.FV)).toBe(888968);
     expect(steady.startAgeA).toBe(74);
   });
 });

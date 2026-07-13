@@ -9,6 +9,11 @@ import {
   composeNeed,
   drsEligibilityNote,
   fedTax,
+  genericPensionAnnual,
+  fersEligible,
+  fersEligibilityNote,
+  fersMultiplier,
+  fersPensionAnnual,
   ltcSpendForYear,
   oneTimeSpendForYear,
   requiredMinimum,
@@ -431,7 +436,9 @@ describe("DRS joint-survivor option pricing", () => {
 
   it("leaves the default plan untouched (no survivor election)", () => {
     const { steady } = calculatePlan(makeDefaultPlan());
-    expect(Math.round(steady.net)).toBe(123799); // golden pin unchanged
+    // golden pin re-baselined for pension-location-data phase 2: DEFAULT_PLAN.pensionOn
+    // flipped true→false (see defaultPlan.js and docs/research/pension-systems-data.md §1).
+    expect(Math.round(steady.net)).toBe(89021);
   });
 });
 
@@ -649,6 +656,83 @@ describe("numeric guards (mutation hardening)", () => {
     expect(pensionERF(54, 30, 2)).toBe(0);
     expect(pensionERF(60, 15, 3)).toBeGreaterThan(0); // Plan 3: 10-yr min met
     expect(pensionERF(60, 15, 2)).toBe(0);            // Plan 2: 20-yr min not met
+  });
+
+  // --- pension.js: generic defined-benefit fallback ---
+  it("genericPensionAnnual annualizes a monthly benefit and floors non-numeric input at 0", () => {
+    expect(genericPensionAnnual(2000)).toBe(24000);
+    expect(genericPensionAnnual(0)).toBe(0);
+    expect(genericPensionAnnual(undefined)).toBe(0);
+    expect(genericPensionAnnual("not a number")).toBe(0);
+  });
+
+  // --- pension.js: FERS ---
+  it("fersMultiplier applies the enhanced 1.1% only at 62+ with 20+ years, else the standard 1%", () => {
+    expect(fersMultiplier(62, 20)).toBe(0.011);
+    expect(fersMultiplier(63, 25)).toBe(0.011);
+    expect(fersMultiplier(62, 19)).toBe(0.01);  // years just under 20
+    expect(fersMultiplier(61, 20)).toBe(0.01);  // age just under 62
+    expect(fersMultiplier(55, 30)).toBe(0.01);
+  });
+
+  it("fersEligible honors the three immediate-retirement paths and their boundaries", () => {
+    // 62 + 5yrs path
+    expect(fersEligible(62, 5)).toBe(true);
+    expect(fersEligible(61, 5)).toBe(false);
+    expect(fersEligible(62, 4)).toBe(false);
+    // 60 + 20yrs path
+    expect(fersEligible(60, 20)).toBe(true);
+    expect(fersEligible(59, 20)).toBe(false);
+    expect(fersEligible(60, 19)).toBe(false);
+    // MRA(57) + 30yrs path
+    expect(fersEligible(57, 30)).toBe(true);
+    expect(fersEligible(56, 30)).toBe(false);
+    expect(fersEligible(57, 29)).toBe(false);
+    // MRA+10 (reduced) is not modeled — 57 with only 15 years is ineligible here
+    expect(fersEligible(57, 15)).toBe(false);
+  });
+
+  it("fersEligibilityNote is empty when eligible and explains the paths when not", () => {
+    expect(fersEligibilityNote(62, 5)).toBe("");
+    expect(fersEligibilityNote(50, 10)).toMatch(/62\+.*60\+.*57\+/s);
+  });
+
+  it("fersPensionAnnual applies the multiplier x years x High-3 only when eligible, 0 otherwise", () => {
+    expect(fersPensionAnnual(62, 20, 100000)).toBeCloseTo(0.011 * 20 * 100000, 6); // 22,000
+    expect(fersPensionAnnual(60, 20, 100000)).toBeCloseTo(0.01 * 20 * 100000, 6);  // enhanced needs 62+, not just 60+
+    expect(fersPensionAnnual(50, 10, 100000)).toBe(0); // ineligible
+  });
+
+  // --- simulate.js: pensionType branching ---
+  it("simulate computes a generic pension flat and ignores DRS-only fields", () => {
+    const i = {
+      ...baseState, ageA: 65, ageB: 65, stopA: 65, stopB: 65, claimA: 65, claimB: 65,
+      pensionOn: true, pensionType: "generic", pensionAge: 65, genericPensionMonthly: 3000,
+    };
+    const row = simulate(i, { haircut: 1, cutYear: 9999 }).rows.find((r) => r.cal === 2026);
+    expect(row.pens).toBeCloseTo(36000, 0);
+  });
+
+  it("simulate computes a FERS pension via the FERS formula, not the DRS formula", () => {
+    const i = {
+      ...baseState, ageA: 62, ageB: 62, stopA: 62, stopB: 62, claimA: 62, claimB: 62,
+      pensionOn: true, pensionType: "fers", pensionAge: 62, pYears: 20, afc: 100000,
+    };
+    const row = simulate(i, { haircut: 1, cutYear: 9999 }).rows.find((r) => r.cal === 2026);
+    expect(row.pens).toBeCloseTo(0.011 * 20 * 100000, 0); // 22,000 -- not the DRS 2%x20x100000
+  });
+
+  it("does not grant the DRS pre-retirement survivor annuity to a FERS or generic pension", () => {
+    const preDeathFers = {
+      ...baseState, pensionOn: true, pensionType: "fers", pensionAge: 62, pYears: 20, afc: 100000,
+      life: { on: true, deathAgeA: 95, deathAgeB: 50, pensionPct: 100 },
+      survivor: { on: false, year: 9999, pensionPct: 0 },
+    };
+    const sim = simulate(preDeathFers, { haircut: 1, cutYear: 9999 });
+    // Spouse B dies at 50, long before the FERS pension would have started (62) --
+    // the DRS-only RCW 41.32.895 statutory annuity must NOT kick in for a FERS pension.
+    const afterDeath = sim.rows.find((r) => r.aB > 50);
+    expect(afterDeath.pens).toBe(0);
   });
 
   // --- simulate.js (row-level dollar identities) ---

@@ -140,7 +140,12 @@ function buildExposureCards(profile, s) {
     : "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually.";
   return [
     { key: "worldwide", label: "US worldwide taxation", text: notes.worldwide, href: SOURCES.irsFtc, linkLabel: "IRS Foreign Tax Credit" },
-    s?.pensionOn ? { key: "govtPension", label: "Government pension — source rule", text: notes.govtPension, href: SOURCES.usModelTreaty, linkLabel: "US model treaty" } : null,
+    // notes.govtPension is written specifically about the WA DRS pension (it names it by name),
+    // so it only applies when that's actually the pension in play. FERS/generic pensions aren't
+    // modeled by this note yet -- showing it for them would misdescribe the pension.
+    s?.pensionOn && (s?.pensionType || "drs") === "drs"
+      ? { key: "govtPension", label: "Government pension — source rule", text: notes.govtPension, href: SOURCES.usModelTreaty, linkLabel: "US model treaty" }
+      : null,
     { key: "residenceTaxed", label: "Residence-country tax on IRA/401(k)", text: notes.residenceTaxed, href: SOURCES.irsFtc, linkLabel: "IRS Foreign Tax Credit" },
     { key: "filing", label: "Filing obligations (FBAR / FATCA" + (hasForeignInheritance ? " / Form 3520)" : ")"), text: filingText, href: SOURCES.irsForm3520, linkLabel: "IRS Form 3520" },
   ].filter(Boolean).filter((item) => item.text);

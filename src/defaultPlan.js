@@ -10,7 +10,12 @@ export const DEFAULT_PLAN = {
   // makes the displayed total-replacement default 60%.
   incomeA:0, incomeB:170000, savings:670000, contrib:18000, targetPct:0.3318, status:"married",
   ssModeA:"statement", ssModeB:"statement", ssFraA:50424, ssFraB:31592,
-  pensionOn:true, system:"TRS", plan:3, pYears:22, afc:170000,
+  // pensionOn defaults to false — most US households have no employer defined-benefit pension
+  // (BLS: only ~16% of private-sector workers do; see docs/research/pension-systems-data.md §1)
+  // so a WA-DRS-shaped pension pre-filled and requiring an opt-out misrepresented who this tool
+  // is for. pensionType selects the formula when a user opts in: "drs" | "fers" | "generic".
+  pensionOn:false, pensionType:"drs", system:"TRS", plan:3, pYears:22, afc:170000,
+  genericPensionMonthly:0, genericCola:2,
   realReturn:0.05, swr:0.04, tradFrac:0.9, inflation:0.025,
   ssMode:"trustees", ssHaircut:81, ssCutYear:2034,
   retireLoc:"Austria", spendBasis:"income", lifestyle:100,
