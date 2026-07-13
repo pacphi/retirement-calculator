@@ -1,4 +1,4 @@
-import { Gauge, TrendingUp, PieChart, Landmark, ShieldAlert, BookOpen, Home } from "lucide-react";
+import { Gauge, TrendingUp, PieChart, Landmark, ShieldAlert, BookOpen, Home, Wallet } from "lucide-react";
 import { C } from "../components/theme.js";
 import { SOURCES } from "../retirementData.js";
 import { Staircase } from "../components/charts/Staircase.jsx";
@@ -17,6 +17,7 @@ import { Stats } from "../components/results/Stats.jsx";
 import { RiskTable } from "../components/results/RiskTable.jsx";
 import { Inheritance as InheritanceResult } from "../components/results/Inheritance.jsx";
 import { DualTaxExposure } from "../components/results/DualTaxExposure.jsx";
+import { InvestmentRecommendations } from "../components/results/InvestmentRecommendations.jsx";
 
 /**
  * buildReportSections(ctx) — single source of truth for the generated report. Groups the
@@ -77,7 +78,11 @@ export function buildReportSections(ctx) {
       ),
     },
     {
-      id: "taxes", num: 4, title: "Taxes & Location", icon: Landmark,
+      id: "investmentRecommendations", num: 4, title: "Investment Recommendations", icon: Wallet,
+      render: () => <InvestmentRecommendations s={s} />,
+    },
+    {
+      id: "taxes", num: 5, title: "Taxes & Location", icon: Landmark,
       render: () => (
         <>
           <DualTaxExposure
@@ -109,11 +114,11 @@ export function buildReportSections(ctx) {
       ),
     },
     {
-      id: "estate", num: 5, title: "Estate", icon: Home,
+      id: "estate", num: 6, title: "Estate", icon: Home,
       render: () => <InheritanceResult s={s} setProperty={ctx.setProperty} />,
     },
     {
-      id: "risks", num: 6, title: "Risks", icon: ShieldAlert,
+      id: "risks", num: 7, title: "Risks", icon: ShieldAlert,
       render: () => (
         <RiskTable
           sFull={ctx.sFull} sTrust={ctx.sTrust} sNone={ctx.sNone} simFull={ctx.simFull} simTrust={ctx.simTrust}
@@ -121,7 +126,7 @@ export function buildReportSections(ctx) {
         />
       ),
     },
-    { id: "reference", num: 7, title: "Reference", icon: BookOpen, render: () => <ReferenceSection s={s} /> },
+    { id: "reference", num: 8, title: "Reference", icon: BookOpen, render: () => <ReferenceSection s={s} /> },
   ];
 }
 
