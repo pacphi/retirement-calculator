@@ -44,6 +44,18 @@ describe("recommendFunds", () => {
     const rec = recommendFunds({ riskTolerance: "conservative", phase: "accumulation", accreditedInvestor: true });
     expect(rec.some((r) => r.fund.id === "qqq")).toBe(false);
   });
+
+  it("does not throw for any valid riskTolerance×phase combination in the current dataset", () => {
+    const riskTiers = ["conservative", "moderate", "aggressive"];
+    const phases = ["accumulation", "decumulation"];
+    for (const riskTolerance of riskTiers) {
+      for (const phase of phases) {
+        // Should not throw for both accredited and non-accredited scenarios
+        expect(() => recommendFunds({ riskTolerance, phase, accreditedInvestor: false })).not.toThrow();
+        expect(() => recommendFunds({ riskTolerance, phase, accreditedInvestor: true })).not.toThrow();
+      }
+    }
+  });
 });
 
 describe("accountNote", () => {

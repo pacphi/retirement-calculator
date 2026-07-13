@@ -25,6 +25,13 @@ export function recommendFunds({ riskTolerance, phase, accreditedInvestor }) {
   const equityFunds = eligible.filter((f) => f.assetClass === "equity");
   const bondFunds = eligible.filter((f) => f.assetClass === "bond");
 
+  if (split.equity > 0 && equityFunds.length === 0) {
+    throw new Error(`recommendFunds: no equity funds available for riskTolerance=${riskTolerance}, phase=${phase}`);
+  }
+  if (split.bond > 0 && bondFunds.length === 0) {
+    throw new Error(`recommendFunds: no bond funds available for riskTolerance=${riskTolerance}, phase=${phase}`);
+  }
+
   const equityRows = equityFunds.map((fund) => ({ fund, targetPct: split.equity / equityFunds.length }));
   const bondRows = bondFunds.map((fund) => ({ fund, targetPct: split.bond / bondFunds.length }));
 
