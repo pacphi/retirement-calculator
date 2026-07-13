@@ -86,9 +86,14 @@ export function Select({ value, onChange, options, "aria-label": ariaLabel }) {
 export function Segmented({ value, onChange, options, "aria-label": ariaLabel }) {
   // Quiet iOS-style segments: a recessed track, the active segment lifted on a
   // surface chip — selection reads from position and weight, not a filled slab.
+  // Every button gets its own aria-label (= its visible text): Field wraps its children
+  // in a native <label>, and per HTML's implicit label-association rule a <label> only
+  // associates with the FIRST labelable descendant — without this, that first button's
+  // accessible name gets swallowed by the wrapping label's full text (label + hint)
+  // instead of its own option text. An explicit aria-label wins over that association.
   return (<div role={ariaLabel ? "group" : undefined} aria-label={ariaLabel} style={{ display:"flex", flex:"1 1 auto", minWidth:0, gap:3, background:"var(--track)", padding:3, borderRadius:10, border:`1px solid ${C.line}` }}>
     {options.map(o => { const on=value===o.value; return (
-      <button key={String(o.value)} type="button" aria-pressed={on} onClick={()=>onChange(o.value)} style={{ flex:1, minWidth:0, padding:"8px 10px", border:"1px solid", borderColor: on ? C.line : "transparent", borderRadius:7, cursor:"pointer", whiteSpace:"normal", textAlign:"center", lineHeight:1.25, fontSize:12.5, fontWeight:600, fontFamily:"inherit", background:on?CHROME.segActive:"transparent", color:on?C.ink:C.slate, boxShadow:on?"0 1px 2px rgba(10,20,16,.10)":"none", transition:"background .15s, color .15s, box-shadow .15s" }}>{o.label}</button>
+      <button key={String(o.value)} type="button" aria-pressed={on} aria-label={o.label} onClick={()=>onChange(o.value)} style={{ flex:1, minWidth:0, padding:"8px 10px", border:"1px solid", borderColor: on ? C.line : "transparent", borderRadius:7, cursor:"pointer", whiteSpace:"normal", textAlign:"center", lineHeight:1.25, fontSize:12.5, fontWeight:600, fontFamily:"inherit", background:on?CHROME.segActive:"transparent", color:on?C.ink:C.slate, boxShadow:on?"0 1px 2px rgba(10,20,16,.10)":"none", transition:"background .15s, color .15s, box-shadow .15s" }}>{o.label}</button>
     ); })}
   </div>);
 }

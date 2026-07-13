@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, within, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { Investments } from "./Investments.jsx";
 import { makeDefaultPlan } from "../../defaultPlan.js";
 
@@ -56,25 +56,19 @@ describe("Investments step", () => {
 
   it("defaults the both-phases preview toggle to Off", () => {
     setup();
-    const group = screen.getByRole("group", { name: "Preview both phases in the report" });
-    const [off, on] = within(group).getAllByRole("button");
-    expect(off).toHaveAttribute("aria-pressed", "true");
-    expect(on).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Off" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "On" })).toHaveAttribute("aria-pressed", "false");
   });
 
   it("reflects previewBothPhases: true as On", () => {
     setup({ previewBothPhases: true });
-    const group = screen.getByRole("group", { name: "Preview both phases in the report" });
-    const [off, on] = within(group).getAllByRole("button");
-    expect(off).toHaveAttribute("aria-pressed", "false");
-    expect(on).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Off" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "On" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("calls the previewBothPhases setter with true when toggled to On", () => {
     const { set } = setup();
-    const group = screen.getByRole("group", { name: "Preview both phases in the report" });
-    const [, on] = within(group).getAllByRole("button");
-    fireEvent.click(on);
+    fireEvent.click(screen.getByRole("button", { name: "On" }));
     const callIdx = set.mock.calls.findIndex(([key]) => key === "previewBothPhases");
     expect(callIdx).toBeGreaterThan(-1);
     expect(set.mock.results[callIdx].value).toHaveBeenCalledWith(true);
