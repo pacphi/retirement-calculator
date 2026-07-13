@@ -1,6 +1,6 @@
 import { Gauge, TrendingUp, PieChart, Landmark, ShieldAlert, BookOpen, Home, Wallet } from "lucide-react";
 import { C } from "../components/theme.js";
-import { SOURCES } from "../retirementData.js";
+import { SOURCES, DEFAULT_PENSION_TYPE } from "../retirementData.js";
 import { Staircase } from "../components/charts/Staircase.jsx";
 import { YearByYear } from "../components/charts/YearByYear.jsx";
 import { PortfolioFlows } from "../components/charts/PortfolioFlows.jsx";
@@ -163,7 +163,11 @@ function ReferenceSection({ s }) {
             ["SSA wage base", SOURCES.ssaWageBase],
             ["SSA spouse benefits", SOURCES.ssaRetirement],
             ["SSA trust funds", SOURCES.ssaTrustees],
-            ["WA DRS pension", SOURCES.drsTrs2],
+            // WA DRS pension citation is DRS-specific -- only correct to show when that's
+            // actually the selected pension formula (see the isDrsPension convention in
+            // simulate.js). Showing it for FERS/CalSTRS/etc. would misattribute the source
+            // behind those numbers.
+            ...(!s?.pensionOn || (s?.pensionType || DEFAULT_PENSION_TYPE) === "drs" ? [["WA DRS pension", SOURCES.drsTrs2]] : []),
             ["KFF ACA premiums", SOURCES.kffAca],
             ["CMS Medicare", SOURCES.cmsMedicare],
           ].map(([label, href]) => (
