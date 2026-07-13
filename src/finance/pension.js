@@ -115,18 +115,30 @@ const lookupAgeFactor = (table, ageRaw) => {
 export const calstrsAgeFactor = (age, tier = "2at60") =>
   lookupAgeFactor(tier === "2at62" ? CALSTRS_AGE_FACTOR_2AT62 : CALSTRS_AGE_FACTOR_2AT60, age);
 
+// The age-factor table alone isn't the full eligibility rule: the "2at60" tier's 50-54 age
+// band is only reachable with 30+ years of service (the 5-year vesting minimum doesn't unlock
+// it until age 55) -- calstrsAgeFactor's table lookup alone doesn't know that, so it would
+// wrongly return a nonzero factor for e.g. age 52 with only 5 years. calstrsEligible is the
+// single source of truth both calstrsPensionAnnual and calstrsEligibilityNote defer to.
+export const calstrsEligible = (age, years, tier = "2at60") => {
+  if (calstrsAgeFactor(age, tier) <= 0) return false;
+  const a = Math.floor(Number(age) || 0), y = Number(years) || 0;
+  if (tier === "2at60" && a < 55) return y >= 30;
+  return y >= 5; // standard 5-year vesting minimum
+};
+
 // Survivor election is NOT modeled for CalSTRS: reductions are actuarial by member/beneficiary
 // age with no published flat-factor table (docs/research/pension-systems-data.md §3, "Not found").
 export const calstrsPensionAnnual = (age, years, finalComp, tier = "2at60") => {
+  if (!calstrsEligible(age, years, tier)) return 0;
   const factor = calstrsAgeFactor(age, tier);
-  if (factor <= 0) return 0;
   const careerBonus = tier === "2at60" && (Number(years) || 0) >= 30 ? CALSTRS_CAREER_FACTOR_BONUS : 0;
   const effectiveFactor = Math.min(factor + careerBonus, CALSTRS_CAP);
   return effectiveFactor * (Number(years) || 0) * (Number(finalComp) || 0);
 };
 
 export const calstrsEligibilityNote = (age, years, tier = "2at60") => {
-  if (calstrsAgeFactor(age, tier) > 0) return "";
+  if (calstrsEligible(age, years, tier)) return "";
   return tier === "2at60"
     ? "CalSTRS 2% at 60 retirement starts at age 50 with 30+ years of service, or age 55 with 5+ years."
     : "CalSTRS 2% at 62 (PEPRA) retirement starts at age 55 with 5+ years of service.";
@@ -139,13 +151,19 @@ export const calstrsEligibilityNote = (age, years, tier = "2at60") => {
 export const calpersAgeFactor = (age, tier = "classic2at55") =>
   lookupAgeFactor(tier === "pepra2at62" ? CALPERS_AGE_FACTOR_PEPRA_2AT62 : CALPERS_AGE_FACTOR_CLASSIC_2AT55, age);
 
-export const calpersPensionAnnual = (age, years, finalComp, tier = "classic2at55") => {
-  const factor = calpersAgeFactor(age, tier);
-  return factor > 0 ? factor * (Number(years) || 0) * (Number(finalComp) || 0) : 0;
-};
+const CALPERS_MIN_YEARS = 5;
+
+// calpersAgeFactor's table lookup alone doesn't enforce the 5-year vesting minimum both
+// eligibility notes below advertise -- calpersEligible is the single source of truth both
+// calpersPensionAnnual and calpersEligibilityNote defer to.
+export const calpersEligible = (age, years, tier = "classic2at55") =>
+  calpersAgeFactor(age, tier) > 0 && (Number(years) || 0) >= CALPERS_MIN_YEARS;
+
+export const calpersPensionAnnual = (age, years, finalComp, tier = "classic2at55") =>
+  calpersEligible(age, years, tier) ? calpersAgeFactor(age, tier) * (Number(years) || 0) * (Number(finalComp) || 0) : 0;
 
 export const calpersEligibilityNote = (age, years, tier = "classic2at55") => {
-  if (calpersAgeFactor(age, tier) > 0) return "";
+  if (calpersEligible(age, years, tier)) return "";
   return tier === "pepra2at62"
     ? "This representative CalPERS PEPRA tier (2% at 62) starts at age 52 with 5+ years of service."
     : "This representative CalPERS Classic tier (2% at 55) starts at age 50 with 5+ years of service.";

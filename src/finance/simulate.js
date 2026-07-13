@@ -43,6 +43,10 @@ export function benefits(i) {
   // early/reduced path (Ohio STRS) or no survivor-factor table (CalSTRS, CalPERS) only compute
   // what's actually sourced — see the per-function comments in pension.js.
   const pensionType = i.pensionType || DEFAULT_PENSION_TYPE;
+  // erf (early-retirement factor) is DRS-only: it stays 1 for every other pensionType because
+  // txtrs/nystrs/etc. already bake their own reduction into `pension` inside their formula
+  // functions. Do NOT reuse `erf` generically to reduce a non-DRS pension a second time --
+  // that would double-apply the reduction.
   let pension = 0, erf = 1, pensionNote = "";
   if (i.pensionOn) {
     switch (pensionType) {

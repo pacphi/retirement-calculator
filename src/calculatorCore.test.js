@@ -57,7 +57,7 @@ import {
   travelSpendForYear,
   yearReturn,
 } from "./calculatorCore.js";
-import { LOCATIONS, SINGLE_COST_FACTOR, HOME_SELL_NET } from "./retirementData.js";
+import { LOCATIONS, SINGLE_COST_FACTOR, HOME_SELL_NET, INTL_TAX, inheritanceRulesForPlace } from "./retirementData.js";
 import { remainingBalance } from "./finance/housing.js";
 import { makeDefaultPlan } from "./defaultPlan.js";
 
@@ -750,6 +750,17 @@ describe("numeric guards (mutation hardening)", () => {
     expect(calstrsEligibilityNote(50, 5, "2at62")).toMatch(/55/);
   });
 
+  it("calstrsPensionAnnual (2at60) requires 30+ years for the 50-54 age band, not just an age-table hit", () => {
+    // Regression guard: the age-factor table alone has a row for age 52, but the 50-54 band is
+    // only reachable with 30+ years of service -- 5 years must NOT be treated as eligible.
+    expect(calstrsPensionAnnual(52, 5, 100000, "2at60")).toBe(0);
+    expect(calstrsEligibilityNote(52, 5, "2at60")).toMatch(/50.*30/s);
+    expect(calstrsPensionAnnual(52, 30, 100000, "2at60")).toBeGreaterThan(0);
+    expect(calstrsEligibilityNote(52, 30, "2at60")).toBe("");
+    // 55+ only needs the standard 5-year vesting minimum, not 30.
+    expect(calstrsPensionAnnual(55, 5, 100000, "2at60")).toBeGreaterThan(0);
+  });
+
   // --- pension.js: CalPERS ---
   it("calpersAgeFactor looks up the classic and PEPRA representative tiers", () => {
     expect(calpersAgeFactor(55, "classic2at55")).toBeCloseTo(0.02, 6);
@@ -767,6 +778,14 @@ describe("numeric guards (mutation hardening)", () => {
     expect(calpersEligibilityNote(55, 5, "classic2at55")).toBe("");
     expect(calpersEligibilityNote(49, 5, "classic2at55")).toMatch(/50/);
     expect(calpersEligibilityNote(51, 5, "pepra2at62")).toMatch(/52/);
+  });
+
+  it("calpersPensionAnnual requires the 5-year vesting minimum even when the age-table lookup hits", () => {
+    // Regression guard: age 51 is within the Classic table's range, but with only 1 year of
+    // service the 5-year minimum isn't met -- must NOT be treated as eligible.
+    expect(calpersPensionAnnual(51, 1, 100000, "classic2at55")).toBe(0);
+    expect(calpersEligibilityNote(51, 1, "classic2at55")).toMatch(/50/);
+    expect(calpersPensionAnnual(51, 5, 100000, "classic2at55")).toBeGreaterThan(0);
   });
 
   // --- pension.js: Texas TRS ---
@@ -1593,6 +1612,50 @@ describe("location-cost spending basis", () => {
     const row = plan.simChosen.rows.find((r) => r.cal === 2032); // age 56, retired, under 65
     const hc = (us.hcPre / 2) * 2 * 12; // both retired & under 65 → full ACA bridge
     expect(row.need).toBe(Math.round(basket + hc));
+  });
+});
+
+describe("Tier 1 locations (Mexico, Panama, Costa Rica)", () => {
+  const TIER1_NAMES = ["Mexico", "Panama", "Costa Rica"];
+
+  it("adds all three Tier 1 locations to LOCATIONS with a dataAsOf year and a full cost basket", () => {
+    for (const name of TIER1_NAMES) {
+      const loc = LOCATIONS.find((l) => l.name === name);
+      expect(loc, `${name} missing from LOCATIONS`).toBeTruthy();
+      expect(loc.region).not.toBe("US");
+      expect(loc.dataAsOf).toBe(2026);
+      expect(Object.values(loc.m).every((v) => typeof v === "number" && v > 0)).toBe(true);
+    }
+  });
+
+  it("adds a matching INTL_TAX entry for each Tier 1 location, following the treaty-aware shape", () => {
+    for (const name of TIER1_NAMES) {
+      const tax = INTL_TAX[name];
+      expect(tax, `${name} missing from INTL_TAX`).toBeTruthy();
+      expect(tax.isInternational).toBe(true);
+      expect(tax.pensionExclusion).toBe("full");
+      expect(tax.exposureNotes.worldwide).toBeTruthy();
+      expect(tax.exposureNotes.govtPension).toBeTruthy();
+      expect(tax.exposureNotes.residenceTaxed).toBeTruthy();
+      expect(tax.exposureNotes.filing).toBeTruthy();
+    }
+  });
+
+  it("Panama and Costa Rica model 0 residence tax on retirement income (territorial systems)", () => {
+    expect(INTL_TAX["Panama"].retireRate).toBe(0);
+    expect(INTL_TAX["Costa Rica"].retireRate).toBe(0);
+  });
+
+  it("inheritanceRulesForPlace routes all three Tier 1 locations through the non-US (foreign) branch", () => {
+    for (const name of TIER1_NAMES) {
+      const rules = inheritanceRulesForPlace(name);
+      expect(rules.foreign).toBe(true);
+      expect(rules.region).not.toBe("US");
+      // Foreign-branch constants (sellNet 0.90, rentYield 0.020, ownRate 0.012), not the US branch's.
+      expect(rules.sellNet).toBe(0.90);
+      expect(rules.rentYield).toBe(0.020);
+      expect(rules.ownRate).toBe(0.012);
+    }
   });
 });
 
