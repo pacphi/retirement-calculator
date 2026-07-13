@@ -3,7 +3,7 @@ import { Field, NumberInput, Segmented, Section } from "../atoms/index.jsx";
 import { SOURCES, GUARDRAIL_DEFAULTS } from "../../retirementData.js";
 
 /**
- * Step seven — Retirement spending strategy — smile curve shape selector + lifestyle steps
+ * Step eight — Retirement spending strategy — smile curve shape selector + lifestyle steps
  * + opt-in Guyton-Klinger guardrails (Wave 3 Task 6).
  *
  * Exposes three modes via a Segmented control:
@@ -27,7 +27,7 @@ export function SpendingStrategy({ s, set, setProp, addLifestyleStep, removeLife
   const guardrails = s.guardrails ?? GUARDRAIL_DEFAULTS;
 
   return (
-    <Section eyebrow="Step seven" title="Retirement spending">
+    <Section eyebrow="Step eight" title="Retirement spending">
       {/* Task 6: Guyton-Klinger guardrail strategy toggle */}
       <Field label="Spending strategy" hint="Guardrails trim or raise discretionary spending when the withdrawal rate breaches the target band">
         <Segmented

@@ -30,6 +30,7 @@
 - [18. Income Tax by Location (State & Foreign)](#18-income-tax-by-location-state--foreign)
 - [19. Wave 3 Engine-Depth Sources](#19-wave-3-engine-depth-sources)
 - [20. Full URL Index](#20-full-url-index)
+- [21. Investment Recommendations — Curated Fund Data](#21-investment-recommendations--curated-fund-data)
 
 ---
 
@@ -452,6 +453,10 @@ The Austria rate update (`INTL_TAX.Austria.retireRate` 0.0 → 0.05) relies on t
 - https://www.carsongroup.com/insights/blog/the-60-40-portfolio-a-historical-powerhouse-or-a-rate-dependent-misinterpretation/
 - https://www.kitces.com/blog/guyton-klinger-guardrails-retirement-income-rules-risk-based/
 - https://www.morningstar.com/retirement/want-boost-your-retirement-income-guardrails-could-help
+- https://investsnips.com/voo-performance/
+- https://www.aaii.com/fund/ticker/SWPPX
+- https://portfolioslab.com/symbol/VUG
+- https://www.fool.com/investing/2026/06/05/where-will-qqq-be-in-10-years/
 
 **Inheritance — US/Texas and Austria (secondary)**
 
@@ -471,6 +476,23 @@ The Austria rate update (`INTL_TAX.Austria.retireRate` 0.0 → 0.05) relies on t
 - https://vigoimmobilien.at/en/taxes-buying-selling-real-estate-austria
 - https://vienna-property.com/en/nalogi-na-nedvizhimost-v-avstrii-polnaya-instrukciya/
 - https://www.kroy-immobilien.at/en/wohnen/immobilie-erben-oder-vererben-oesterreich/
+
+---
+
+## 21. Investment Recommendations — Curated Fund Data
+
+Sources behind the curated fund list and allocation guidance in `src/investmentData.js`,
+surfaced in the "Investments" wizard step and "Investment Recommendations" report section.
+See `docs/investment-data-refresh.md` for the maintainer refresh process.
+
+- **[InvestSnips — VOO performance analysis](https://investsnips.com/voo-performance/)** — 5-yr annualized return figure for VOO.
+- **[Forbes Advisor — Best index funds](https://www.forbes.com/advisor/investing/best-index-funds/)** — 10-yr annualized return figure for FXAIX.
+- **[AAII — Fund database](https://www.aaii.com/fund/ticker/SWPPX)** — 5-yr annualized return figure for SWPPX (grade B).
+- **[Vanguard — BND fund profile](https://investor.vanguard.com/investment-products/etfs/profile/bnd)** — Bond index fund data and account-opening page.
+- **[PortfoliosLab — VUG](https://portfolioslab.com/symbol/VUG)** — 10-yr annualized return figure for VUG.
+- **[The Motley Fool — Where will QQQ be in 10 years?](https://www.fool.com/investing/2026/06/05/where-will-qqq-be-in-10-years/)** — 10-yr annualized return figure for QQQ (21.9%).
+- **[Ares Capital Corporation — Investor Relations](https://www.arescapitalcorp.com/investor-relations)** — Long-run return figure and BDC structure for ARCC.
+- **[SEC EDGAR — BXPE 10-K filing](https://www.sec.gov/Archives/edgar/data/1930054/000119312526106084/d71061d10k1.pdf)** — BXPE structure, accreditation requirement, minimum investment, and fee terms.
 
 ---
 

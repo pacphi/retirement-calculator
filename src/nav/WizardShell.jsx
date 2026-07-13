@@ -29,6 +29,7 @@ export function WizardShell({ steps, nav }) {
         activeId={nav.currentStepId}
         completedIds={nav.completedStepIds}
         onSelect={nav.goToStep}
+        breakAfter={[5]}
       />
 
       <div className="nn-card" style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 16, padding: "24px 24px 10px", marginBottom: 20 }}>

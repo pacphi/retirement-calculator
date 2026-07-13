@@ -1,0 +1,354 @@
+<title>Investment Recommendations — Journey &amp; Wireframes</title>
+<style>
+  :root {
+    --page: #f7f5ee; --surface: #ffffff; --surface-2: #efece1; --line: #e2decf; --axis: #b9b49e;
+    --ink: #14231f; --ink-soft: #2e403a; --slate: #4e5b56; --mut: #67716c;
+    --header-bg: #14231f; --header-ink: #f5f2e7; --header-mut: #abb8b1;
+    --accent: #a87a1c; --accent-deep: #7e5a12; --pos: #177e5b; --neg: #b34524;
+    --on-accent: #ffffff;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --page: #101512; --surface: #171e1b; --surface-2: #1d2521; --line: #2a332d; --axis: #46524b;
+      --ink: #f2efe3; --ink-soft: #d8d4c4; --slate: #acb6af; --mut: #808b84;
+      --header-bg: #121a16; --header-ink: #f2efe3; --header-mut: #9faca5;
+      --accent: #d9ae54; --accent-deep: #e5c075; --pos: #2e9e7e; --neg: #d66161;
+      --on-accent: #171e1b;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --page: #101512; --surface: #171e1b; --surface-2: #1d2521; --line: #2a332d; --axis: #46524b;
+    --ink: #f2efe3; --ink-soft: #d8d4c4; --slate: #acb6af; --mut: #808b84;
+    --header-bg: #121a16; --header-ink: #f2efe3; --header-mut: #9faca5;
+    --accent: #d9ae54; --accent-deep: #e5c075; --pos: #2e9e7e; --neg: #d66161;
+    --on-accent: #171e1b;
+    color-scheme: dark;
+  }
+  :root[data-theme="light"] {
+    --page: #f7f5ee; --surface: #ffffff; --surface-2: #efece1; --line: #e2decf; --axis: #b9b49e;
+    --ink: #14231f; --ink-soft: #2e403a; --slate: #4e5b56; --mut: #67716c;
+    --header-bg: #14231f; --header-ink: #f5f2e7; --header-mut: #abb8b1;
+    --accent: #a87a1c; --accent-deep: #7e5a12; --pos: #177e5b; --neg: #b34524;
+    --on-accent: #ffffff;
+    color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink);
+    font-family: Inter, system-ui, -apple-system, sans-serif;
+    line-height: 1.5; -webkit-font-smoothing: antialiased;
+  }
+  .serif { font-family: "Newsreader", ui-serif, Georgia, serif; }
+  .mono { font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace; font-variant-numeric: tabular-nums; }
+
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  header.top {
+    background: var(--header-bg); color: var(--header-ink);
+    padding: 28px clamp(20px, 5vw, 56px) 30px;
+  }
+  header.top .eyebrow {
+    color: var(--header-mut); font-size: 12px; letter-spacing: 0.09em; text-transform: uppercase;
+    margin: 0 0 8px;
+  }
+  header.top h1 {
+    font-size: clamp(24px, 3.2vw, 34px); margin: 0 0 6px; font-weight: 600; text-wrap: balance;
+  }
+  header.top p { color: var(--header-mut); margin: 0; max-width: 62ch; font-size: 15px; }
+
+  main { max-width: 1180px; margin: 0 auto; padding: 40px clamp(20px, 5vw, 56px) 80px; }
+
+  section { margin-top: 56px; }
+  section:first-of-type { margin-top: 40px; }
+  h2.section-title {
+    font-size: 13px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--mut);
+    margin: 0 0 18px; font-weight: 600; font-family: Inter, sans-serif;
+  }
+
+  /* ---- Journey track ---- */
+  .track-wrap { overflow-x: auto; padding-bottom: 6px; }
+  .track {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 108px;
+    gap: 0;
+    min-width: max-content;
+    position: relative;
+    padding-top: 6px;
+  }
+  .track::before {
+    content: ""; position: absolute; left: 44px; right: 44px; top: 24px; height: 2px;
+    background: var(--line); z-index: 0;
+  }
+  .node { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; }
+  .dot {
+    width: 26px; height: 26px; border-radius: 50%; background: var(--surface); border: 2px solid var(--axis);
+    display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;
+    color: var(--slate); flex-shrink: 0;
+  }
+  .node.new .dot { border-color: var(--accent); color: var(--accent-deep); background: var(--surface); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent); }
+  .node .label { font-size: 11.5px; color: var(--slate); max-width: 92px; line-height: 1.25; }
+  .node.new .label { color: var(--ink); font-weight: 600; }
+  .node .tag {
+    font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent-deep);
+    background: color-mix(in srgb, var(--accent) 14%, transparent); border-radius: 4px; padding: 2px 6px;
+  }
+  .track-divider { grid-auto-columns: 40px; }
+  .arrow-gap { display: flex; align-items: flex-start; justify-content: center; padding-top: 4px; color: var(--axis); font-size: 15px; }
+
+  /* ---- Journey narrative steps ---- */
+  .journey-steps { display: flex; flex-direction: column; gap: 0; margin-top: 30px; border-top: 1px solid var(--line); }
+  .jstep { display: grid; grid-template-columns: 34px 1fr; gap: 18px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+  .jstep .num { font-family: "Newsreader", serif; font-size: 20px; color: var(--axis); font-weight: 600; padding-top: 1px; }
+  .jstep.highlight .num { color: var(--accent-deep); }
+  .jstep h3 { margin: 0 0 4px; font-size: 15.5px; font-weight: 600; }
+  .jstep p { margin: 0; color: var(--slate); font-size: 14px; max-width: 68ch; }
+  .jstep .chip {
+    display: inline-block; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--accent-deep); background: color-mix(in srgb, var(--accent) 14%, transparent);
+    border-radius: 4px; padding: 2px 7px; margin-left: 8px; vertical-align: 2px;
+  }
+
+  /* ---- Wireframe cards ---- */
+  .wire-grid { display: grid; grid-template-columns: 1fr; gap: 28px; }
+  @media (min-width: 980px) { .wire-grid { grid-template-columns: 1fr 1fr; align-items: start; } }
+
+  .wire-card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+  }
+  .wire-card .wire-head {
+    padding: 16px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  }
+  .wire-card .wire-head h3 { margin: 0; font-size: 15px; font-weight: 600; }
+  .wire-card .wire-head .kind { font-size: 11px; color: var(--mut); text-transform: uppercase; letter-spacing: 0.06em; }
+  .wire-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+  .box { border: 1px dashed var(--axis); border-radius: 7px; padding: 12px 14px; background: var(--surface-2); }
+  .box-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mut); margin-bottom: 8px; display: block; }
+
+  .pillrow { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill { border: 1px solid var(--line); border-radius: 999px; padding: 6px 13px; font-size: 12.5px; background: var(--surface); color: var(--slate); }
+  .pill.active { border-color: var(--accent); color: var(--accent-deep); background: color-mix(in srgb, var(--accent) 12%, transparent); font-weight: 600; }
+
+  .check-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--slate); }
+  .check-row .sq { width: 15px; height: 15px; border: 1.5px solid var(--axis); border-radius: 3px; flex-shrink: 0; }
+
+  .acct-row { display: grid; grid-template-columns: 1.4fr 1fr 0.9fr 20px; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); font-size: 12.5px; }
+  .acct-row .fld { color: var(--mut); font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 2px; }
+  .acct-row .val { color: var(--ink); }
+  .acct-row .x { color: var(--mut); text-align: center; }
+  .add-row { border: 1px dashed var(--axis); border-radius: 6px; padding: 8px 10px; font-size: 12px; color: var(--accent-deep); text-align: center; }
+
+  .phase-tab-row { display: flex; gap: 6px; }
+  .phase-tab { padding: 6px 12px; font-size: 12px; border-radius: 6px 6px 0 0; border: 1px solid var(--line); border-bottom: none; color: var(--mut); }
+  .phase-tab.on { background: var(--surface-2); color: var(--ink); font-weight: 600; border-color: var(--axis); }
+
+  table.alloc { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.alloc th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--mut); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  table.alloc td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.alloc td.num { text-align: right; }
+  table.alloc .tick { font-weight: 600; }
+  table.alloc .cite { color: var(--mut); font-size: 10.5px; }
+  table.alloc .link { color: var(--accent-deep); text-decoration: underline; text-underline-offset: 2px; font-size: 11px; }
+
+  .disclaimer-box { border: 1px solid var(--line); border-left: 3px solid var(--neg); border-radius: 6px; padding: 10px 12px; font-size: 11.5px; color: var(--slate); background: var(--surface-2); }
+  .gate-box { border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 6px; padding: 10px 12px; font-size: 11.5px; color: var(--slate); background: var(--surface-2); }
+
+  /* margin annotations */
+  .annot-wrap { position: relative; }
+  .annot {
+    font-size: 12px; color: var(--accent-deep); margin-top: 6px; padding-left: 14px; position: relative;
+  }
+  .annot::before { content: "→"; position: absolute; left: 0; }
+
+  .legend { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 14px; font-size: 12px; color: var(--slate); }
+  .legend .item { display: flex; align-items: center; gap: 7px; }
+  .legend .swatch { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--axis); }
+  .legend .swatch.new { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent); }
+
+  footer.note { margin-top: 60px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--mut); font-size: 12px; }
+</style>
+
+<header class="top">
+  <p class="eyebrow">Nest &amp; Next — feature walkthrough</p>
+  <h1 class="serif">Investment Recommendations: journey &amp; wireframes</h1>
+  <p>How the new step and report section fit into the existing wizard → report flow. Low-fidelity — for reviewing structure and logic, not visual polish.</p>
+</header>
+
+<main>
+
+  <section>
+    <h2 class="section-title">1 · Where it sits in the wizard</h2>
+    <div class="track-wrap">
+      <div class="track">
+        <div class="node"><div class="dot">1</div><div class="label">Income</div></div>
+        <div class="node"><div class="dot">2</div><div class="label">Housing</div></div>
+        <div class="node"><div class="dot">3</div><div class="label">Timing</div></div>
+        <div class="node"><div class="dot">4</div><div class="label">Pension</div></div>
+        <div class="node"><div class="dot">5</div><div class="label">Retiring to</div></div>
+        <div class="node"><div class="dot">6</div><div class="label">Real Estate</div></div>
+        <div class="node"><div class="dot">7</div><div class="label">Spending</div></div>
+        <div class="node"><div class="dot">8</div><div class="label">Milestones</div></div>
+        <div class="node"><div class="dot">9</div><div class="label">Travel</div></div>
+        <div class="node"><div class="dot">10</div><div class="label">Assumptions</div></div>
+        <div class="node new"><div class="dot">11</div><div class="label">Investments</div><span class="tag">New</span></div>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="item"><span class="swatch"></span> Existing step</div>
+      <div class="item"><span class="swatch new"></span> New in this feature</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-title">2 · End-to-end journey</h2>
+    <div class="journey-steps">
+      <div class="jstep">
+        <div class="num serif">1</div>
+        <div><h3>Couple works through steps 1–10 as today</h3><p>Ages, retirement timing, pension, spending — nothing about this feature changes those steps. Their answers there are what step 11 reads silently: current age, retirement age, and which year retirement starts.</p></div>
+      </div>
+      <div class="jstep highlight">
+        <div class="num serif">2</div>
+        <div><h3>Step 11 — Investments <span class="chip">new step</span></h3><p>They set a risk tolerance, optionally attest to accredited-investor status, and list their accounts (401k, IRA, taxable, HSA…) with balances. Nothing here is required to generate a report — skipping it just means the new report section shows generic guidance with no account table.</p></div>
+      </div>
+      <div class="jstep">
+        <div class="num serif">3</div>
+        <div><h3>"Generate report"</h3><p>Same button as today. Behind it, <span class="mono">investmentAdvisor.js</span> derives their phase from step 3's ages (accumulation / decumulation / both, for the transition year) and computes an allocation from the risk × phase rule table.</p></div>
+      </div>
+      <div class="jstep highlight">
+        <div class="num serif">4</div>
+        <div><h3>Report → Investment Recommendations <span class="chip">new section</span></h3><p>Placed right after Portfolio. Shows the phase-appropriate fund table with citations and signup links, then a per-account breakdown if they entered accounts in step 11 — or a plain allocation summary if they didn't.</p></div>
+      </div>
+      <div class="jstep">
+        <div class="num serif">5</div>
+        <div><h3>Print / export</h3><p>Section renders in the existing <span class="mono">ReportDocument</span> print path unchanged — same disclaimer discipline as every other section, just with an extra planning-grade banner specific to investment content.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-title">3 · Wireframes</h2>
+    <div class="wire-grid">
+
+      <!-- WIZARD STEP -->
+      <div class="wire-card">
+        <div class="wire-head">
+          <h3>Step 11 — Investments</h3>
+          <span class="kind">Wizard input</span>
+        </div>
+        <div class="wire-body">
+
+          <div class="annot-wrap">
+            <div class="box">
+              <span class="box-label">Risk tolerance</span>
+              <div class="pillrow">
+                <span class="pill">Conservative</span>
+                <span class="pill active">Moderate</span>
+                <span class="pill">Aggressive</span>
+              </div>
+            </div>
+            <div class="annot">Aggressive reveals the checkbox below</div>
+          </div>
+
+          <div class="box">
+            <span class="box-label">Accreditation (aggressive tier only)</span>
+            <div class="check-row"><span class="sq"></span> I'm an accredited investor ($1M net worth or $200k+ income)</div>
+          </div>
+
+          <div class="annot-wrap">
+            <div class="box">
+              <span class="box-label">Investment accounts — optional</span>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <div class="acct-row">
+                  <div><span class="fld">Name</span><span class="val">Fidelity 401(k)</span></div>
+                  <div><span class="fld">Type</span><span class="val">401(k)</span></div>
+                  <div><span class="fld">Balance</span><span class="val mono">$50,000</span></div>
+                  <div class="x">✕</div>
+                </div>
+                <div class="acct-row">
+                  <div><span class="fld">Name</span><span class="val">Vanguard Roth IRA</span></div>
+                  <div><span class="fld">Type</span><span class="val">Roth IRA</span></div>
+                  <div><span class="fld">Balance</span><span class="val mono">$22,400</span></div>
+                  <div class="x">✕</div>
+                </div>
+                <div class="add-row">+ Add account</div>
+              </div>
+            </div>
+            <div class="annot">Zero accounts is valid — report falls back to allocation guidance only</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- REPORT SECTION -->
+      <div class="wire-card">
+        <div class="wire-head">
+          <h3>Investment Recommendations</h3>
+          <span class="kind">Report section</span>
+        </div>
+        <div class="wire-body">
+
+          <div class="disclaimer-box">Planning-grade, not advice-grade. Not a fiduciary recommendation. Past performance ≠ future results.</div>
+
+          <div class="annot-wrap">
+            <div class="phase-tab-row">
+              <div class="phase-tab on">Accumulation</div>
+              <div class="phase-tab">Decumulation</div>
+            </div>
+            <div class="box" style="border-top-left-radius:0;">
+              <span class="box-label">Target allocation — Moderate · Accumulation</span>
+              <table class="alloc">
+                <tr><th>Fund</th><th>Vehicle</th><th class="num">Target %</th><th>Source</th></tr>
+                <tr>
+                  <td><span class="tick mono">VOO</span> · Vanguard S&amp;P 500 ETF</td>
+                  <td>ETF</td>
+                  <td class="num mono">45%</td>
+                  <td><span class="cite">Bankrate 2026</span><br/><a class="link">Get started ↗</a></td>
+                </tr>
+                <tr>
+                  <td><span class="tick mono">VUG</span> · Vanguard Growth ETF</td>
+                  <td>ETF</td>
+                  <td class="num mono">30%</td>
+                  <td><span class="cite">PortfoliosLab</span><br/><a class="link">Get started ↗</a></td>
+                </tr>
+                <tr>
+                  <td><span class="tick mono">BND</span> · Vanguard Total Bond</td>
+                  <td>ETF</td>
+                  <td class="num mono">25%</td>
+                  <td><span class="cite">Bankrate 2026</span><br/><a class="link">Get started ↗</a></td>
+                </tr>
+              </table>
+            </div>
+            <div class="annot">Both tabs render together during the retirement-transition year</div>
+          </div>
+
+          <div class="annot-wrap">
+            <div class="box">
+              <span class="box-label">Per-account breakdown</span>
+              <table class="alloc">
+                <tr><th>Account</th><th>Fund</th><th class="num">Amount</th><th>Note</th></tr>
+                <tr><td>Fidelity 401(k)</td><td class="mono">VOO</td><td class="num mono">$22,500</td><td><span class="cite">—</span></td></tr>
+                <tr><td>Fidelity 401(k)</td><td class="mono">BND</td><td class="num mono">$12,500</td><td><span class="cite">tax-advantaged, OK for bonds</span></td></tr>
+                <tr><td>Vanguard Roth IRA</td><td class="mono">VUG</td><td class="num mono">$22,400</td><td><span class="cite">—</span></td></tr>
+              </table>
+            </div>
+            <div class="annot">Balance-weighted per account; tax-type drives the note column</div>
+          </div>
+
+          <div class="gate-box">Aggressive tier, unaccredited: private-market rows are omitted from this table entirely — no placeholder shown.</div>
+
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="note">
+    Wireframes reflect the approved design spec (<span class="mono">docs/archive/spec-investment-recommendations-design.md</span>). Colors and type follow the app's existing "Ledger" theme (<span class="mono">src/components/theme.js</span>) — no new visual system introduced.
+  </footer>
+
+</main>

@@ -3,7 +3,7 @@ import { Field, NumberInput, Section } from "../atoms/index.jsx";
 import { US_STATE_TAX } from "../../retirementData.js";
 
 /**
- * Step five — Where you'll retire & local taxes.
+ * Step six — Where you'll retire & local taxes.
  *
  * Retirement-state jurisdiction + manual stateRate override for power users.
  *
@@ -46,7 +46,7 @@ export function RetirementPlace({ s, set }) {
   };
 
   return (
-    <Section eyebrow="Step five" title="Where you'll retire & local taxes">
+    <Section eyebrow="Step six" title="Where you'll retire & local taxes">
       <Field
         label="Relocation year"
         hint="The calendar year you move to your retirement jurisdiction. Work-state tax applies before this year; retirement-state tax applies from this year on."

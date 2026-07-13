@@ -3,13 +3,13 @@ import { Field, NumberInput, Segmented, Section } from "../atoms/index.jsx";
 import { usd0 } from "../format.js";
 
 /**
- * Step nine — Travel & longevity.
+ * Step ten — Travel & longevity.
  *
  * @param {{ s: object, set: function }} props
  */
 export function TravelLongevity({ s, set }) {
   return (
-    <Section eyebrow="Step nine" title="Travel & longevity">
+    <Section eyebrow="Step ten" title="Travel & longevity">
       <Field label={`Travel budget — ${usd0(s.travel.amount)}/yr, ${s.travel.startYear}–${s.travel.endYear}`} hint="Calendar-year window. With taper on, the budget steps down to the slow-go share from the slow-go year onward (the classic go-go / slow-go curve).">
         <div className="rc-inputs">
           <Field label="Amount / yr"><NumberInput value={s.travel.amount} onChange={(v)=>set("travel")({ ...s.travel, amount:Number(v)||0 })} prefix="$" /></Field>
@@ -54,7 +54,7 @@ export function TravelLongevity({ s, set }) {
             {s.pensionOn && (
               <span role="note" style={{ display:"block", fontSize:11.5, color:C.slate, marginTop:6, lineHeight:1.45 }}>
                 The pension&apos;s survivor election (what the surviving spouse keeps) is set in{" "}
-                <b style={{ color:C.ink }}>Step four (Pension)</b> — this only supplies the death ages that trigger it.
+                <b style={{ color:C.ink }}>Step five (Pension)</b> — this only supplies the death ages that trigger it.
               </span>
             )}
           </div>

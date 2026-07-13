@@ -18,7 +18,7 @@ export function Inheritance({ s, addProperty, removeProperty, setProperty }) {
   const liveCount = properties.filter((p) => p.on && p.strategy === "live").length;
 
   return (
-    <Section eyebrow="Step six" title="Real estate">
+    <Section eyebrow="Step seven" title="Real estate">
       <div style={{ fontSize: 12, color: C.slate, lineHeight: 1.5, marginBottom: 14 }}>
         Homes you own or may inherit, in any location. Set each property's location, value, year,
         and what you'd do with it — the tax math (US basis step-up vs. foreign transfer/gains taxes)

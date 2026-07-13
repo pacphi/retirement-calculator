@@ -100,6 +100,14 @@ export default function RetirementCalculator() {
   const setProperty = (idx, field) => (v) =>
     set("properties")((s.properties || []).map((p, i) => (i === idx ? { ...p, [field]: v } : p)));
 
+  // Investment accounts — editable list (add / remove / edit), same pattern as properties.
+  const acctSeq = useRef(0);
+  const addAccount = () =>
+    set("investmentAccounts")([...(s.investmentAccounts || []), { id: `acct-${acctSeq.current++}`, name: "New account", type: "taxable", balance: 0 }]);
+  const removeAccount = (idx) => set("investmentAccounts")((s.investmentAccounts || []).filter((_, i) => i !== idx));
+  const setAccount = (idx, field) => (v) =>
+    set("investmentAccounts")((s.investmentAccounts || []).map((a, i) => (i === idx ? { ...a, [field]: v } : a)));
+
   // Plan derivation (calc + all downstream memos)
   const {
     incomeHH, inher,
@@ -160,6 +168,7 @@ export default function RetirementCalculator() {
     afcAuto, afcEff, steady,
     addEvent, removeEvent, addLifestyleStep, removeLifestyleStep, setLifestyleStep,
     addProperty, removeProperty, setProperty,
+    addAccount, removeAccount, setAccount,
     // report-derived
     mc, mcRunning, runMc, mcSummaryLines,
     onTrack, effHaircut, effCutYear, headroom, horizon,
