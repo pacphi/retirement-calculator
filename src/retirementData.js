@@ -4,6 +4,13 @@ export const TAX_YEAR = 2026;
 // keeps the "absent pensionType behaves like legacy WA DRS" default in exactly one place.
 export const DEFAULT_PENSION_TYPE = "drs";
 
+// Every pensionType except "generic" is a government-service (public-employee or military)
+// pension -- WA DRS, FERS, the state teacher systems, and military all qualify for the
+// treaty's government-service source rule; only "generic" is an unknown/private employer
+// pension the app can't characterize this way. Shared by DualTaxExposure.jsx's govtPension
+// card gate.
+export const isGovernmentServicePensionType = (pensionType) => pensionType !== "generic";
+
 // Travel by calendar year: full ("go-go") amount from startYear, a reduced
 // ("slow-go") share from slowYear, ending after endYear.
 export const DEFAULT_TRAVEL = { on: true, amount: 15000, startYear: TAX_YEAR + 8, slowYear: TAX_YEAR + 24, endYear: TAX_YEAR + 28, taper: true, slowPct: 50 };
@@ -118,13 +125,10 @@ export const SOURCES = {
 };
 
 /* 2026 reference data. Tax constants are from the IRS 2026 inflation release.
-   SSA bend points and wage base are from SSA. The DRS early-retirement factors below
-   apply to both Plan 2 and Plan 3 (same formula). DRS_ERF_UNDER_30 is the actuarial
-   reduction for members with fewer than 30 years of service.
-   NOTE: DRS_ERF_30_PLUS uses the post-May-2013 "5% ERF" schedule for 30+ year members.
-   Members hired BEFORE May 1, 2013 with 30+ years use the gentler "2008 ERF" (e.g. age 62
-   is unreduced) — not modeled here, so this engine understates the pension for that
-   specific group. See docs/sources.md section 9 and docs/archive/audits/drs-verification.md. */
+   SSA bend points and wage base are from SSA. (Pension-formula constants, including the WA
+   DRS early-retirement factors, now live in src/pensionData.js — see that file's DRS_ERF_*
+   comments for the same detail previously here, plus docs/sources.md section 9 and
+   docs/archive/audits/drs-verification.md.) */
 export const FED = {
   single: [[0, .10], [12400, .12], [50400, .22], [105700, .24], [201775, .32], [256225, .35], [640600, .37]],
   married: [[0, .10], [24800, .12], [100800, .22], [211400, .24], [403550, .32], [512450, .35], [768700, .37]],
@@ -141,144 +145,9 @@ export const BEND = [1286, 7749];
 export const SS_CAP = 184500;
 export const PROV = { single: [25000, 34000], married: [32000, 44000] };
 
-export const DRS_ERF_UNDER_30 = {
-  55: .4092, 56: .4450, 57: .4844, 58: .5280, 59: .5760,
-  60: .6292, 61: .6882, 62: .7538, 63: .8269, 64: .9085, 65: 1,
-};
-
-export const DRS_ERF_30_PLUS = {
-  55: .50, 56: .55, 57: .60, 58: .65, 59: .70,
-  60: .75, 61: .80, 62: .85, 63: .90, 64: .95, 65: 1,
-};
-
-/* WA DRS joint-and-survivor option factors — TRS Plans 2/3.
-   Source: DRS 2026 Administrative Factors workbook, sheet "Appx G (J&S)",
-   table "Joint and Survivor Option Factors: TRS 2/3"
-   (https://www.drs.wa.gov/sitemap/adminfactors/), verified 2026-07-09; see
-   also WAC 415-02-380. Keyed by AGE DIFFERENCE = member age − beneficiary age
-   (negative = beneficiary older, smaller reduction). Electing a survivor
-   option permanently reduces the member's benefit by these factors; if the
-   beneficiary dies first, DRS restores the single-life amount ("pop-up"). */
-/* FERS (Federal Employees Retirement System) constants. Source: docs/research/pension-systems-data.md
-   §2, sourced to OPM's FERS Computation and FERS Eligibility pages. The enhanced 1.1% multiplier
-   applies only when the member starts at age 62+ with 20+ years of service; otherwise 1.0%.
-   Minimum Retirement Age (MRA) is modeled as a fixed 57 — the value for everyone born 1970 or
-   later — because this app tracks current age, not birth year; earlier-born members have a lower
-   MRA (55 to 56y10m per the OPM table) not represented here, understating their early-retirement
-   options the same way the DRS pre-2013 ERF schedule is understated (see the DRS note above). The
-   MRA+10 reduced-immediate path is also not modeled as a separate eligibility option. */
-export const FERS_MRA = 57;
-export const FERS_STANDARD_MULTIPLIER = 0.01;
-export const FERS_ENHANCED_MULTIPLIER = 0.011;
-
-/* CalSTRS (California State Teachers' Retirement System). Source: docs/research/pension-systems-data.md
-   §3, sourced to CalSTRS's own "The Age Factor" PDF and 2025 Member Handbook (browser-verified).
-   Two benefit structures by hire date: "2at60" (hired on/before Dec 31, 2012) and "2at62" (PEPRA,
-   hired on/after Jan 1, 2013). Age factor = % of final compensation credited per year of service
-   credit, keyed by integer retirement age; ages below each table's floor return 0 (not eligible).
-   "2at60" members with 30+ years of service credit earn an additional 0.2% career factor, capped at
-   2.4% — modeled by CALSTRS_CAREER_FACTOR_BONUS / CALSTRS_CAP in calstrsPensionAnnual. "2at62" has no
-   career-factor enhancement (confirmed verbatim on the source PDF). A closed-form survivor-factor
-   table is NOT published for CalSTRS (computed per-election, actuarially) — survivor election is not
-   modeled for this system, same as CalPERS below; see the pension.js calstrsPensionAnnual comment. */
-export const CALSTRS_AGE_FACTOR_2AT60 = {
-  50: .0110, 51: .0116, 52: .0122, 53: .0128, 54: .0134, 55: .0140, 56: .0152, 57: .0164,
-  58: .0176, 59: .0188, 60: .0200, 61: .02133, 62: .02267, 63: .0240,
-};
-export const CALSTRS_AGE_FACTOR_2AT62 = {
-  55: .0116, 56: .0128, 57: .0140, 58: .0152, 59: .0164, 60: .0176, 61: .0188, 62: .0200,
-  63: .02133, 64: .02267, 65: .0240,
-};
-export const CALSTRS_CAREER_FACTOR_BONUS = 0.002;
-export const CALSTRS_CAP = 0.024;
-
-/* CalPERS (California Public Employees' Retirement System). Source: docs/research/pension-systems-data.md
-   §4. CalPERS has NO single canonical formula — the benefit factor depends on the employer's
-   contracted formula, member classification, and hire-date tier. These are two REPRESENTATIVE
-   tiers, not "the" CalPERS formula: "classic2at55" (Local Miscellaneous 2%@55, min age 50) and
-   "pepra2at62" (State Miscellaneous & Industrial 2%@62, min age 52). Like CalSTRS, the survivor-option
-   reduction is actuarial by member/beneficiary age with no published flat-factor table — not modeled. */
-export const CALPERS_AGE_FACTOR_CLASSIC_2AT55 = {
-  50: .01426, 51: .01522, 52: .01628, 53: .01742, 54: .01866, 55: .0200, 56: .02052, 57: .02104,
-  58: .02156, 59: .02210, 60: .02262, 61: .02314, 62: .02366, 63: .02418,
-};
-export const CALPERS_AGE_FACTOR_PEPRA_2AT62 = {
-  52: .0100, 53: .0110, 54: .0120, 55: .0130, 56: .0140, 57: .0150, 58: .0160, 59: .0170,
-  60: .0180, 61: .0190, 62: .0200, 63: .0210, 64: .0220, 65: .0230, 66: .0240, 67: .0250,
-};
-
-// Texas TRS. Source: docs/research/pension-systems-data.md §5 (trs.texas.gov, current post-Sept-2014
-// tier). Formula: multiplier x years of service credit x average of 5 highest annual salaries.
-// Unreduced at age 65+5yrs, or age 62+ meeting Rule of 80 (age+years >= 80) with 5+ years. Early
-// (reduced) retirement: age 55+5yrs when Rule of 80 isn't met, reduced 5%/year below the tier's
-// normal-retirement age (62); or 30+ years at any age, reduced 2%/year below age 50.
-export const TX_TRS_MULTIPLIER = 0.023;
-export const TX_TRS_NORMAL_AGE = 62;
-export const TX_TRS_RULE_OF_80 = 80;
-export const TX_TRS_EARLY_REDUCTION_PER_YEAR = 0.05;
-export const TX_TRS_MIN_EARLY_AGE = 55;
-export const TX_TRS_MIN_YEARS = 5;
-export const TX_TRS_LONG_SERVICE_YEARS = 30;
-export const TX_TRS_LONG_SERVICE_REDUCTION_PER_YEAR = 0.02;
-export const TX_TRS_LONG_SERVICE_FLOOR_AGE = 50;
-
-/* NYSTRS Tier 6 (members first joining on/after April 1, 2012). Source:
-   docs/research/pension-systems-data.md §6, sourced to NYSTRS's own Tier 6 overview PDF
-   (browser-verified) plus the site index for FAS/COLA facts (not independently browser-verified,
-   since nystrs.org's HTML pages are Cloudflare-blocked to all automation).
-   Pension factor: <20 years -> 1.67%/yr; exactly 20 years -> 1.75% flat (all years); >20 years ->
-   35% base + 2%/yr beyond 20. Unreduced at age 63 (or 58 with 30+ years). NYSTRS_EARLY_RETIREMENT_ANCHORS
-   are the only two age points the phase-0 research sourced from the Tier 6 PDF (the full age-by-age
-   reduction table exists in that PDF but was not extracted row-by-row) — nystrsPensionAnnual linearly
-   interpolates between these sourced anchors and the unreduced age (63 -> 100%) rather than
-   fabricating intermediate values; a future refresh should pull the complete published table. */
-export const NYSTRS_TIER6 = { under20: 0.0167, at20: 0.0175, over20Base: 0.35, over20PerYear: 0.02 };
-export const NYSTRS_MIN_AGE = 55;
-export const NYSTRS_MIN_YEARS = 5;
-export const NYSTRS_UNREDUCED_AGE = 63;
-export const NYSTRS_LONG_SERVICE_UNREDUCED_AGE = 58;
-export const NYSTRS_LONG_SERVICE_YEARS = 30;
-export const NYSTRS_EARLY_RETIREMENT_ANCHORS = { 55: 0.73, 61: 0.94, 63: 1.0 };
-
-/* Ohio STRS. Source: docs/research/pension-systems-data.md §7 (strsoh.org site index / plan
-   summary PDF; strsoh.org itself is Cloudflare-blocked to all automation, so not independently
-   browser-verified). Formula: 2.2% x years x Final Average Salary (5 highest years). Unreduced
-   eligibility: age 65+5yrs, OR any age with 32+ years (extended through May 1, 2035 per the 2026
-   board action, then stepping to 33/34 years). Reduced retirement (age 60+5yrs, or 27+ years any
-   age) is ACTUARIALLY reduced via the plan's own estimator — STRS Ohio does not publish a flat
-   per-year percentage, so per this phase's convention (no fabricated formulas for under-documented
-   systems) ohioStrsPensionAnnual only computes the unreduced benefit; a member eligible only for
-   the reduced path gets 0 with a note directing them to the generic defined-benefit fallback. */
-export const OHIO_STRS_MULTIPLIER = 0.022;
-export const OHIO_STRS_UNREDUCED_AGE = 65;
-export const OHIO_STRS_UNREDUCED_MIN_YEARS = 5;
-export const OHIO_STRS_UNREDUCED_LONG_SERVICE_YEARS = 32;
-
-/* Military retirement — Legacy High-3 and Blended Retirement System (BRS). Source:
-   docs/research/pension-systems-data.md §8, sourced to the Army's official benefits portal
-   (myarmybenefits.us.army.mil) since militarypay.defense.gov/dfas.mil block all automated access
-   (browser-verified). Hard 20-year cliff under EITHER system — unlike every other pension modeled
-   here, there is NO partial/graded vesting below 20 years of service; a sub-20-year separation gets
-   $0 from the pension system (BRS members still keep their vested TSP balance, but that's an
-   investment account, not this pension formula). High-3: 50% of High-3 average base pay at 20 years,
-   +2.5%/additional year. BRS: flat 2.0%/year x High-3 average base pay (a reduced multiplier vs.
-   Legacy, reflecting the automatic 1% + up to 4%-match TSP contribution BRS also provides). */
-export const MILITARY_MIN_YEARS = 20;
-export const MILITARY_HIGH3_BASE = 0.50;
-export const MILITARY_HIGH3_PER_YEAR = 0.025;
-export const MILITARY_BRS_MULTIPLIER = 0.02;
-
-export const DRS_SURVIVOR_FACTORS = {
-  minDiff: -20,
-  maxDiff: 40,
-  // Option 2 — 100% survivor
-  j100: [0.972, 0.970, 0.967, 0.965, 0.962, 0.960, 0.957, 0.953, 0.950, 0.947, 0.943, 0.939, 0.935, 0.930, 0.925, 0.920, 0.915, 0.910, 0.902, 0.891, 0.877, 0.860, 0.848, 0.841, 0.828, 0.820, 0.813, 0.806, 0.799, 0.792, 0.785, 0.778, 0.771, 0.764, 0.758, 0.752, 0.746, 0.740, 0.734, 0.729, 0.723, 0.718, 0.713, 0.708, 0.704, 0.699, 0.695, 0.691, 0.687, 0.684, 0.680, 0.677, 0.674, 0.671, 0.668, 0.665, 0.662, 0.660, 0.657, 0.655, 0.653],
-  // Option 4 — 66.67% survivor
-  j66: [0.981, 0.980, 0.978, 0.976, 0.975, 0.973, 0.971, 0.968, 0.966, 0.964, 0.961, 0.958, 0.955, 0.952, 0.949, 0.945, 0.942, 0.938, 0.932, 0.925, 0.915, 0.902, 0.893, 0.888, 0.878, 0.873, 0.867, 0.862, 0.856, 0.851, 0.845, 0.840, 0.835, 0.830, 0.825, 0.820, 0.815, 0.810, 0.805, 0.801, 0.797, 0.793, 0.789, 0.785, 0.781, 0.777, 0.774, 0.771, 0.767, 0.764, 0.761, 0.759, 0.756, 0.753, 0.751, 0.748, 0.746, 0.744, 0.742, 0.740, 0.738],
-  // Option 3 — 50% survivor
-  j50: [0.986, 0.985, 0.983, 0.982, 0.981, 0.979, 0.978, 0.976, 0.974, 0.973, 0.971, 0.968, 0.966, 0.964, 0.961, 0.959, 0.956, 0.953, 0.948, 0.942, 0.935, 0.925, 0.918, 0.913, 0.906, 0.901, 0.897, 0.893, 0.888, 0.884, 0.879, 0.875, 0.871, 0.866, 0.862, 0.858, 0.854, 0.850, 0.847, 0.843, 0.839, 0.836, 0.833, 0.829, 0.826, 0.823, 0.820, 0.817, 0.815, 0.812, 0.810, 0.807, 0.805, 0.803, 0.801, 0.799, 0.797, 0.795, 0.793, 0.791, 0.790],
-};
-
+// Pension-formula constants (DRS ERF/survivor factors, FERS, CalSTRS, CalPERS, Texas TRS,
+// NYSTRS, Ohio STRS, military) live in src/pensionData.js — see that file for the full
+// per-system source citations. src/finance/pension.js imports them from there directly.
 
 export const LOCATIONS = [
   { name:"Bulgaria / Romania", region:"Europe", ltcAnnual:14000, addlTaxRate:0, hcPre:280, hcPost:220, m:{rent:550,groceries:400,utilities:160,transport:100,dining:200,entertainment:120,misc:170}, vat:"20%", incomeTax:"Flat 10% -- among the EU's lowest", note:"Lowest-cost EU. More cultural adjustment, fewer English services." },
@@ -424,103 +293,113 @@ export const US_STATE_TAX = {
 // shape as US_STATE_TAX so residenceTax.js doesn't fork. Planning-grade EFFECTIVE
 // net-of-treaty residence rates — NOT statutory treaty articles. Conventions for a US
 // citizen abroad (US federal worldwide tax is modeled separately by the engine):
-//   - Government pension (the engine's `pension` = WA DRS) is US-only under the treaty's
-//     government-service article ⇒ pensionExclusion:"full" (residence does not tax it).
+//   - A government-service pension (WA DRS, FERS, CalSTRS, CalPERS, Texas TRS, NYSTRS,
+//     Ohio STRS, or military -- any pensionType except "generic") is US-only under the
+//     treaty's government-service article ⇒ pensionExclusion:"full" (residence does not
+//     tax it). DualTaxExposure.jsx renders the govtPension card for exactly this set.
 //   - Private/IRA deferred withdrawals are residence-taxed net of the US FTC ⇒
 //     taxesTradWithdrawal per location, at the effective `retireRate`.
 //   - Social Security per treaty (taxesSS per location). Roth is exempt everywhere.
 // exposureNotes drive the DualTaxExposure panel. Sources: SOURCES.usModelTreaty,
 // SOURCES.irsFtc, SOURCES.irsForm3520, SOURCES.fbar.
+
+// Shared prefix for every INTL_TAX entry's exposureNotes.govtPension -- was previously
+// hand-copied ~20 times, hardcoded to name "The Washington DRS pension" specifically even
+// though the govtPension card now covers any government-service pensionType (see the comment
+// above). `clause` is the location-specific trailing sentence (treaty exception, territorial
+// exemption, or caveat), already ending in a period.
+const govtPensionNote = (clause) => `Your pension is a government-service pension — ${clause}`;
+
 export const INTL_TAX = {
   // Austria: addlTaxRate 0.05 in LOCATIONS; net-of-treaty effective rate modeled 0.05 (Wave 3 T7).
   "Austria": { name: "Austria", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0.05, propertyTaxRate: 0,
-    exposureNotes: { worldwide: "As a US citizen you stay liable for US federal tax on worldwide income; the US–Austria treaty + Foreign Tax Credit prevent double taxation.", govtPension: "The Washington DRS pension is a government-service pension — taxable only by the US under the treaty, not by Austria.", residenceTaxed: "Austria can tax IRA/401(k) distributions as a resident; effective added rate modeled ~5% net of treaty/FTC here — verify with a cross-border specialist.", filing: "Inheriting foreign real estate over $100k triggers IRS Form 3520 (report-only); foreign accounts may trigger FBAR/FATCA." } },
+    exposureNotes: { worldwide: "As a US citizen you stay liable for US federal tax on worldwide income; the US–Austria treaty + Foreign Tax Credit prevent double taxation.", govtPension: govtPensionNote("taxable only by the US under the treaty, not by Austria."), residenceTaxed: "Austria can tax IRA/401(k) distributions as a resident; effective added rate modeled ~5% net of treaty/FTC here — verify with a cross-border specialist.", filing: "Inheriting foreign real estate over $100k triggers IRS Form 3520 (report-only); foreign accounts may trigger FBAR/FATCA." } },
   // Bulgaria / Romania: addlTaxRate 0 in LOCATIONS → retireRate 0.
   "Bulgaria / Romania": { name: "Bulgaria / Romania", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0, propertyTaxRate: 0,
-    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; a US–Bulgaria or US–Romania treaty + Foreign Tax Credit generally prevents double taxation.", govtPension: "The Washington DRS pension is a government-service pension — taxable only by the US under treaty, not by the residence country.", residenceTaxed: "Bulgaria/Romania may tax IRA/401(k) distributions as a resident; the US FTC typically offsets the US tax on the same dollars (effective added rate modeled 0 — verify).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; a US–Bulgaria or US–Romania treaty + Foreign Tax Credit generally prevents double taxation.", govtPension: govtPensionNote("taxable only by the US under treaty, not by the residence country."), residenceTaxed: "Bulgaria/Romania may tax IRA/401(k) distributions as a resident; the US FTC typically offsets the US tax on the same dollars (effective added rate modeled 0 — verify).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
   // Greece: addlTaxRate 0 in LOCATIONS → retireRate 0.
   "Greece": { name: "Greece", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0, propertyTaxRate: 0,
-    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US–Greece treaty + Foreign Tax Credit generally prevent double taxation.", govtPension: "The Washington DRS pension is a government-service pension — taxable only by the US under the treaty, not by Greece.", residenceTaxed: "Greece may tax IRA/401(k) distributions as a resident; the US FTC typically offsets the US tax on the same dollars (effective added rate modeled 0 — verify with Greece's 7% flat-rate regime eligibility).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US–Greece treaty + Foreign Tax Credit generally prevent double taxation.", govtPension: govtPensionNote("taxable only by the US under the treaty, not by Greece."), residenceTaxed: "Greece may tax IRA/401(k) distributions as a resident; the US FTC typically offsets the US tax on the same dollars (effective added rate modeled 0 — verify with Greece's 7% flat-rate regime eligibility).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
   // Portugal: addlTaxRate 0.03 in LOCATIONS → retireRate 0.03.
   "Portugal": { name: "Portugal", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0.03, propertyTaxRate: 0,
-    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; a US–Portugal tax treaty + Foreign Tax Credit generally prevent double taxation.", govtPension: "The Washington DRS pension is a government-service pension — taxable only by the US under the treaty, not by Portugal.", residenceTaxed: "Portugal can tax IRA/401(k) distributions as a resident; an effective incremental rate of ~3% is modeled after treaty/FTC offsets (verify — the old NHR regime closed in 2024).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; a US–Portugal tax treaty + Foreign Tax Credit generally prevent double taxation.", govtPension: govtPensionNote("taxable only by the US under the treaty, not by Portugal."), residenceTaxed: "Portugal can tax IRA/401(k) distributions as a resident; an effective incremental rate of ~3% is modeled after treaty/FTC offsets (verify — the old NHR regime closed in 2024).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
   // Spain: addlTaxRate 0.04 in LOCATIONS → retireRate 0.04.
   "Spain": { name: "Spain", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0.04, propertyTaxRate: 0,
-    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US–Spain treaty + Foreign Tax Credit generally prevent double taxation.", govtPension: "The Washington DRS pension is a government-service pension — taxable only by the US under the treaty, not by Spain.", residenceTaxed: "Spain can tax IRA/401(k) distributions as a resident; an effective incremental rate of ~4% is modeled after treaty/FTC offsets (verify with your cross-border tax advisor).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US–Spain treaty + Foreign Tax Credit generally prevent double taxation.", govtPension: govtPensionNote("taxable only by the US under the treaty, not by Spain."), residenceTaxed: "Spain can tax IRA/401(k) distributions as a resident; an effective incremental rate of ~4% is modeled after treaty/FTC offsets (verify with your cross-border tax advisor).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
   // Italy: addlTaxRate 0 in LOCATIONS → retireRate 0.
   "Italy": { name: "Italy", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0, propertyTaxRate: 0,
-    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US–Italy treaty + Foreign Tax Credit generally prevent double taxation.", govtPension: "The Washington DRS pension is a government-service pension — taxable only by the US under the treaty, not by Italy.", residenceTaxed: "Italy can tax IRA/401(k) distributions as a resident; the US FTC typically offsets the US tax on the same dollars (effective added rate modeled 0 — verify; some southern towns offer a 7% flat-rate option).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US–Italy treaty + Foreign Tax Credit generally prevent double taxation.", govtPension: govtPensionNote("taxable only by the US under the treaty, not by Italy."), residenceTaxed: "Italy can tax IRA/401(k) distributions as a resident; the US FTC typically offsets the US tax on the same dollars (effective added rate modeled 0 — verify; some southern towns offer a 7% flat-rate option).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
   // France: addlTaxRate 0 in LOCATIONS → retireRate 0.
   "France": { name: "France", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0, propertyTaxRate: 0,
-    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US–France treaty + Foreign Tax Credit generally prevent double taxation.", govtPension: "The Washington DRS pension is a government-service pension — taxable only by the US under the treaty, not by France.", residenceTaxed: "France can tax IRA/401(k) distributions as a resident; the US FTC typically offsets the US tax on the same dollars (effective added rate modeled 0 — verify with a cross-border advisor).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US–France treaty + Foreign Tax Credit generally prevent double taxation.", govtPension: govtPensionNote("taxable only by the US under the treaty, not by France."), residenceTaxed: "France can tax IRA/401(k) distributions as a resident; the US FTC typically offsets the US tax on the same dollars (effective added rate modeled 0 — verify with a cross-border advisor).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
   // Netherlands: addlTaxRate 0.08 in LOCATIONS → retireRate 0.08.
   "Netherlands": { name: "Netherlands", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0.08, propertyTaxRate: 0,
-    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US–Netherlands treaty + Foreign Tax Credit generally prevent double taxation.", govtPension: "The Washington DRS pension is a government-service pension — taxable only by the US under the treaty, not by the Netherlands.", residenceTaxed: "The Netherlands can tax IRA/401(k) distributions as a resident under the box system; an effective incremental rate of ~8% is modeled after treaty/FTC offsets (verify with a cross-border advisor).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US–Netherlands treaty + Foreign Tax Credit generally prevent double taxation.", govtPension: govtPensionNote("taxable only by the US under the treaty, not by the Netherlands."), residenceTaxed: "The Netherlands can tax IRA/401(k) distributions as a resident under the box system; an effective incremental rate of ~8% is modeled after treaty/FTC offsets (verify with a cross-border advisor).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
   // Bahamas: addlTaxRate 0 in LOCATIONS → retireRate 0 (no income tax).
   "Bahamas": { name: "Bahamas", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0, propertyTaxRate: 0,
-    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the Bahamas has no income tax so US federal is the only income tax layer.", govtPension: "The Washington DRS pension is a government-service pension — taxable only by the US; the Bahamas imposes no residence income tax on it.", residenceTaxed: "The Bahamas imposes no income tax on IRA/401(k) distributions as a resident; US federal tax applies as normal (effective added rate modeled 0).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the Bahamas has no income tax so US federal is the only income tax layer.", govtPension: govtPensionNote("taxable only by the US; the Bahamas imposes no residence income tax on it."), residenceTaxed: "The Bahamas imposes no income tax on IRA/401(k) distributions as a resident; US federal tax applies as normal (effective added rate modeled 0).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
   // Mexico: addlTaxRate 0.03 in LOCATIONS (research brief §1 flags treaty enforcement on
   // IRA/401(k) distributions as genuinely ambiguous — 0.02-0.05 suggested range, modeled at 0.03).
   "Mexico": { name: "Mexico", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0.03, propertyTaxRate: 0,
-    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US–Mexico treaty + Foreign Tax Credit generally prevent double taxation.", govtPension: "The Washington DRS pension is a government-service pension — taxable only by the US under the treaty, not by Mexico.", residenceTaxed: "Mexico can tax IRA/401(k) distributions if you're a Mexican tax resident (not just a residency-visa holder) under Treaty Art. 18; an effective incremental rate of ~3% is modeled after treaty/FTC offsets, but enforcement is genuinely ambiguous — verify with a cross-border advisor.", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US–Mexico treaty + Foreign Tax Credit generally prevent double taxation.", govtPension: govtPensionNote("taxable only by the US under the treaty, not by Mexico."), residenceTaxed: "Mexico can tax IRA/401(k) distributions if you're a Mexican tax resident (not just a residency-visa holder) under Treaty Art. 18; an effective incremental rate of ~3% is modeled after treaty/FTC offsets, but enforcement is genuinely ambiguous — verify with a cross-border advisor.", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
   // Panama: addlTaxRate 0 in LOCATIONS → retireRate 0 (pure territorial system — foreign-source
   // income, including IRA/401(k) distributions, is 100% exempt for residents and Pensionado holders).
   "Panama": { name: "Panama", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0, propertyTaxRate: 0,
-    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; Panama's territorial system means there is no Panamanian tax on that same income to credit against.", govtPension: "The Washington DRS pension is a government-service pension — taxable only by the US; Panama's territorial system exempts all foreign-source income, including this pension.", residenceTaxed: "Panama's territorial tax system exempts IRA/401(k) distributions entirely, for residents and Pensionado visa holders alike (effective added rate modeled 0).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; Panama's territorial system means there is no Panamanian tax on that same income to credit against.", govtPension: govtPensionNote("taxable only by the US; Panama's territorial system exempts all foreign-source income, including this pension."), residenceTaxed: "Panama's territorial tax system exempts IRA/401(k) distributions entirely, for residents and Pensionado visa holders alike (effective added rate modeled 0).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
   // Costa Rica: addlTaxRate 0 in LOCATIONS → retireRate 0 (territorial system — foreign-source
   // income fully exempt regardless of amount or residency status).
   "Costa Rica": { name: "Costa Rica", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0, propertyTaxRate: 0,
-    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; Costa Rica's territorial system means there is no Costa Rican tax on that same income to credit against.", govtPension: "The Washington DRS pension is a government-service pension — taxable only by the US; Costa Rica's territorial system exempts all foreign-source income, including this pension.", residenceTaxed: "Costa Rica's territorial tax system exempts IRA/401(k) distributions entirely, regardless of residency status (effective added rate modeled 0).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; Costa Rica's territorial system means there is no Costa Rican tax on that same income to credit against.", govtPension: govtPensionNote("taxable only by the US; Costa Rica's territorial system exempts all foreign-source income, including this pension."), residenceTaxed: "Costa Rica's territorial tax system exempts IRA/401(k) distributions entirely, regardless of residency status (effective added rate modeled 0).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
   // Thailand: addlTaxRate 0.03 in LOCATIONS. Remittance-basis worldwide taxation since 2024
   // (Por.161/2566) -- genuinely fact-specific to when/how money is moved, flagged as planning-grade.
   "Thailand": { name: "Thailand", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0.03, propertyTaxRate: 0,
-    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US–Thailand tax treaty + Foreign Tax Credit generally prevent double taxation.", govtPension: "The Washington DRS pension is a government-service pension — taxable only by the US under the treaty, not by Thailand.", residenceTaxed: "Thailand taxes foreign-sourced income (including IRA/401(k) distributions) only when remitted, by a Thai tax resident (183+ days/year); an effective incremental rate of ~3% is modeled after treaty/FTC offsets, but the remittance-basis rule is genuinely fact-specific to timing -- verify with a cross-border tax specialist.", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US–Thailand tax treaty + Foreign Tax Credit generally prevent double taxation.", govtPension: govtPensionNote("taxable only by the US under the treaty, not by Thailand."), residenceTaxed: "Thailand taxes foreign-sourced income (including IRA/401(k) distributions) only when remitted, by a Thai tax resident (183+ days/year); an effective incremental rate of ~3% is modeled after treaty/FTC offsets, but the remittance-basis rule is genuinely fact-specific to timing -- verify with a cross-border tax specialist.", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
   // Vietnam: addlTaxRate 0.065 in LOCATIONS. NO US-Vietnam tax treaty exists -- unlike every
   // other entry here, this government-service pension has no treaty-based protection; relief
   // relies solely on the US Foreign Tax Credit, which is why this is the highest tax-uncertainty
   // location in this set (docs/research/location-cost-of-living-data.md §5).
   "Vietnam": { name: "Vietnam", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0.065, propertyTaxRate: 0,
-    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; with NO US–Vietnam tax treaty, relief relies solely on the US Foreign Tax Credit rather than treaty provisions.", govtPension: "The Washington DRS pension is normally treaty-protected as government-service income, but Vietnam has no tax treaty with the US -- if you become a Vietnamese tax resident (183+ days or a registered permanent address), this protection doesn't exist here the way it does elsewhere in this app; this is modeled as a planning-grade estimate, not a guarantee.", residenceTaxed: "Vietnam taxes residents on worldwide income (progressive 5-35%); an effective incremental rate of ~6.5% is modeled for IRA/401(k) distributions after FTC offsets, but this is the least certain estimate in this set -- verify with a cross-border tax specialist.", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; with NO US–Vietnam tax treaty, relief relies solely on the US Foreign Tax Credit rather than treaty provisions.", govtPension: "Your pension is normally treaty-protected as government-service income, but Vietnam has no tax treaty with the US -- if you become a Vietnamese tax resident (183+ days or a registered permanent address), this protection doesn't exist here the way it does elsewhere in this app; this is modeled as a planning-grade estimate, not a guarantee.", residenceTaxed: "Vietnam taxes residents on worldwide income (progressive 5-35%); an effective incremental rate of ~6.5% is modeled for IRA/401(k) distributions after FTC offsets, but this is the least certain estimate in this set -- verify with a cross-border tax specialist.", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
   // Malaysia: addlTaxRate 0.005 in LOCATIONS. Foreign-sourced income remitted by individuals is
   // exempt through end-2036 under current policy -- effectively territorial for this window,
   // regardless of treaty status.
   "Malaysia": { name: "Malaysia", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0.005, propertyTaxRate: 0,
-    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; Malaysia's individual foreign-source-income exemption means there is little Malaysian tax to credit against through at least end-2036.", govtPension: "The Washington DRS pension is a government-service pension — taxable only by the US; Malaysia's foreign-source-income exemption (through end-2036 under current policy) also exempts this pension from residence tax.", residenceTaxed: "Malaysia's individual FSI exemption covers remitted IRA/401(k) distributions through at least end-2036 (effective added rate modeled near 0) -- this is a policy window, not a permanent territorial rule, so it should be re-verified periodically.", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; Malaysia's individual foreign-source-income exemption means there is little Malaysian tax to credit against through at least end-2036.", govtPension: govtPensionNote("taxable only by the US; Malaysia's foreign-source-income exemption (through end-2036 under current policy) also exempts this pension from residence tax."), residenceTaxed: "Malaysia's individual FSI exemption covers remitted IRA/401(k) distributions through at least end-2036 (effective added rate modeled near 0) -- this is a policy window, not a permanent territorial rule, so it should be re-verified periodically.", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
   // Philippines: addlTaxRate 0 in LOCATIONS → retireRate 0 (territorial -- foreign pensions,
   // US Social Security, and IRA withdrawals are not subject to Philippine income tax).
   "Philippines": { name: "Philippines", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0, propertyTaxRate: 0,
-    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the Philippines' territorial system means there is no Philippine tax on that same income to credit against.", govtPension: "The Washington DRS pension is a government-service pension — taxable only by the US; the Philippines' territorial system exempts all foreign-source income, including this pension.", residenceTaxed: "The Philippines' territorial tax system exempts IRA/401(k) distributions entirely for resident aliens (effective added rate modeled 0).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the Philippines' territorial system means there is no Philippine tax on that same income to credit against.", govtPension: govtPensionNote("taxable only by the US; the Philippines' territorial system exempts all foreign-source income, including this pension."), residenceTaxed: "The Philippines' territorial tax system exempts IRA/401(k) distributions entirely for resident aliens (effective added rate modeled 0).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
   // Australia: addlTaxRate 0.10 in LOCATIONS -- worldwide taxation, no general exemption for
   // foreign pensions (only US Social Security is a treaty exception). PRODUCT-HONESTY FLAG:
   // see the LOCATIONS entry's note -- Australia has no general retirement visa open to new
   // applicants, so this entry is a cost-of-living reference more than a realistic destination.
   "Australia": { name: "Australia", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0.10, propertyTaxRate: 0,
-    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US–Australia treaty + Foreign Tax Credit generally prevent double taxation, though Australia's own tax is meaningfully higher than most locations here (top marginal ~45% + 2% Medicare levy).", govtPension: "The Washington DRS pension is a government-service pension — modeled here as taxable only by the US under the treaty, though Australia's treatment of foreign government pensions specifically is less clearly documented than its Social Security exception -- verify with a cross-border advisor.", residenceTaxed: "Australia taxes residents on worldwide income with no general foreign-pension exemption; an effective incremental rate of ~10% is modeled after treaty/FTC offsets -- this is the highest residence-tax entry in this set outside a full US state.", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US–Australia treaty + Foreign Tax Credit generally prevent double taxation, though Australia's own tax is meaningfully higher than most locations here (top marginal ~45% + 2% Medicare levy).", govtPension: govtPensionNote("modeled here as taxable only by the US under the treaty, though Australia's treatment of foreign government pensions specifically is less clearly documented than its Social Security exception -- verify with a cross-border advisor."), residenceTaxed: "Australia taxes residents on worldwide income with no general foreign-pension exemption; an effective incremental rate of ~10% is modeled after treaty/FTC offsets -- this is the highest residence-tax entry in this set outside a full US state.", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
   // Uruguay: addlTaxRate 0.05 in LOCATIONS, a midpoint between the Tax Holiday 2.0 exemption
   // (~0% for new tax residents' first ~10 years) and the flat 7% long-run rate on foreign
   // passive income -- which regime applies depends on an election a future retiree hasn't made.
   "Uruguay": { name: "Uruguay", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0.05, propertyTaxRate: 0,
-    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; Uruguay's new-resident tax regimes (a ~10-year exemption or a flat 7% on foreign passive income) plus the US Foreign Tax Credit generally limit double taxation.", govtPension: "The Washington DRS pension is a government-service pension — modeled here as taxable only by the US; Uruguay's foreign-employment-income exemption and its new-resident tax regimes both point toward light or no residence tax on it.", residenceTaxed: "Uruguay lets new tax residents (from Jan 1, 2026) elect a ~10-year exemption on foreign-source income or a flat 7% on foreign passive income indefinitely; an effective incremental rate of ~5% is modeled as a midpoint pending that election -- verify with a cross-border advisor.", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; Uruguay's new-resident tax regimes (a ~10-year exemption or a flat 7% on foreign passive income) plus the US Foreign Tax Credit generally limit double taxation.", govtPension: govtPensionNote("modeled here as taxable only by the US; Uruguay's foreign-employment-income exemption and its new-resident tax regimes both point toward light or no residence tax on it."), residenceTaxed: "Uruguay lets new tax residents (from Jan 1, 2026) elect a ~10-year exemption on foreign-source income or a flat 7% on foreign passive income indefinitely; an effective incremental rate of ~5% is modeled as a midpoint pending that election -- verify with a cross-border advisor.", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
   // South Africa: addlTaxRate 0.06 in LOCATIONS -- worldwide taxation, no territorial exemption;
   // SA removed its old foreign-pension exemption in 2025.
   "South Africa": { name: "South Africa", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0.06, propertyTaxRate: 0,
-    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US-South Africa treaty + Foreign Tax Credit generally prevent double taxation, though there is no US-SA totalization agreement for Social Security specifically.", govtPension: "The Washington DRS pension is a government-service pension — modeled here as taxable only by the US under the treaty, not by South Africa.", residenceTaxed: "South Africa taxes residents on worldwide income with no territorial exemption, and removed its old foreign-pension exemption in 2025; an effective incremental rate of ~6% is modeled after treaty/FTC offsets -- verify with a cross-border tax specialist.", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US-South Africa treaty + Foreign Tax Credit generally prevent double taxation, though there is no US-SA totalization agreement for Social Security specifically.", govtPension: govtPensionNote("modeled here as taxable only by the US under the treaty, not by South Africa."), residenceTaxed: "South Africa taxes residents on worldwide income with no territorial exemption, and removed its old foreign-pension exemption in 2025; an effective incremental rate of ~6% is modeled after treaty/FTC offsets -- verify with a cross-border tax specialist.", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
   // Colombia: addlTaxRate 0.01 in LOCATIONS -- Law 2381 of 2024 exempts foreign pensions up to
   // about $14,000/mo, so Social Security and most pensions are effectively exempt; only IRA/
   // 401(k) withdrawals carry meaningful residual uncertainty.
   "Colombia": { name: "Colombia", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0.01, propertyTaxRate: 0,
-    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; Colombia has no US tax treaty, so relief relies on the US Foreign Tax Credit rather than treaty provisions.", govtPension: "The Washington DRS pension is a government-service pension — modeled here as taxable only by the US; Colombia's Law 2381 (2024) separately exempts foreign pensions up to about $14,000/mo, which would cover this pension either way.", residenceTaxed: "Colombia's Law 2381 exemption covers most foreign pension income, but IRA/401(k) withdrawals are less certain and may be taxed as ordinary income; an effective incremental rate of ~1% is modeled, near-zero for pension-heavy income (verify with a cross-border advisor).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; Colombia has no US tax treaty, so relief relies on the US Foreign Tax Credit rather than treaty provisions.", govtPension: govtPensionNote("modeled here as taxable only by the US; Colombia's Law 2381 (2024) separately exempts foreign pensions up to about $14,000/mo, which would cover this pension either way."), residenceTaxed: "Colombia's Law 2381 exemption covers most foreign pension income, but IRA/401(k) withdrawals are less certain and may be taxed as ordinary income; an effective incremental rate of ~1% is modeled, near-zero for pension-heavy income (verify with a cross-border advisor).", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
   // New Zealand: addlTaxRate 0.08 in LOCATIONS -- worldwide taxation after a 4-year transitional
   // exemption for new migrants. See the LOCATIONS entry's PRODUCT-HONESTY FLAG: the retiree
   // "visa" is a high-barrier investor product with no path to permanent residency.
   "New Zealand": { name: "New Zealand", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0.08, propertyTaxRate: 0,
-    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US-NZ treaty + Foreign Tax Credit generally prevent double taxation, though NZ's own tax on foreign pension income is meaningfully higher than most locations here after the 4-year transitional exemption ends.", govtPension: "The Washington DRS pension is a government-service pension — modeled here as taxable only by the US under the treaty, though it becomes NZ-taxable like other foreign pension income once the 4-year new-migrant exemption ends.", residenceTaxed: "New Zealand taxes foreign pension income at the top resident rate (~39%) after a 4-year transitional exemption for new migrants; an effective incremental rate of ~8% is modeled after treaty/FTC offsets.", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US-NZ treaty + Foreign Tax Credit generally prevent double taxation, though NZ's own tax on foreign pension income is meaningfully higher than most locations here after the 4-year transitional exemption ends.", govtPension: govtPensionNote("modeled here as taxable only by the US under the treaty, though it becomes NZ-taxable like other foreign pension income once the 4-year new-migrant exemption ends."), residenceTaxed: "New Zealand taxes foreign pension income at the top resident rate (~39%) after a 4-year transitional exemption for new migrants; an effective incremental rate of ~8% is modeled after treaty/FTC offsets.", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
   // Japan: addlTaxRate 0.08 in LOCATIONS. CRITICAL: Japan does NOT recognize US tax-deferred
   // IRA/401(k) status -- unlike every other entry here, deferred-account distributions are
   // taxed as ordinary Japanese income, not given the treaty deference this app models elsewhere.
   // See the LOCATIONS entry's PRODUCT-HONESTY FLAG: Japan has no dedicated retirement visa at all.
   "Japan": { name: "Japan", isInternational: true, wageRate: 0, taxesSS: false, pensionExclusion: "full", taxesTradWithdrawal: true, retireRate: 0.08, propertyTaxRate: 0,
-    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US-Japan treaty + Foreign Tax Credit generally prevent double taxation, though Japan's own tax on retirement income is meaningfully higher than most locations here.", govtPension: "The Washington DRS pension is a government-service pension — modeled here as taxable only by the US under the treaty; Japan's treaty Article 17 primarily assigns pension taxation to the country of residence, but the US saving clause preserves US taxation for its citizens.", residenceTaxed: "Japan does NOT recognize US tax-deferred status for IRA/401(k) accounts -- distributions are taxed as ordinary Japanese income, a materially different treatment than every other location in this app. An effective incremental rate of ~8% is modeled after treaty/FTC offsets, but this is a genuinely higher-friction location -- verify with a cross-border tax specialist. Non-permanent residents (first 5 of the last 10 years) are taxed only on Japan-source and remitted foreign income, a real early-years planning lever.", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
+    exposureNotes: { worldwide: "As a US citizen you remain liable for US federal tax on worldwide income; the US-Japan treaty + Foreign Tax Credit generally prevent double taxation, though Japan's own tax on retirement income is meaningfully higher than most locations here.", govtPension: govtPensionNote("modeled here as taxable only by the US under the treaty; Japan's treaty Article 17 primarily assigns pension taxation to the country of residence, but the US saving clause preserves US taxation for its citizens."), residenceTaxed: "Japan does NOT recognize US tax-deferred status for IRA/401(k) accounts -- distributions are taxed as ordinary Japanese income, a materially different treatment than every other location in this app. An effective incremental rate of ~8% is modeled after treaty/FTC offsets, but this is a genuinely higher-friction location -- verify with a cross-border tax specialist. Non-permanent residents (first 5 of the last 10 years) are taxed only on Japan-source and remitted foreign income, a real early-years planning lever.", filing: "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually." } },
 };
 
 // Net sale proceeds factor for a primary residence sold at relocation: ~7% selling

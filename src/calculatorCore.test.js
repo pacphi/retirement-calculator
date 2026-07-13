@@ -57,7 +57,7 @@ import {
   travelSpendForYear,
   yearReturn,
 } from "./calculatorCore.js";
-import { LOCATIONS, SINGLE_COST_FACTOR, HOME_SELL_NET, INTL_TAX, inheritanceRulesForPlace } from "./retirementData.js";
+import { LOCATIONS, SINGLE_COST_FACTOR, HOME_SELL_NET, INTL_TAX, inheritanceRulesForPlace, isGovernmentServicePensionType } from "./retirementData.js";
 import { remainingBalance } from "./finance/housing.js";
 import { makeDefaultPlan } from "./defaultPlan.js";
 
@@ -1708,6 +1708,34 @@ describe("Tier 2 locations (Thailand, Vietnam, Malaysia, Philippines, Australia,
       expect(rules.rentYield).toBe(0.020);
       expect(rules.ownRate).toBe(0.012);
     }
+  });
+});
+
+describe("isGovernmentServicePensionType", () => {
+  it("is true for every pensionType except generic", () => {
+    for (const t of ["drs", "fers", "calstrs", "calpers", "txtrs", "nystrs", "ohiostrs", "military"]) {
+      expect(isGovernmentServicePensionType(t)).toBe(true);
+    }
+  });
+
+  it("is false for generic and defaults absent pensionType to true (drs)", () => {
+    expect(isGovernmentServicePensionType("generic")).toBe(false);
+    expect(isGovernmentServicePensionType(undefined)).toBe(true);
+  });
+});
+
+describe("INTL_TAX govtPension exposure notes", () => {
+  it("no longer name Washington DRS specifically -- every entry's wording is pension-type-neutral", () => {
+    for (const key of Object.keys(INTL_TAX)) {
+      expect(INTL_TAX[key].exposureNotes.govtPension).not.toMatch(/Washington DRS/);
+    }
+  });
+
+  it("shares the common government-service-pension framing across entries (deduplication regression guard)", () => {
+    expect(INTL_TAX["Austria"].exposureNotes.govtPension).toMatch(/^Your pension is a government-service pension/);
+    expect(INTL_TAX["Panama"].exposureNotes.govtPension).toMatch(/^Your pension is a government-service pension/);
+    // Vietnam's is a genuinely bespoke sentence (no US-Vietnam treaty) -- still pension-neutral.
+    expect(INTL_TAX["Vietnam"].exposureNotes.govtPension).toMatch(/^Your pension is normally treaty-protected/);
   });
 });
 
