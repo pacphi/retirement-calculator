@@ -155,6 +155,18 @@ export const DRS_ERF_30_PLUS = {
    (negative = beneficiary older, smaller reduction). Electing a survivor
    option permanently reduces the member's benefit by these factors; if the
    beneficiary dies first, DRS restores the single-life amount ("pop-up"). */
+/* FERS (Federal Employees Retirement System) constants. Source: docs/research/pension-systems-data.md
+   §2, sourced to OPM's FERS Computation and FERS Eligibility pages. The enhanced 1.1% multiplier
+   applies only when the member starts at age 62+ with 20+ years of service; otherwise 1.0%.
+   Minimum Retirement Age (MRA) is modeled as a fixed 57 — the value for everyone born 1970 or
+   later — because this app tracks current age, not birth year; earlier-born members have a lower
+   MRA (55 to 56y10m per the OPM table) not represented here, understating their early-retirement
+   options the same way the DRS pre-2013 ERF schedule is understated (see the DRS note above). The
+   MRA+10 reduced-immediate path is also not modeled as a separate eligibility option. */
+export const FERS_MRA = 57;
+export const FERS_STANDARD_MULTIPLIER = 0.01;
+export const FERS_ENHANCED_MULTIPLIER = 0.011;
+
 export const DRS_SURVIVOR_FACTORS = {
   minDiff: -20,
   maxDiff: 40,

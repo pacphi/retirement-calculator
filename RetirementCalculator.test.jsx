@@ -112,6 +112,9 @@ describe("RetirementCalculator UI", () => {
     const user = userEvent.setup();
     render(<RetirementCalculator />);
     await user.click(screen.getByRole("button", { name: "Pension", exact: true }));
+    // Pension is off by default (pension-location-data phase 2) -- opt in; the default
+    // pensionType is "drs" so the DRS fields render once included.
+    await user.click(screen.getByRole("button", { name: "Include", exact: true }));
     // Default election is 0% -> single-life note with the consent warning.
     expect(screen.getByText(/notarized consent/i)).toBeInTheDocument();
     // Elect 100%: the note shows the DRS factor for the default 9-year age gap.
@@ -123,6 +126,10 @@ describe("RetirementCalculator UI", () => {
   it("points from the longevity step to the pension step for the survivor election", async () => {
     const user = userEvent.setup();
     render(<RetirementCalculator />);
+    // This pointer note only renders when a pension is included (off by default since
+    // pension-location-data phase 2) -- opt in on the Pension step first.
+    await user.click(screen.getByRole("button", { name: "Pension", exact: true }));
+    await user.click(screen.getByRole("button", { name: "Include", exact: true }));
     await user.click(screen.getByRole("button", { name: "Travel", exact: true }));
     expect(screen.getByText(/supplies the death ages that trigger it/i)).toBeInTheDocument();
   });
@@ -874,6 +881,10 @@ describe("Tax & residency panel (generalized from DualTaxExposure)", () => {
   it("shows the worldwide taxation and government pension notes for an international location", async () => {
     const user = userEvent.setup();
     render(<RetirementCalculator />);
+    // The government-pension note only renders when a pension is included (off by default
+    // since pension-location-data phase 2) -- opt in on the Pension step first.
+    await user.click(screen.getByRole("button", { name: "Pension", exact: true }));
+    await user.click(screen.getByRole("button", { name: "Include", exact: true }));
     await openReport(user);
     await gotoSection(user, /taxes/i);
     expect(screen.getAllByText(/worldwide income/i).length).toBeGreaterThan(0);

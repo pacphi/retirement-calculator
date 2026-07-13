@@ -1,4 +1,7 @@
-import { DRS_ERF_30_PLUS, DRS_ERF_UNDER_30, DRS_SURVIVOR_FACTORS } from "../retirementData.js";
+import {
+  DRS_ERF_30_PLUS, DRS_ERF_UNDER_30, DRS_SURVIVOR_FACTORS,
+  FERS_MRA, FERS_STANDARD_MULTIPLIER, FERS_ENHANCED_MULTIPLIER,
+} from "../retirementData.js";
 
 export const pensionERF = (ageRaw, years, plan = 2) => {
   const age = Math.floor(ageRaw); // DRS uses integer calendar ages; floor guard + lookup consistently
@@ -53,3 +56,36 @@ export const drsEligibilityNote = (age, years, plan = 2) => {
 export const afcIsAuto = (i) => i.afc === null || i.afc === undefined || i.afc === "";
 export const resolveAfc = (i) =>
   afcIsAuto(i) ? Number(i.incomeB) || 0 : Number(i.afc) || 0;
+
+// Generic defined-benefit fallback (docs/research/pension-systems-data.md §1) — for any employer
+// pension not specifically modeled. Modeled flat in real terms across the horizon, the same
+// convention this engine already uses for every other guaranteed-income source (DRS pension,
+// Social Security): the whole simulation runs in today's dollars, so a COLA assumption at or
+// above the plan's inflation rate is equivalent to "flat real" and needs no special handling. A
+// COLA meaningfully below inflation would erode in real terms over time — modeling that drift is
+// a future enhancement, not attempted here; `genericCola` is captured for user intent/UI display
+// but the engine currently treats the benefit as flat real regardless of its value.
+export const genericPensionAnnual = (monthlyBenefit) => (Number(monthlyBenefit) || 0) * 12;
+
+// FERS (Federal Employees Retirement System) accrual. Source: docs/research/pension-systems-data.md §2.
+export const fersMultiplier = (age, years) =>
+  age >= 62 && years >= 20 ? FERS_ENHANCED_MULTIPLIER : FERS_STANDARD_MULTIPLIER;
+
+// Immediate-retirement eligibility paths (OPM: FERS Eligibility) — MRA+30, 60+20, or 62+5.
+// The MRA+10 reduced-immediate path is not modeled as a separate option (see the FERS_MRA
+// comment in retirementData.js); a member who would qualify only under MRA+10 is treated as
+// ineligible here rather than approximated with a fabricated reduction.
+export const fersEligible = (age, years) => {
+  if (age >= 62 && years >= 5) return true;
+  if (age >= 60 && years >= 20) return true;
+  if (age >= FERS_MRA && years >= 30) return true;
+  return false;
+};
+
+export const fersEligibilityNote = (age, years) =>
+  fersEligible(age, years)
+    ? ""
+    : `FERS immediate retirement in this simplified model needs age 62+ with 5+ years, 60+ with 20+ years, or ${FERS_MRA}+ with 30+ years of service (the reduced MRA+10 path isn't modeled).`;
+
+export const fersPensionAnnual = (age, years, high3Salary) =>
+  fersEligible(age, years) ? fersMultiplier(age, years) * years * (Number(high3Salary) || 0) : 0;
