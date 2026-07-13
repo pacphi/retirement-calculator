@@ -57,13 +57,19 @@ export function YearByYear({
     ["Social Security (you)", sc(mb.income.ssA), SRC.ssA], ["Social Security (spouse)", sc(mb.income.ssB), SRC.ssB],
     ["Portfolio withdrawal", sc(mb.draw), SRC.wd],
   ].filter(([, v]) => v > 0) : [];
-  // Task 9: housing label — "Rent (Location)" for renters, "Mortgage P&I" for owners.
-  const housingTenure = inputs?.housing?.tenure;
-  const retireLoc = inputs?.retireLoc ?? "";
+  // Task 9 (+ follow-up): housing label reflects the DWELLING ACTUALLY RESOLVED for
+  // this simulated year (selRow.housingTenure/housingPlace from simulate.js), not the
+  // household's static baseline config — a "live" inheritance can swap a renter into
+  // an owned property (possibly in a different place) partway through the plan, and
+  // the label needs to follow that, not the year-zero setting.
+  const housingTenure = selRow?.housingTenure ?? inputs?.housing?.tenure;
+  const housingPlace = selRow?.housingPlace ?? inputs?.retireLoc ?? "";
   const housingLabel = housingTenure === "rent"
-    ? `Rent${retireLoc ? ` (${retireLoc})` : ""}`
+    ? `Rent${housingPlace ? ` (${housingPlace})` : ""}`
     : housingTenure === "mortgage"
     ? "Mortgage P&I + Property tax"
+    : housingTenure === "own"
+    ? `Owned home${housingPlace ? ` (${housingPlace})` : ""} — carrying cost`
     : "Housing";
   const mbExp = mb ? [
     ["Living", sc(mb.expenses.living), C.slate],
