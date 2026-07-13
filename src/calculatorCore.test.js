@@ -1711,6 +1711,71 @@ describe("Tier 2 locations (Thailand, Vietnam, Malaysia, Philippines, Australia,
   });
 });
 
+describe("Tier 3/4 locations (South Africa, Colombia, New Zealand, Japan) — completes the location roadmap", () => {
+  const TIER34_NAMES = ["South Africa", "Colombia", "New Zealand", "Japan"];
+
+  it("adds all four Tier 3/4 locations to LOCATIONS with a dataAsOf year and a full cost basket", () => {
+    for (const name of TIER34_NAMES) {
+      const loc = LOCATIONS.find((l) => l.name === name);
+      expect(loc, `${name} missing from LOCATIONS`).toBeTruthy();
+      expect(loc.region).not.toBe("US");
+      expect(loc.dataAsOf).toBe(2026);
+      expect(Object.values(loc.m).every((v) => typeof v === "number" && v > 0)).toBe(true);
+    }
+  });
+
+  it("covers a sixth continent (Africa) via South Africa, completing coverage across Europe/N.America/S.America/Asia/Oceania/Africa", () => {
+    const regions = new Set(LOCATIONS.map((l) => l.region));
+    expect(regions.has("Africa")).toBe(true);
+    expect(regions.has("Europe")).toBe(true);
+    expect(regions.has("US")).toBe(true);
+    expect(regions.has("Latin America")).toBe(true);
+    expect(regions.has("Southeast Asia") || regions.has("East Asia")).toBe(true);
+    expect(regions.has("Oceania")).toBe(true);
+  });
+
+  it("adds a matching INTL_TAX entry for each Tier 3/4 location, following the treaty-aware shape", () => {
+    for (const name of TIER34_NAMES) {
+      const tax = INTL_TAX[name];
+      expect(tax, `${name} missing from INTL_TAX`).toBeTruthy();
+      expect(tax.isInternational).toBe(true);
+      expect(tax.pensionExclusion).toBe("full");
+      expect(tax.exposureNotes.worldwide).toBeTruthy();
+      expect(tax.exposureNotes.govtPension).toBeTruthy();
+      expect(tax.exposureNotes.residenceTaxed).toBeTruthy();
+      expect(tax.exposureNotes.filing).toBeTruthy();
+    }
+  });
+
+  it("surfaces New Zealand's and Japan's product-honesty flags -- neither has a practical retiree-visa pathway", () => {
+    const nz = LOCATIONS.find((l) => l.name === "New Zealand");
+    const japan = LOCATIONS.find((l) => l.name === "Japan");
+    expect(nz.note).toMatch(/PRODUCT-HONESTY FLAG/);
+    expect(nz.note).toMatch(/no direct path to permanent residency/i);
+    expect(japan.note).toMatch(/PRODUCT-HONESTY FLAG/);
+    expect(japan.note).toMatch(/no dedicated retirement visa/i);
+  });
+
+  it("flags Japan's IRA/401(k) treatment as materially different from every other location (no tax-deferred recognition)", () => {
+    expect(INTL_TAX["Japan"].exposureNotes.residenceTaxed).toMatch(/does NOT recognize US tax-deferred/);
+  });
+
+  it("Colombia models a near-zero residence rate under its Law 2381 foreign-pension exemption", () => {
+    expect(INTL_TAX["Colombia"].retireRate).toBeLessThanOrEqual(0.02);
+  });
+
+  it("inheritanceRulesForPlace routes all four Tier 3/4 locations through the non-US (foreign) branch", () => {
+    for (const name of TIER34_NAMES) {
+      const rules = inheritanceRulesForPlace(name);
+      expect(rules.foreign).toBe(true);
+      expect(rules.region).not.toBe("US");
+      expect(rules.sellNet).toBe(0.90);
+      expect(rules.rentYield).toBe(0.020);
+      expect(rules.ownRate).toBe(0.012);
+    }
+  });
+});
+
 describe("recurring life events", () => {
   const car = { id: "car", label: "Car", on: true, year: 2030, amount: 45000, everyYears: 10, untilYear: 2050 };
 
