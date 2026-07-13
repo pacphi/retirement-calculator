@@ -50,4 +50,32 @@ describe("InvestmentRecommendations", () => {
     render(<InvestmentRecommendations s={s} />);
     expect(screen.getByText(/not a fiduciary recommendation/i)).toBeInTheDocument();
   });
+
+  it("shows only the accumulation heading when still working and preview is off", () => {
+    const s = { ...makeDefaultPlan(), ageA: 50, stopA: 65, ageB: 48, stopB: 62, previewBothPhases: false };
+    render(<InvestmentRecommendations s={s} />);
+    expect(screen.getByText(/accumulation/i)).toBeInTheDocument();
+    expect(screen.queryByText(/decumulation/i)).not.toBeInTheDocument();
+  });
+
+  it("shows both phase headings when still working and preview is on", () => {
+    const s = { ...makeDefaultPlan(), ageA: 50, stopA: 65, ageB: 48, stopB: 62, previewBothPhases: true };
+    render(<InvestmentRecommendations s={s} />);
+    expect(screen.getByRole("heading", { level: 4, name: /accumulation/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 4, name: /decumulation/i })).toBeInTheDocument();
+  });
+
+  it("notes that the second phase is a preview, not the household's actual phase", () => {
+    const s = { ...makeDefaultPlan(), ageA: 50, stopA: 65, ageB: 48, stopB: 62, previewBothPhases: true };
+    render(<InvestmentRecommendations s={s} />);
+    expect(screen.getByText(/previewing both phases/i)).toBeInTheDocument();
+  });
+
+  it("does not show the preview note during a genuine retirement-transition year", () => {
+    const s = { ...makeDefaultPlan(), ageA: 66, stopA: 65, ageB: 55, stopB: 62, previewBothPhases: false };
+    render(<InvestmentRecommendations s={s} />);
+    expect(screen.getByText(/accumulation/i)).toBeInTheDocument();
+    expect(screen.getByText(/decumulation/i)).toBeInTheDocument();
+    expect(screen.queryByText(/previewing both phases/i)).not.toBeInTheDocument();
+  });
 });

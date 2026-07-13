@@ -56,6 +56,10 @@ export const DEFAULT_PLAN = {
   riskTolerance: "moderate",
   accreditedInvestor: false,
   investmentAccounts: [],
+  // Off by default: the report shows only your actual phase (derived from ages). On:
+  // show accumulation + decumulation side-by-side regardless of your actual phase, so
+  // you can preview the other phase's recommendations without changing your ages.
+  previewBothPhases: false,
 };
 
 // A fresh deep-ish clone for React state init (so state edits never mutate the constant).

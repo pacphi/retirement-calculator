@@ -7,6 +7,11 @@ const RISK_OPTIONS = [
   { label: "Aggressive", value: "aggressive" },
 ];
 
+const PREVIEW_OPTIONS = [
+  { label: "Off", value: false },
+  { label: "On", value: true },
+];
+
 const ACCOUNT_TYPE_OPTIONS = [
   { label: "401(k)", value: "401k" },
   { label: "403(b)", value: "403b" },
@@ -51,6 +56,10 @@ export function Investments({ s, set, addAccount, removeAccount, setAccount }) {
           I'm an accredited investor ($1M net worth excluding primary residence, or $200k+ income)
         </label>
       )}
+
+      <Field label="Preview both phases in the report" hint="See the accumulation and decumulation recommendations side-by-side, regardless of your actual ages. Off by default — your real ages already decide which phase the report shows.">
+        <Segmented aria-label="Preview both phases in the report" value={!!s.previewBothPhases} onChange={set("previewBothPhases")} options={PREVIEW_OPTIONS} />
+      </Field>
 
       <div style={{ fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 8 }}>Investment accounts (optional)</div>
 

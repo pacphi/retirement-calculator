@@ -24,6 +24,10 @@ describe("default plan — investment recommendation fields", () => {
     expect(plan.investmentAccounts).toEqual([]);
   });
 
+  it("defaults the both-phases preview toggle to off", () => {
+    expect(makeDefaultPlan().previewBothPhases).toBe(false);
+  });
+
   it("gives each makeDefaultPlan() call its own investmentAccounts array", () => {
     const a = makeDefaultPlan();
     const b = makeDefaultPlan();

@@ -80,7 +80,8 @@ function AccountBreakdown({ accounts, recommendation }) {
  */
 export function InvestmentRecommendations({ s }) {
   const phase = derivePhase(s);
-  const phases = phase === "both" ? ["accumulation", "decumulation"] : [phase];
+  const previewBothPhases = !!s.previewBothPhases && phase !== "both";
+  const phases = phase === "both" || previewBothPhases ? ["accumulation", "decumulation"] : [phase];
   const riskTolerance = s.riskTolerance || "moderate";
   const accreditedInvestor = !!s.accreditedInvestor;
 
@@ -98,6 +99,12 @@ export function InvestmentRecommendations({ s }) {
       {riskTolerance === "aggressive" && !accreditedInvestor && (
         <div role="note" style={{ fontSize: 11.5, color: C.mut, lineHeight: 1.5, padding: "8px 10px", background: "var(--surface-2)", borderRadius: 8, marginBottom: 14, borderLeft: `3px solid ${C.brass}` }}>
           Some aggressive-tier options require accredited-investor status — check the box on the Investments step to include them.
+        </div>
+      )}
+
+      {previewBothPhases && (
+        <div role="note" style={{ fontSize: 11.5, color: C.mut, lineHeight: 1.5, padding: "8px 10px", background: "var(--surface-2)", borderRadius: 8, marginBottom: 14, borderLeft: `3px solid ${C.brass}` }}>
+          Previewing both phases — your actual phase based on your ages is {PHASE_LABEL[phase].toLowerCase()}. Turn this off on the Investments step to see only your actual phase.
         </div>
       )}
 
