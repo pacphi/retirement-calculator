@@ -226,6 +226,7 @@ export const nystrsEarlyRetirementFactor = (ageRaw, years) => {
   if ((Number(years) || 0) >= NYSTRS_LONG_SERVICE_YEARS && age >= NYSTRS_LONG_SERVICE_UNREDUCED_AGE) return 1;
   const anchors = Object.keys(NYSTRS_EARLY_RETIREMENT_ANCHORS).map(Number).sort((a, b) => a - b);
   const minAnchor = anchors[0];
+  const maxAnchor = anchors[anchors.length - 1];
   if (age <= minAnchor) return NYSTRS_EARLY_RETIREMENT_ANCHORS[minAnchor];
   for (let i = 0; i < anchors.length - 1; i++) {
     const lo = anchors[i], hi = anchors[i + 1];
@@ -233,6 +234,14 @@ export const nystrsEarlyRetirementFactor = (ageRaw, years) => {
       const loVal = NYSTRS_EARLY_RETIREMENT_ANCHORS[lo], hiVal = NYSTRS_EARLY_RETIREMENT_ANCHORS[hi];
       return loVal + (hiVal - loVal) * (age - lo) / (hi - lo);
     }
+  }
+  // Currently unreachable (the highest sourced anchor equals NYSTRS_UNREDUCED_AGE), but guards
+  // against a future data refresh moving one constant without the other: interpolate toward the
+  // unreduced factor (1.0) at NYSTRS_UNREDUCED_AGE instead of silently returning a full
+  // unreduced pension for an age that hasn't actually reached the unreduced threshold.
+  if (age > maxAnchor && age < NYSTRS_UNREDUCED_AGE) {
+    const maxVal = NYSTRS_EARLY_RETIREMENT_ANCHORS[maxAnchor];
+    return maxVal + (1 - maxVal) * (age - maxAnchor) / (NYSTRS_UNREDUCED_AGE - maxAnchor);
   }
   return 1;
 };

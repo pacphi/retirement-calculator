@@ -19,10 +19,10 @@ export function Pension({ s, set, afcAuto, afcEff, steady }) {
       {s.pensionOn && (<>
         <Field label="Pension type" hint="Which formula applies to the spouse's pension.">
           <Segmented value={pensionType} onChange={set("pensionType")} options={[
-            {label:"WA DRS",value:"drs"}, {label:"Federal (FERS)",value:"fers"},
             {label:"CalSTRS",value:"calstrs"}, {label:"CalPERS",value:"calpers"},
             {label:"Texas TRS",value:"txtrs"}, {label:"NYSTRS",value:"nystrs"},
-            {label:"Ohio STRS",value:"ohiostrs"}, {label:"Military",value:"military"},
+            {label:"Ohio STRS",value:"ohiostrs"}, {label:"WA DRS",value:"drs"},
+            {label:"Federal (FERS)",value:"fers"}, {label:"Military",value:"military"},
             {label:"Other / generic",value:"generic"},
           ]} />
         </Field>
