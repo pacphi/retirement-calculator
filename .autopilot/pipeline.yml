@@ -1,0 +1,152 @@
+# pipeline.yml — autopilot feature pipeline manifest for retirement-calculator.
+# Lifecycle: plan → queued → (run active pipeline) → promote → run → retire.
+
+feature_id: "pension-location-data"
+goal: "Research-and-cite, then land, sourced pension-system and international-location cost-of-living data so the calculator supports more than a WA-educator persona and Western-Europe/US locations, per docs/research/2026-07-widening-appeal-proposal.md."
+spec: "docs/research/2026-07-widening-appeal-proposal.md"
+
+references:
+  prd:     "docs/prd.md"
+  plan:    "docs/research/2026-07-widening-appeal-proposal.md"
+  adr_dir: ""
+  ddd_dir: ""
+  extra:
+    - "docs/sources.md"
+    - "docs/investment-data-refresh.md"   # the curated-data refresh pattern this effort must follow
+
+trunk: main
+base:  autopilot/pension-location-data     # integration branch; ci.yml remediated to cover it
+
+autonomy: pr_ci
+fix_budget: 5
+
+# Phases that introduce new financial formulas (not just literal data constants) — highest
+# blast radius if wrong, since users make real retirement decisions on this output.
+risk_phases: [2, 3]
+
+phases:
+  - id: 0
+    goal: "Produce a thoroughly cited research brief covering every pension system to be added: generic defined-benefit fallback, FERS, CalSTRS, CalPERS, Texas TRS, NYSTRS, Ohio STRS, and military (High-3 / BRS)."
+    deliverables:
+      - "docs/research/pension-systems-data.md — one section per system: formula/accrual rule, early-retirement and survivor-benefit factors where published, COLA treatment, eligibility (years of service / MRA), and a primary-source citation (plan handbook, statute, or official plan-administrator site) per fact."
+      - "Each system's section explicitly states what is NOT publicly documented (e.g. a factor table the app cannot source) so later phases know what must fall back to the generic defined-benefit path instead of a fabricated formula."
+    definition_of_done:
+      - "prose: docs/research/pension-systems-data.md exists and contains a top-level heading for each of: generic defined-benefit, FERS, CalSTRS, CalPERS, Texas TRS, NYSTRS, Ohio STRS, military (High-3/BRS)."
+      - "grep: https:// in docs/research/pension-systems-data.md (every factual claim is source-linked, matching the retirementData.js inline-citation convention)."
+      - "grep:absent: TODO|FIXME|TBD in docs/research/pension-systems-data.md"
+      - "cmd: pnpm lint:md"
+      - "cmd: pnpm links"
+    conventions: "Match the citation style already used in src/retirementData.js's INTL_TAX comments (source name + what it verifies + caveat where the data is planning-grade, not authoritative). This phase writes docs only — no src/ changes."
+    depends_on: []
+    adrs: []
+    ddd: []
+
+  - id: 1
+    goal: "Produce a thoroughly cited research brief covering cost-of-living, tax treatment, and retiree-visa terms for every new location in the proposal, anchored to one or two major cities per country."
+    deliverables:
+      - "docs/research/location-cost-of-living-data.md — one section per country: Mexico (Mexico City + Lake Chapala/Ajijic), Panama (Panama City + Boquete), Costa Rica (San José + Atenas), Thailand (Bangkok + Chiang Mai), Vietnam (Ho Chi Minh City + Da Nang/Hoi An), Malaysia (Kuala Lumpur + Penang), Philippines (Manila + Cebu), Australia (Sydney + Brisbane), Uruguay (Montevideo), South Africa (Cape Town), Colombia (Bogotá + Medellín), New Zealand (Auckland), Japan (Tokyo + Osaka)."
+      - "Each city entry covers the same basket shape already used in LOCATIONS[].m (rent, groceries, utilities, transport, dining, entertainment, misc), plus VAT/sales-tax rate, income-tax treatment of foreign pension/IRA income, and the retiree-visa income minimum where one exists — each figure cited to a named source (Numbeo, government visa portal, or a named tax-advisory publication)."
+    definition_of_done:
+      - "prose: docs/research/location-cost-of-living-data.md exists and contains a top-level heading for each of the 13 countries listed above, each with its named major cities."
+      - "grep: https:// in docs/research/location-cost-of-living-data.md"
+      - "grep:absent: TODO|FIXME|TBD in docs/research/location-cost-of-living-data.md"
+      - "cmd: pnpm lint:md"
+      - "cmd: pnpm links"
+    conventions: "Match src/retirementData.js's LOCATIONS basket shape exactly so phases 4-6 can transcribe directly. Flag any figure that is a single-source estimate (vs. cross-checked) the same way the existing Portugal/Austria notes already do."
+    depends_on: []
+    adrs: []
+    ddd: []
+
+  - id: 2
+    goal: "Land the generic defined-benefit pension path and the FERS formula as sourced, tested code — the two highest-audience, best-documented pension systems from phase 0's research."
+    deliverables:
+      - "A generic defined-benefit pension input (user-entered monthly benefit + COLA%) wired through src/finance/pension.js and the Pension step UI, replacing WA DRS as the shipped default per the proposal's easy-tier item."
+      - "A FERS pension formula (High-3 average salary × years of service × 1.0%/1.1% multiplier, MRA-gated) added alongside the existing WA DRS calculation, sourced to docs/research/pension-systems-data.md."
+      - "Unit tests in src/calculatorCore.test.js covering both the generic path and FERS at MRA boundary conditions."
+    definition_of_done:
+      - "cmd: pnpm test"
+      - "cmd: pnpm typecheck"
+      - "cmd: pnpm lint"
+      - "grep: FERS in src/retirementData.js"
+      - "prose: the pension step defaults to no pension selected, per proposal section 2.1, with WA DRS/FERS/generic as explicit opt-in choices."
+    conventions: "Follow src/finance/pension.js's existing WA-DRS-shaped module boundaries; keep the calculation pure and unit-tested per CLAUDE.md's calculation-engine rules (one federal tax engine, deterministic tests, no live data)."
+    depends_on: [0]
+    adrs: []
+    ddd: []
+
+  - id: 3
+    goal: "Land the remaining pension systems from phase 0's research — state teacher systems and military — each with its own sourced factor table, or an explicit fallback to the generic path where phase 0 found no public factor table."
+    deliverables:
+      - "CalSTRS, CalPERS, Texas TRS, NYSTRS, and Ohio STRS pension formulas in src/finance/pension.js / src/retirementData.js, each cited to its phase-0 source."
+      - "Military (High-3 / BRS) pension formula, cited to its phase-0 source."
+      - "For any system phase 0 flagged as under-documented, the pension-type selector routes to the generic defined-benefit path instead of a guessed formula — this must be explicit in code, not silent."
+      - "Unit tests per new system in src/calculatorCore.test.js."
+    definition_of_done:
+      - "cmd: pnpm test"
+      - "cmd: pnpm typecheck"
+      - "cmd: pnpm lint"
+      - "grep: CalSTRS in src/retirementData.js"
+      - "grep: Military in src/retirementData.js"
+      - "prose: every pension system added in this phase carries an inline source citation comment in retirementData.js, matching the existing WA DRS survivor-factor comment convention."
+    conventions: "Same module boundaries as phase 2. Where phase 0 could not source a factor table, add a code comment explaining the fallback decision — this is a correctness-sensitive phase (real users making real decisions), so no fabricated formulas."
+    depends_on: [2]
+    adrs: []
+    ddd: []
+
+  - id: 4
+    goal: "Land Tier 1 locations (proposal's easiest, highest-demand additions) as sourced LOCATIONS/INTL_TAX entries with major-city cost baskets."
+    deliverables:
+      - "Mexico, Panama, and Costa Rica added to src/retirementData.js's LOCATIONS array, using the major-city data from docs/research/location-cost-of-living-data.md."
+      - "Corresponding INTL_TAX entries for each, following the existing treaty-aware shape (pensionExclusion, taxesTradWithdrawal, retireRate, exposureNotes)."
+      - "dataAsOf year stamped on each new LOCATIONS entry per the proposal's §4 versioning recommendation."
+    definition_of_done:
+      - "cmd: pnpm test"
+      - "cmd: pnpm typecheck"
+      - "cmd: pnpm lint"
+      - "grep: Mexico in src/retirementData.js"
+      - "grep: Panama in src/retirementData.js"
+      - "grep: Costa Rica in src/retirementData.js"
+      - "prose: inheritanceRulesForPlace's non-US branch correctly handles the three new entries (region ≠ \"US\")."
+    conventions: "Mirror the existing LOCATIONS entry shape and INTL_TAX comment style exactly (see Bahamas/Portugal entries as the closest precedent for non-worldwide-taxation-heavy treatment)."
+    depends_on: [1]
+    adrs: []
+    ddd: []
+
+  - id: 5
+    goal: "Land Tier 2 locations (Southeast Asia core + Australia + Uruguay) as sourced LOCATIONS/INTL_TAX entries."
+    deliverables:
+      - "Thailand, Vietnam, Malaysia, Philippines, Australia, and Uruguay added to LOCATIONS with major-city cost baskets and INTL_TAX entries, sourced from docs/research/location-cost-of-living-data.md."
+    definition_of_done:
+      - "cmd: pnpm test"
+      - "cmd: pnpm typecheck"
+      - "cmd: pnpm lint"
+      - "grep: Thailand in src/retirementData.js"
+      - "grep: Vietnam in src/retirementData.js"
+      - "grep: Malaysia in src/retirementData.js"
+      - "grep: Philippines in src/retirementData.js"
+      - "grep: Australia in src/retirementData.js"
+      - "grep: Uruguay in src/retirementData.js"
+    conventions: "Same as phase 4. Flag remittance-based foreign-income tax rules (Thailand, Vietnam) explicitly as planning-grade estimates needing professional verification, matching the existing Austria/Netherlands caveat pattern."
+    depends_on: [4]
+    adrs: []
+    ddd: []
+
+  - id: 6
+    goal: "Land Tier 3/4 locations (South Africa, Colombia, New Zealand, Japan) as sourced LOCATIONS/INTL_TAX entries, completing the proposal's location roadmap."
+    deliverables:
+      - "South Africa (Cape Town), Colombia (Medellín/Bogotá), New Zealand (Auckland), and Japan (Tokyo/Osaka) added to LOCATIONS with major-city cost baskets and INTL_TAX entries."
+      - "docs/location-data-refresh.md written, mirroring docs/investment-data-refresh.md, documenting the annual manual refresh cadence for all LOCATIONS/INTL_TAX data added across phases 4-6."
+    definition_of_done:
+      - "cmd: pnpm test"
+      - "cmd: pnpm typecheck"
+      - "cmd: pnpm lint"
+      - "grep: South Africa in src/retirementData.js"
+      - "grep: Colombia in src/retirementData.js"
+      - "grep: New Zealand in src/retirementData.js"
+      - "grep: Japan in src/retirementData.js"
+      - "prose: docs/location-data-refresh.md exists and documents the same curated/cited/no-live-network-calls refresh pattern as docs/investment-data-refresh.md."
+      - "cmd: pnpm lint:md"
+    conventions: "Same as phase 4/5. Japan has the weakest visa story per the proposal — its exposureNotes must say so plainly rather than implying a retiree-visa pathway that doesn't exist."
+    depends_on: [5]
+    adrs: []
+    ddd: []
