@@ -1,5 +1,5 @@
 import { C } from "../theme.js";
-import { SOURCES, US_STATE_TAX, INTL_TAX, LOCATIONS, inheritanceRulesForPlace } from "../../retirementData.js";
+import { SOURCES, US_STATE_TAX, INTL_TAX, LOCATIONS, inheritanceRulesForPlace, DEFAULT_PENSION_TYPE } from "../../retirementData.js";
 import { residenceTaxForYear } from "../../finance/residenceTax.js";
 
 /**
@@ -143,7 +143,7 @@ function buildExposureCards(profile, s) {
     // notes.govtPension is written specifically about the WA DRS pension (it names it by name),
     // so it only applies when that's actually the pension in play. FERS/generic pensions aren't
     // modeled by this note yet -- showing it for them would misdescribe the pension.
-    s?.pensionOn && (s?.pensionType || "drs") === "drs"
+    s?.pensionOn && (s?.pensionType || DEFAULT_PENSION_TYPE) === "drs"
       ? { key: "govtPension", label: "Government pension — source rule", text: notes.govtPension, href: SOURCES.usModelTreaty, linkLabel: "US model treaty" }
       : null,
     { key: "residenceTaxed", label: "Residence-country tax on IRA/401(k)", text: notes.residenceTaxed, href: SOURCES.irsFtc, linkLabel: "IRS Foreign Tax Credit" },

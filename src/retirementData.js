@@ -1,5 +1,9 @@
 export const TAX_YEAR = 2026;
 
+// The pensionType fallback shared by every call site that reads i.pensionType/s.pensionType --
+// keeps the "absent pensionType behaves like legacy WA DRS" default in exactly one place.
+export const DEFAULT_PENSION_TYPE = "drs";
+
 // Travel by calendar year: full ("go-go") amount from startYear, a reduced
 // ("slow-go") share from slowYear, ending after endYear.
 export const DEFAULT_TRAVEL = { on: true, amount: 15000, startYear: TAX_YEAR + 8, slowYear: TAX_YEAR + 24, endYear: TAX_YEAR + 28, taper: true, slowPct: 50 };
@@ -166,6 +170,103 @@ export const DRS_ERF_30_PLUS = {
 export const FERS_MRA = 57;
 export const FERS_STANDARD_MULTIPLIER = 0.01;
 export const FERS_ENHANCED_MULTIPLIER = 0.011;
+
+/* CalSTRS (California State Teachers' Retirement System). Source: docs/research/pension-systems-data.md
+   §3, sourced to CalSTRS's own "The Age Factor" PDF and 2025 Member Handbook (browser-verified).
+   Two benefit structures by hire date: "2at60" (hired on/before Dec 31, 2012) and "2at62" (PEPRA,
+   hired on/after Jan 1, 2013). Age factor = % of final compensation credited per year of service
+   credit, keyed by integer retirement age; ages below each table's floor return 0 (not eligible).
+   "2at60" members with 30+ years of service credit earn an additional 0.2% career factor, capped at
+   2.4% — modeled by CALSTRS_CAREER_FACTOR_BONUS / CALSTRS_CAP in calstrsPensionAnnual. "2at62" has no
+   career-factor enhancement (confirmed verbatim on the source PDF). A closed-form survivor-factor
+   table is NOT published for CalSTRS (computed per-election, actuarially) — survivor election is not
+   modeled for this system, same as CalPERS below; see the pension.js calstrsPensionAnnual comment. */
+export const CALSTRS_AGE_FACTOR_2AT60 = {
+  50: .0110, 51: .0116, 52: .0122, 53: .0128, 54: .0134, 55: .0140, 56: .0152, 57: .0164,
+  58: .0176, 59: .0188, 60: .0200, 61: .02133, 62: .02267, 63: .0240,
+};
+export const CALSTRS_AGE_FACTOR_2AT62 = {
+  55: .0116, 56: .0128, 57: .0140, 58: .0152, 59: .0164, 60: .0176, 61: .0188, 62: .0200,
+  63: .02133, 64: .02267, 65: .0240,
+};
+export const CALSTRS_CAREER_FACTOR_BONUS = 0.002;
+export const CALSTRS_CAP = 0.024;
+
+/* CalPERS (California Public Employees' Retirement System). Source: docs/research/pension-systems-data.md
+   §4. CalPERS has NO single canonical formula — the benefit factor depends on the employer's
+   contracted formula, member classification, and hire-date tier. These are two REPRESENTATIVE
+   tiers, not "the" CalPERS formula: "classic2at55" (Local Miscellaneous 2%@55, min age 50) and
+   "pepra2at62" (State Miscellaneous & Industrial 2%@62, min age 52). Like CalSTRS, the survivor-option
+   reduction is actuarial by member/beneficiary age with no published flat-factor table — not modeled. */
+export const CALPERS_AGE_FACTOR_CLASSIC_2AT55 = {
+  50: .01426, 51: .01522, 52: .01628, 53: .01742, 54: .01866, 55: .0200, 56: .02052, 57: .02104,
+  58: .02156, 59: .02210, 60: .02262, 61: .02314, 62: .02366, 63: .02418,
+};
+export const CALPERS_AGE_FACTOR_PEPRA_2AT62 = {
+  52: .0100, 53: .0110, 54: .0120, 55: .0130, 56: .0140, 57: .0150, 58: .0160, 59: .0170,
+  60: .0180, 61: .0190, 62: .0200, 63: .0210, 64: .0220, 65: .0230, 66: .0240, 67: .0250,
+};
+
+// Texas TRS. Source: docs/research/pension-systems-data.md §5 (trs.texas.gov, current post-Sept-2014
+// tier). Formula: multiplier x years of service credit x average of 5 highest annual salaries.
+// Unreduced at age 65+5yrs, or age 62+ meeting Rule of 80 (age+years >= 80) with 5+ years. Early
+// (reduced) retirement: age 55+5yrs when Rule of 80 isn't met, reduced 5%/year below the tier's
+// normal-retirement age (62); or 30+ years at any age, reduced 2%/year below age 50.
+export const TX_TRS_MULTIPLIER = 0.023;
+export const TX_TRS_NORMAL_AGE = 62;
+export const TX_TRS_RULE_OF_80 = 80;
+export const TX_TRS_EARLY_REDUCTION_PER_YEAR = 0.05;
+export const TX_TRS_MIN_EARLY_AGE = 55;
+export const TX_TRS_MIN_YEARS = 5;
+export const TX_TRS_LONG_SERVICE_YEARS = 30;
+export const TX_TRS_LONG_SERVICE_REDUCTION_PER_YEAR = 0.02;
+export const TX_TRS_LONG_SERVICE_FLOOR_AGE = 50;
+
+/* NYSTRS Tier 6 (members first joining on/after April 1, 2012). Source:
+   docs/research/pension-systems-data.md §6, sourced to NYSTRS's own Tier 6 overview PDF
+   (browser-verified) plus the site index for FAS/COLA facts (not independently browser-verified,
+   since nystrs.org's HTML pages are Cloudflare-blocked to all automation).
+   Pension factor: <20 years -> 1.67%/yr; exactly 20 years -> 1.75% flat (all years); >20 years ->
+   35% base + 2%/yr beyond 20. Unreduced at age 63 (or 58 with 30+ years). NYSTRS_EARLY_RETIREMENT_ANCHORS
+   are the only two age points the phase-0 research sourced from the Tier 6 PDF (the full age-by-age
+   reduction table exists in that PDF but was not extracted row-by-row) — nystrsPensionAnnual linearly
+   interpolates between these sourced anchors and the unreduced age (63 -> 100%) rather than
+   fabricating intermediate values; a future refresh should pull the complete published table. */
+export const NYSTRS_TIER6 = { under20: 0.0167, at20: 0.0175, over20Base: 0.35, over20PerYear: 0.02 };
+export const NYSTRS_MIN_AGE = 55;
+export const NYSTRS_MIN_YEARS = 5;
+export const NYSTRS_UNREDUCED_AGE = 63;
+export const NYSTRS_LONG_SERVICE_UNREDUCED_AGE = 58;
+export const NYSTRS_LONG_SERVICE_YEARS = 30;
+export const NYSTRS_EARLY_RETIREMENT_ANCHORS = { 55: 0.73, 61: 0.94, 63: 1.0 };
+
+/* Ohio STRS. Source: docs/research/pension-systems-data.md §7 (strsoh.org site index / plan
+   summary PDF; strsoh.org itself is Cloudflare-blocked to all automation, so not independently
+   browser-verified). Formula: 2.2% x years x Final Average Salary (5 highest years). Unreduced
+   eligibility: age 65+5yrs, OR any age with 32+ years (extended through May 1, 2035 per the 2026
+   board action, then stepping to 33/34 years). Reduced retirement (age 60+5yrs, or 27+ years any
+   age) is ACTUARIALLY reduced via the plan's own estimator — STRS Ohio does not publish a flat
+   per-year percentage, so per this phase's convention (no fabricated formulas for under-documented
+   systems) ohioStrsPensionAnnual only computes the unreduced benefit; a member eligible only for
+   the reduced path gets 0 with a note directing them to the generic defined-benefit fallback. */
+export const OHIO_STRS_MULTIPLIER = 0.022;
+export const OHIO_STRS_UNREDUCED_AGE = 65;
+export const OHIO_STRS_UNREDUCED_MIN_YEARS = 5;
+export const OHIO_STRS_UNREDUCED_LONG_SERVICE_YEARS = 32;
+
+/* Military retirement — Legacy High-3 and Blended Retirement System (BRS). Source:
+   docs/research/pension-systems-data.md §8, sourced to the Army's official benefits portal
+   (myarmybenefits.us.army.mil) since militarypay.defense.gov/dfas.mil block all automated access
+   (browser-verified). Hard 20-year cliff under EITHER system — unlike every other pension modeled
+   here, there is NO partial/graded vesting below 20 years of service; a sub-20-year separation gets
+   $0 from the pension system (BRS members still keep their vested TSP balance, but that's an
+   investment account, not this pension formula). High-3: 50% of High-3 average base pay at 20 years,
+   +2.5%/additional year. BRS: flat 2.0%/year x High-3 average base pay (a reduced multiplier vs.
+   Legacy, reflecting the automatic 1% + up to 4%-match TSP contribution BRS also provides). */
+export const MILITARY_MIN_YEARS = 20;
+export const MILITARY_HIGH3_BASE = 0.50;
+export const MILITARY_HIGH3_PER_YEAR = 0.025;
+export const MILITARY_BRS_MULTIPLIER = 0.02;
 
 export const DRS_SURVIVOR_FACTORS = {
   minDiff: -20,

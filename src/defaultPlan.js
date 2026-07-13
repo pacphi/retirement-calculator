@@ -13,8 +13,12 @@ export const DEFAULT_PLAN = {
   // pensionOn defaults to false — most US households have no employer defined-benefit pension
   // (BLS: only ~16% of private-sector workers do; see docs/research/pension-systems-data.md §1)
   // so a WA-DRS-shaped pension pre-filled and requiring an opt-out misrepresented who this tool
-  // is for. pensionType selects the formula when a user opts in: "drs" | "fers" | "generic".
+  // is for. pensionType selects the formula when a user opts in: "drs" | "fers" | "calstrs" |
+  // "calpers" | "txtrs" | "nystrs" | "ohiostrs" | "military" | "generic". calstrsTier/calpersTier
+  // are SEPARATE fields (not shared) since their tier values don't overlap; militaryPlan selects
+  // Legacy High-3 vs. BRS.
   pensionOn:false, pensionType:"drs", system:"TRS", plan:3, pYears:22, afc:170000,
+  calstrsTier:"2at60", calpersTier:"classic2at55", militaryPlan:"highThree",
   genericPensionMonthly:0, genericCola:2,
   realReturn:0.05, swr:0.04, tradFrac:0.9, inflation:0.025,
   ssMode:"trustees", ssHaircut:81, ssCutYear:2034,
