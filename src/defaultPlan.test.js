@@ -15,3 +15,19 @@ describe("default plan — golden headline", () => {
     expect(steady.startAgeA).toBe(74);
   });
 });
+
+describe("default plan — investment recommendation fields", () => {
+  it("defaults to moderate risk, no accreditation, and no accounts", () => {
+    const plan = makeDefaultPlan();
+    expect(plan.riskTolerance).toBe("moderate");
+    expect(plan.accreditedInvestor).toBe(false);
+    expect(plan.investmentAccounts).toEqual([]);
+  });
+
+  it("gives each makeDefaultPlan() call its own investmentAccounts array", () => {
+    const a = makeDefaultPlan();
+    const b = makeDefaultPlan();
+    a.investmentAccounts.push({ id: "x", name: "Test", type: "taxable", balance: 100 });
+    expect(b.investmentAccounts).toEqual([]);
+  });
+});

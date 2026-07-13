@@ -49,6 +49,13 @@ export const DEFAULT_PLAN = {
   // Wave 3 Task 6: spending strategy (opt-in; "fixed" default keeps all results unchanged).
   spendingStrategy: "fixed",
   guardrails: { ...GUARDRAIL_DEFAULTS },
+  // Investment recommendations feature: risk tolerance drives which curated
+  // funds are shown; accreditedInvestor is a self-attestation that unlocks
+  // accreditedOnly funds; investmentAccounts is the editable account list
+  // used for the per-account allocation breakdown.
+  riskTolerance: "moderate",
+  accreditedInvestor: false,
+  investmentAccounts: [],
 };
 
 // A fresh deep-ish clone for React state init (so state edits never mutate the constant).
@@ -66,4 +73,5 @@ export const makeDefaultPlan = () => ({
   withdrawalOrder: [...DEFAULT_PLAN.withdrawalOrder],
   returnModel: { ...DEFAULT_PLAN.returnModel },
   guardrails: { ...DEFAULT_PLAN.guardrails },
+  investmentAccounts: DEFAULT_PLAN.investmentAccounts.map((a) => ({ ...a })),
 });
