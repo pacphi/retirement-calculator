@@ -263,8 +263,8 @@ export default function RetirementCalculator() {
                 This is about your money, your home, and what comes next.
               </p>
               <p style={{ margin:0, maxWidth:"62ch", fontSize:14, lineHeight:1.6, color:"var(--header-mut)" }}>
-                Every income stream mapped year by year — salaries, two Social Security checks, the spouse's Washington
-                pension, two inherited homes — against the cost of living from Sofia to the Bahamas, with the
+                Every income stream mapped year by year — salaries, two Social Security checks, the spouse's pension,
+                two inherited homes — against the cost of living from Sofia to Chiang Mai, with the
                 pre-Medicare healthcare gap and cross-border inheritance taxes built in.
               </p>
             </>}
