@@ -1659,6 +1659,58 @@ describe("Tier 1 locations (Mexico, Panama, Costa Rica)", () => {
   });
 });
 
+describe("Tier 2 locations (Thailand, Vietnam, Malaysia, Philippines, Australia, Uruguay)", () => {
+  const TIER2_NAMES = ["Thailand", "Vietnam", "Malaysia", "Philippines", "Australia", "Uruguay"];
+
+  it("adds all six Tier 2 locations to LOCATIONS with a dataAsOf year and a full cost basket", () => {
+    for (const name of TIER2_NAMES) {
+      const loc = LOCATIONS.find((l) => l.name === name);
+      expect(loc, `${name} missing from LOCATIONS`).toBeTruthy();
+      expect(loc.region).not.toBe("US");
+      expect(loc.dataAsOf).toBe(2026);
+      expect(Object.values(loc.m).every((v) => typeof v === "number" && v > 0)).toBe(true);
+    }
+  });
+
+  it("adds a matching INTL_TAX entry for each Tier 2 location, following the treaty-aware shape", () => {
+    for (const name of TIER2_NAMES) {
+      const tax = INTL_TAX[name];
+      expect(tax, `${name} missing from INTL_TAX`).toBeTruthy();
+      expect(tax.isInternational).toBe(true);
+      expect(tax.pensionExclusion).toBe("full");
+      expect(tax.exposureNotes.worldwide).toBeTruthy();
+      expect(tax.exposureNotes.govtPension).toBeTruthy();
+      expect(tax.exposureNotes.residenceTaxed).toBeTruthy();
+      expect(tax.exposureNotes.filing).toBeTruthy();
+    }
+  });
+
+  it("does not apply one default addlTaxRate -- the range spans territorial (0) to Australia's worldwide 0.10", () => {
+    expect(LOCATIONS.find((l) => l.name === "Philippines").addlTaxRate).toBe(0);
+    expect(LOCATIONS.find((l) => l.name === "Malaysia").addlTaxRate).toBeCloseTo(0.005, 6);
+    expect(LOCATIONS.find((l) => l.name === "Australia").addlTaxRate).toBe(0.10);
+    expect(LOCATIONS.find((l) => l.name === "Vietnam").addlTaxRate).toBeGreaterThan(
+      LOCATIONS.find((l) => l.name === "Thailand").addlTaxRate
+    ); // Vietnam (no US treaty) modeled with materially higher tax uncertainty than Thailand
+  });
+
+  it("surfaces Australia's no-viable-retiree-visa product-honesty flag in its note", () => {
+    const australia = LOCATIONS.find((l) => l.name === "Australia");
+    expect(australia.note).toMatch(/no general retirement visa/i);
+  });
+
+  it("inheritanceRulesForPlace routes all six Tier 2 locations through the non-US (foreign) branch", () => {
+    for (const name of TIER2_NAMES) {
+      const rules = inheritanceRulesForPlace(name);
+      expect(rules.foreign).toBe(true);
+      expect(rules.region).not.toBe("US");
+      expect(rules.sellNet).toBe(0.90);
+      expect(rules.rentYield).toBe(0.020);
+      expect(rules.ownRate).toBe(0.012);
+    }
+  });
+});
+
 describe("recurring life events", () => {
   const car = { id: "car", label: "Car", on: true, year: 2030, amount: 45000, everyYears: 10, untilYear: 2050 };
 

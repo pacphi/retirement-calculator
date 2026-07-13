@@ -1,4 +1,5 @@
 import { C } from "../theme.js";
+import { DEFAULT_PENSION_TYPE } from "../../retirementData.js";
 import { Field, NumberInput, Segmented, Section } from "../atoms/index.jsx";
 import { usd0 } from "../format.js";
 
@@ -51,10 +52,16 @@ export function TravelLongevity({ s, set }) {
                 </span>
               );
             })()}
-            {s.pensionOn && (
+            {s.pensionOn && (s.pensionType || DEFAULT_PENSION_TYPE) === "drs" && (
               <span role="note" style={{ display:"block", fontSize:11.5, color:C.slate, marginTop:6, lineHeight:1.45 }}>
                 The pension&apos;s survivor election (what the surviving spouse keeps) is set in{" "}
                 <b style={{ color:C.ink }}>Step five (Pension)</b> — this only supplies the death ages that trigger it.
+              </span>
+            )}
+            {s.pensionOn && (s.pensionType || DEFAULT_PENSION_TYPE) !== "drs" && (
+              <span role="note" style={{ display:"block", fontSize:11.5, color:C.slate, marginTop:6, lineHeight:1.45 }}>
+                Survivor election isn&apos;t modeled for this pension type — the pension keeps flowing in full to the
+                surviving spouse (see the note on Step five for details).
               </span>
             )}
           </div>
