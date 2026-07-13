@@ -23,11 +23,11 @@ export const INVESTMENT_FUNDS = [
   {
     id: "voo", name: "Vanguard S&P 500 ETF", ticker: "VOO", provider: "Vanguard", vehicle: "ETF",
     category: "US Total Market Index", assetClass: "equity",
-    annualizedReturn: 0.137, returnBasis: "5-yr annualized, 2026 research pass (Bankrate/Quartz)",
+    annualizedReturn: 0.139, returnBasis: "5-yr annualized (13.92% CAGR), 2026 research pass (InvestSnips)",
     expenseRatio: 0.0003, feeNote: null, minInvestment: null,
     riskTiers: ["conservative", "moderate", "aggressive"], phases: ["accumulation", "decumulation"],
     accreditedOnly: false,
-    citation: "https://www.bankrate.com/investing/best-index-funds/",
+    citation: "https://investsnips.com/voo-performance/",
     signupUrl: "https://investor.vanguard.com/investment-products/etfs/profile/voo",
   },
   {
@@ -43,11 +43,11 @@ export const INVESTMENT_FUNDS = [
   {
     id: "swppx", name: "Schwab S&P 500 Index Fund", ticker: "SWPPX", provider: "Charles Schwab", vehicle: "Mutual Fund",
     category: "US Total Market Index", assetClass: "equity",
-    annualizedReturn: 0.137, returnBasis: "5-yr annualized, 2026 research pass (Bankrate/Quartz)",
+    annualizedReturn: 0.134, returnBasis: "5-yr annualized (13.4%, grade B), 2026 research pass (AAII)",
     expenseRatio: 0.0002, feeNote: null, minInvestment: null,
     riskTiers: ["conservative", "moderate", "aggressive"], phases: ["accumulation", "decumulation"],
     accreditedOnly: false,
-    citation: "https://www.bankrate.com/investing/best-index-funds/",
+    citation: "https://www.aaii.com/fund/ticker/SWPPX",
     signupUrl: "https://www.schwab.com/ira",
   },
   {
@@ -73,11 +73,11 @@ export const INVESTMENT_FUNDS = [
   {
     id: "qqq", name: "Invesco QQQ (Nasdaq-100)", ticker: "QQQ", provider: "Invesco", vehicle: "ETF",
     category: "Growth/Tech", assetClass: "equity",
-    annualizedReturn: 0.216, returnBasis: "10-yr annualized, 2026 research pass (stockanalysis.com)",
+    annualizedReturn: 0.219, returnBasis: "trailing 10-yr annualized total return of 21.9%, 2026 research pass (The Motley Fool)",
     expenseRatio: 0.0018, feeNote: null, minInvestment: null,
     riskTiers: ["aggressive"], phases: ["accumulation"],
     accreditedOnly: false,
-    citation: "https://stockanalysis.com/etf/qqq/",
+    citation: "https://www.fool.com/investing/2026/06/05/where-will-qqq-be-in-10-years/",
     signupUrl: "https://www.invesco.com/qqq-etf/en/home.html",
   },
   {
@@ -99,7 +99,7 @@ export const INVESTMENT_FUNDS = [
     minInvestment: 25000,
     riskTiers: ["aggressive"], phases: ["accumulation"],
     accreditedOnly: true,
-    citation: "https://www.blackstone.com/our-businesses/private-wealth-solutions/",
-    signupUrl: "https://www.blackstone.com/our-businesses/private-wealth-solutions/",
+    citation: "https://www.sec.gov/Archives/edgar/data/1930054/000119312526106084/d71061d10k1.pdf",
+    signupUrl: "https://www.blackstone.com/pws/",
   },
 ];
