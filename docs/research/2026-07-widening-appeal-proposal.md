@@ -33,7 +33,7 @@ This proposal maps out what a broader, still-planning-grade, still-source-cited 
 **Recommended directions** (pick one, keep it short — this app's voice is calm and factual, not marketing-speak):
 
 | Option | Text | Why |
-|---|---|---|
+| --- | --- | --- |
 | A — scope-first | "This is about your money, your home, and what comes next — wherever you've worked, and wherever you're headed." | Directly answers "does this apply to me" without listing personas |
 | B — plain | Keep current tagline; add a one-line eyebrow above the wizard's first step: "Works with Social Security, any employer pension or none, and 401(k)/IRA savings — in the US or abroad." | Cheapest change; puts the scope claim where intent is highest (step 1), not competing with the hero |
 | C — no change | Leave as-is; rely on the wizard's first question ("Do you have a pension?") to do the work | Zero-cost; relies on discoverability |
@@ -83,7 +83,7 @@ The current `LOCATIONS` array has zero entries in Asia, Oceania, Africa, or main
 ### 3.2 Proposed new `LOCATIONS` entries (by priority)
 
 | Tier | Location | Region | Why this one |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 1 | Mexico (Lake Chapala / Mérida corridor) | Latin America | #1 existing US retiree population abroad; huge search demand |
 | 1 | Panama (Panama City + Boquete/Coronado) | Latin America | #2 IL ranking; simplest visa (Pensionado, $1,000/mo) |
 | 1 | Costa Rica | Latin America | #3 IL ranking; Pura Vida brand recognition |
@@ -141,19 +141,19 @@ Ranked by how directly they serve "wider audience," not by novelty:
 
 **Medium (new data + light new logic):**
 
-6. Generic defined-benefit pension path (user-entered monthly benefit + COLA%) (§2.2)
-7. Add Thailand, Vietnam, Malaysia to `LOCATIONS` + `INTL_TAX`, sourced carefully (§3.2 Tier 2)
-8. Visa-income-threshold callout chip (§5)
-9. `docs/location-data-refresh.md` pipeline doc, mirroring the investment-data-refresh pattern (§4)
+1. Generic defined-benefit pension path (user-entered monthly benefit + COLA%) (§2.2)
+2. Add Thailand, Vietnam, Malaysia to `LOCATIONS` + `INTL_TAX`, sourced carefully (§3.2 Tier 2)
+3. Visa-income-threshold callout chip (§5)
+4. `docs/location-data-refresh.md` pipeline doc, mirroring the investment-data-refresh pattern (§4)
 
 **Complex (new formula-backed logic, requires sourcing a new factor table per system):**
 
-10. FERS pension formula + MRA rules as a second formula-backed pension system (§2.2)
-11. State teacher systems (CalSTRS, Texas TRS, NYSTRS, Ohio STRS) each with their own early-retirement/survivor factor tables (§2.2)
-12. Military pension (High-3 / BRS) formula (§2.2)
-13. Philippines, Australia, Uruguay, South Africa, Colombia, New Zealand `LOCATIONS` + `INTL_TAX` (§3.2 Tier 3–4)
-14. Multi-currency display toggle (§5)
-15. Japan `LOCATIONS` entry (§3.2 Tier 5) — deliberately last; weakest visa story, highest tax-modeling ambiguity
+1. FERS pension formula + MRA rules as a second formula-backed pension system (§2.2)
+2. State teacher systems (CalSTRS, Texas TRS, NYSTRS, Ohio STRS) each with their own early-retirement/survivor factor tables (§2.2)
+3. Military pension (High-3 / BRS) formula (§2.2)
+4. Philippines, Australia, Uruguay, South Africa, Colombia, New Zealand `LOCATIONS` + `INTL_TAX` (§3.2 Tier 3–4)
+5. Multi-currency display toggle (§5)
+6. Japan `LOCATIONS` entry (§3.2 Tier 5) — deliberately last; weakest visa story, highest tax-modeling ambiguity
 
 ---
 
