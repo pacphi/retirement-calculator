@@ -56,6 +56,7 @@ export function buildInheritanceInputs(s) {
       // Fields used only when type === "live" (tenure override):
       homeValue: value,
       ownRate: m.ownRate,
+      place: p.place,
     });
   }
   return out;

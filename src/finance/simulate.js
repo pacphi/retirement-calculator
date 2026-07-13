@@ -247,6 +247,7 @@ export function simulate(i, ssOpt) {
           homeValue: p.homeValue || 0,
           insuranceAnnual: i.housing?.insuranceAnnual || 0,
           maintenancePct: p.ownRate || (i.housing?.maintenancePct || 0),
+          place: p.place,
         };
       }
       if (p.type === "sell" && cal === p.year) sellLump += p.sell;
@@ -508,6 +509,15 @@ export function simulate(i, ssOpt) {
     const mortgagePaidOff = effectiveHousing?.tenure === "mortgage"
       && housingRentOrPI === 0
       && prevHousingRentOrPI != null && prevHousingRentOrPI > 0;
+    // Task 9 follow-up: the dwelling can be a rented apartment, an owned/mortgaged
+    // home, or (from an active "live" inheritance) an inherited owned property in a
+    // DIFFERENT place than the household's chosen retirement location — expose the
+    // tenure actually resolved for this year, plus the place it's tied to, so the
+    // chart labels the housing cost correctly instead of assuming a fixed config.
+    const housingTenure = effectiveHousing?.tenure ?? "rent";
+    const housingPlace = inheritedOwnOverride
+      ? inheritedOwnOverride.place
+      : (cal < (Number(i.relocationYear) || 0) ? (i.workLoc || null) : (i.retireLoc || null));
     rows.push({
       aA, aB, cal, salA, salB, rent, pens: pensEff, ssA: ssAyEff, ssB: ssByEff, survivor: isSurvivor,
       wd: Math.round(wdTotal), wdSpend: Math.round(wd), reinvest: Math.round(reinvest), bal: Math.round(bal), need: Math.round(need),
@@ -525,6 +535,8 @@ export function simulate(i, ssOpt) {
       housingRentOrPI: Math.round(housingRentOrPI),
       housingPropertyTax: Math.round(housingBreakdown.propertyTax),
       mortgagePaidOff,
+      housingTenure,
+      housingPlace,
       // Task 6: expose the carried multiplier on the row for MC realized-spending capture.
       spendMult,
     });
