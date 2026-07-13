@@ -9,6 +9,7 @@ import { SpendingStrategy } from "../components/steps/SpendingStrategy.jsx";
 import { Milestones } from "../components/steps/Milestones.jsx";
 import { TravelLongevity } from "../components/steps/TravelLongevity.jsx";
 import { Advanced } from "../components/steps/Advanced.jsx";
+import { Investments } from "../components/steps/Investments.jsx";
 
 /**
  * buildSteps(ctx) — the single source of truth for the input wizard. Returns ordered step
@@ -39,5 +40,6 @@ export function buildSteps(ctx) {
     { id: "milestones", num: 8, title: "Milestones", render: () => <Milestones s={s} set={set} addEvent={ctx.addEvent} removeEvent={ctx.removeEvent} /> },
     { id: "travel", num: 9, title: "Travel", render: () => <TravelLongevity s={s} set={set} /> },
     { id: "advanced", num: 10, title: "Assumptions", render: () => <Advanced s={s} set={set} /> },
+    { id: "investments", num: 11, title: "Investments", render: () => <Investments s={s} set={set} addAccount={ctx.addAccount} removeAccount={ctx.removeAccount} setAccount={ctx.setAccount} /> },
   ];
 }

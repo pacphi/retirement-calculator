@@ -33,8 +33,8 @@ async function gotoStep(user, re) {
   await user.click(screen.getByRole("button", { name: re }));
 }
 async function openReport(user) {
-  // The Assumptions bubble is the last step, which surfaces "Generate report".
-  await user.click(screen.getByRole("button", { name: /assumptions/i }));
+  // The Investments bubble is the last step, which surfaces "Generate report".
+  await user.click(screen.getByRole("button", { name: /investments/i }));
   await user.click(screen.getByRole("button", { name: /generate report/i }));
 }
 async function editInputs(user) {
@@ -334,7 +334,8 @@ describe("Strategy & assumptions controls update the projection", () => {
     render(<RetirementCalculator />);
     await openReport(user);
     const before = headlineText();
-    await editInputs(user); // returns to the Assumptions step
+    await editInputs(user);
+    await gotoStep(user, /assumptions/i);
     await user.click(screen.getAllByText(/Conservative ~3\.5%/i)[0]);
     await openReport(user);
     expect(headlineText()).not.toBe(before);
@@ -346,6 +347,7 @@ describe("Strategy & assumptions controls update the projection", () => {
     await openReport(user);
     const before = headlineText();
     await editInputs(user);
+    await gotoStep(user, /assumptions/i);
     await user.click(screen.getByRole("button", { name: "5.7%" }));
     await openReport(user);
     expect(headlineText()).not.toBe(before);
@@ -384,7 +386,8 @@ describe("Strategy & assumptions controls update the projection", () => {
     render(<RetirementCalculator />);
     await openReport(user);
     const before = headlineText();
-    await editInputs(user); // Assumptions step
+    await editInputs(user);
+    await gotoStep(user, /assumptions/i);
     fireEvent.change(screen.getByLabelText(/Extra income tax/i), { target: { value: "10" } });
     await openReport(user);
     expect(headlineText()).not.toBe(before);
@@ -397,7 +400,8 @@ describe("Strategy & assumptions controls update the projection", () => {
     await openReport(user);
     await gotoSection(user, /taxes/i);
     const before = infFigure();
-    await editInputs(user); // Assumptions step
+    await editInputs(user);
+    await gotoStep(user, /assumptions/i);
     fireEvent.change(screen.getByLabelText(/^Inflation/i), { target: { value: "5" } });
     await openReport(user);
     await gotoSection(user, /taxes/i);
@@ -593,10 +597,12 @@ describe("B1 return preset and variability controls", () => {
     await openReport(user);
     expect(screen.getByText(/assumes a steady 5\.0% real return every year/i)).toBeInTheDocument();
     await editInputs(user);
+    await gotoStep(user, /assumptions/i);
     await user.click(screen.getAllByText(/Growth ~6\.5%/i)[0].closest("button"));
     await openReport(user);
     expect(screen.getByText(/assumes a steady 6\.5% real return every year/i)).toBeInTheDocument();
     await editInputs(user);
+    await gotoStep(user, /assumptions/i);
     await user.click(screen.getAllByText(/Conservative ~3\.5%/i)[0].closest("button"));
     await openReport(user);
     expect(screen.getByText(/assumes a steady 3\.5% real return every year/i)).toBeInTheDocument();
@@ -899,13 +905,13 @@ describe("two-stage wizard navigation", () => {
     expect(screen.getByLabelText("Where you live and earn now")).toBeInTheDocument();
   });
 
-  it("lists the ten input steps in order with distinct titles", () => {
+  it("lists the eleven input steps in order with distinct titles", () => {
     render(<RetirementCalculator />);
     const nav = screen.getByRole("navigation", { name: /input steps/i });
     const titles = within(nav).getAllByRole("button").map((b) => b.textContent.replace(/^[0-9✓]+/, "").trim());
     expect(titles).toEqual([
       "Income", "Housing", "Timing", "Pension", "Retiring to",
-      "Real Estate", "Spending", "Milestones", "Travel", "Assumptions",
+      "Real Estate", "Spending", "Milestones", "Travel", "Assumptions", "Investments",
     ]);
   });
 
