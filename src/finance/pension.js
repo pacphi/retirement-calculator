@@ -11,7 +11,7 @@ import {
   OHIO_STRS_MULTIPLIER, OHIO_STRS_UNREDUCED_AGE, OHIO_STRS_UNREDUCED_MIN_YEARS,
   OHIO_STRS_UNREDUCED_LONG_SERVICE_YEARS,
   MILITARY_MIN_YEARS, MILITARY_HIGH3_BASE, MILITARY_HIGH3_PER_YEAR, MILITARY_BRS_MULTIPLIER,
-} from "../retirementData.js";
+} from "../pensionData.js";
 
 export const pensionERF = (ageRaw, years, plan = 2) => {
   const age = Math.floor(ageRaw); // DRS uses integer calendar ages; floor guard + lookup consistently
