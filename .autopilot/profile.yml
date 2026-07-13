@@ -36,7 +36,7 @@ ci:
   provider: github
   ci_is_merge_authority: true
   base_coverage: covered          # .github/workflows/ci.yml pull_request.branches now includes
-                                   # autopilot/pension-location-data (remediated 2026-07-13, one-line
+                                   # pension-location-data-base (remediated 2026-07-13, one-line
                                    # filter addition) so phase PRs into that integration base are
                                    # actually gated by CI, not just PRs into main.
 

@@ -15,7 +15,11 @@ references:
     - "docs/investment-data-refresh.md"   # the curated-data refresh pattern this effort must follow
 
 trunk: main
-base:  autopilot/pension-location-data     # integration branch; ci.yml remediated to cover it
+base:  pension-location-data-base          # integration branch; ci.yml remediated to cover it.
+                                            # NOT "autopilot/pension-location-data" — that name
+                                            # collides with phase branches
+                                            # (autopilot/pension-location-data/phase-N) since git
+                                            # refs can't be both a leaf and a directory.
 
 autonomy: pr_ci
 fix_budget: 5
