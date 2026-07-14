@@ -1,11 +1,20 @@
-import { TAX_YEAR, GUARDRAIL_DEFAULTS } from "../retirementData.js";
+import { TAX_YEAR, GUARDRAIL_DEFAULTS, DEFAULT_PENSION_TYPE } from "../retirementData.js";
 import { composeNeed, spendingComponents, yearReturn } from "./seams.js";
 import { nextSpendingMultiplier } from "./guardrails.js";
 import { housingCostForYear, resolveDwelling } from "./housing.js";
 import { calculateFederalTaxYear } from "./tax.js";
 import { residenceTaxForYear } from "./residenceTax.js";
 import { ownBenefitAtClaimMonthly, piaFromIncome, spousalBenefitAtClaimMonthly } from "./socialSecurity.js";
-import { drsEligibilityNote, pensionERF, resolveAfc, survivorOptionFactor } from "./pension.js";
+import {
+  drsEligibilityNote, pensionERF, resolveAfc, survivorOptionFactor,
+  genericPensionAnnual, fersEligibilityNote, fersPensionAnnual,
+  calstrsPensionAnnual, calstrsEligibilityNote,
+  calpersPensionAnnual, calpersEligibilityNote,
+  txTrsPensionAnnual, txTrsEligibilityNote,
+  nystrsPensionAnnual, nystrsEligibilityNote,
+  ohioStrsPensionAnnual, ohioStrsEligibilityNote,
+  militaryPensionAnnual, militaryEligibilityNote,
+} from "./pension.js";
 import { ltcSpendForYear, oneTimeSpendForYear, travelSpendForYear } from "./events.js";
 import { requiredMinimum, rmdStartAge } from "./rmd.js";
 import { activeJurisdiction } from "./jurisdiction.js";
@@ -21,11 +30,71 @@ export function benefits(i) {
   const spousalB = piaA > piaB ? spousalBenefitAtClaimMonthly(piaA, i.claimB) * 12 : 0;
   const ssA = Math.max(ownA, spousalA);
   const ssB = Math.max(ownB, spousalB);
-  const erf = i.pensionOn ? pensionERF(i.pensionAge, i.pYears, i.plan) : 1;
-  const pensionNote = i.pensionOn ? drsEligibilityNote(i.pensionAge, i.pYears, i.plan) : "";
-  const multiplier = i.plan === 3 ? 0.01 : 0.02;
-  const monthlyAfc = resolveAfc(i) / 12;
-  const pension = i.pensionOn ? multiplier * i.pYears * monthlyAfc * erf * 12 : 0;
+  // pensionType selects the formula behind i.pensionOn: "drs" (Washington State DRS, the
+  // original/legacy default), "fers" (federal FERS), "calstrs", "calpers", "txtrs" (Texas TRS),
+  // "nystrs" (NYSTRS Tier 6), "ohiostrs" (Ohio STRS), "military" (Legacy High-3 / BRS via
+  // i.militaryPlan), or "generic" (any other employer pension — a user-entered monthly benefit,
+  // no formula). i.calstrsTier / i.calpersTier select the benefit tier for those two systems --
+  // deliberately SEPARATE fields (not a shared i.pensionTier), since their tier value domains
+  // don't overlap ("2at60"/"2at62" vs "classic2at55"/"pepra2at62") and a shared field would go
+  // stale (and silently drive the wrong table) when switching between the two types. Absent
+  // pensionType defaults to "drs" so existing callers/tests that only set pensionOn keep the
+  // original behavior. Systems where phase 0's research found no public factor table for the
+  // early/reduced path (Ohio STRS) or no survivor-factor table (CalSTRS, CalPERS) only compute
+  // what's actually sourced — see the per-function comments in pension.js.
+  const pensionType = i.pensionType || DEFAULT_PENSION_TYPE;
+  // erf (early-retirement factor) is DRS-only: it stays 1 for every other pensionType because
+  // txtrs/nystrs/etc. already bake their own reduction into `pension` inside their formula
+  // functions. Do NOT reuse `erf` generically to reduce a non-DRS pension a second time --
+  // that would double-apply the reduction.
+  let pension = 0, erf = 1, pensionNote = "";
+  if (i.pensionOn) {
+    switch (pensionType) {
+      case "fers":
+        pension = fersPensionAnnual(i.pensionAge, i.pYears, resolveAfc(i));
+        pensionNote = fersEligibilityNote(i.pensionAge, i.pYears);
+        break;
+      case "calstrs": {
+        const tier = i.calstrsTier || "2at60";
+        pension = calstrsPensionAnnual(i.pensionAge, i.pYears, resolveAfc(i), tier);
+        pensionNote = calstrsEligibilityNote(i.pensionAge, i.pYears, tier);
+        break;
+      }
+      case "calpers": {
+        const tier = i.calpersTier || "classic2at55";
+        pension = calpersPensionAnnual(i.pensionAge, i.pYears, resolveAfc(i), tier);
+        pensionNote = calpersEligibilityNote(i.pensionAge, i.pYears, tier);
+        break;
+      }
+      case "txtrs":
+        pension = txTrsPensionAnnual(i.pensionAge, i.pYears, resolveAfc(i));
+        pensionNote = txTrsEligibilityNote(i.pensionAge, i.pYears);
+        break;
+      case "nystrs":
+        pension = nystrsPensionAnnual(i.pensionAge, i.pYears, resolveAfc(i));
+        pensionNote = nystrsEligibilityNote(i.pensionAge, i.pYears);
+        break;
+      case "ohiostrs":
+        pension = ohioStrsPensionAnnual(i.pensionAge, i.pYears, resolveAfc(i));
+        pensionNote = ohioStrsEligibilityNote(i.pensionAge, i.pYears);
+        break;
+      case "military":
+        pension = militaryPensionAnnual(i.pYears, resolveAfc(i), i.militaryPlan || "highThree");
+        pensionNote = militaryEligibilityNote(i.pYears);
+        break;
+      case "generic":
+        pension = genericPensionAnnual(i.genericPensionMonthly);
+        break;
+      case "drs":
+      default: {
+        erf = pensionERF(i.pensionAge, i.pYears, i.plan);
+        pensionNote = drsEligibilityNote(i.pensionAge, i.pYears, i.plan);
+        const multiplier = i.plan === 3 ? 0.01 : 0.02;
+        const monthlyAfc = resolveAfc(i) / 12;
+        pension = multiplier * i.pYears * monthlyAfc * erf * 12;
+      }
+    }
+  }
   return { piaA, piaB, ssA, ssB, pension, erf, pensionNote };
 }
 
@@ -154,12 +223,22 @@ export function simulate(i, ssOpt) {
   const survivorIsA = dYearA >= dYearB; // A outlives (or ties) B
   const lifePensionPct = lifeOn ? Number(i.life.pensionPct ?? 0) : 0;
 
+  // Both the joint-and-survivor election below and the pre-retirement death benefit
+  // that follows it are DRS-specific mechanics (WA DRS's published age-difference
+  // option factors and the RCW 41.32.895 statutory annuity). FERS uses a flat
+  // 10%/5% survivor-cost mechanic instead (see docs/research/pension-systems-data.md
+  // §2), and a generic pension's survivor terms are whatever the user's own plan
+  // says — neither is modeled here, so both stay gated to pensionType "drs" rather
+  // than misapplying DRS's actuarial table to a different plan's benefit.
+  const pensionTypeForSurvivor = i.pensionType || DEFAULT_PENSION_TYPE;
+  const isDrsPension = pensionTypeForSurvivor === "drs";
+
   // DRS joint-and-survivor pricing. Electing a survivor percentage is not free:
   // the member's benefit is permanently reduced by the published option factor
   // (member − beneficiary age difference; the member is spouse B). If the
   // beneficiary (A) dies first, DRS restores the single-life amount ("pop-up").
   const survElectPct = lifeOn ? lifePensionPct : Number(i.survivor?.pensionPct ?? 0);
-  const jsElected = !!i.pensionOn && survElectPct > 0 && (lifeOn || !!(i.survivor && i.survivor.on));
+  const jsElected = isDrsPension && !!i.pensionOn && survElectPct > 0 && (lifeOn || !!(i.survivor && i.survivor.on));
   const jsFactor = jsElected ? survivorOptionFactor(survElectPct, i.ageB - i.ageA) : 1;
 
   // RCW 41.32.895-style pre-retirement death benefit: if the vested member (B)
@@ -168,9 +247,10 @@ export function simulate(i, ssOpt) {
   // joint-survivor election, early-retirement-reduced if she wasn't yet
   // eligible (deferred to her would-be 65 for an unreduced benefit when the
   // early-eligibility guards fail). Planning-grade; not gated on the elected
-  // survivor percentage because the statute grants it regardless.
+  // survivor percentage because the statute grants it regardless. DRS-only —
+  // see isDrsPension above.
   let preRetSurv = null;
-  if (lifeOn && i.pensionOn && dYearB < dYearA && Number(i.life.deathAgeB) < i.pensionAge) {
+  if (isDrsPension && lifeOn && i.pensionOn && dYearB < dYearA && Number(i.life.deathAgeB) < i.pensionAge) {
     const vested = i.pYears >= (i.plan === 3 ? 10 : 5);
     if (vested) {
       const deathAgeB = Number(i.life.deathAgeB);
@@ -225,9 +305,12 @@ export function simulate(i, ssOpt) {
     // year as before.
     const pensHolderDead = lifeOn ? cal >= dYearB : isSurvivor;
     const survPensionPct = lifeOn ? lifePensionPct : Number(i.survivor?.pensionPct ?? 0);
+    // isDrsPension-gated, same as jsElected/preRetSurv above: a non-DRS pension has no
+    // survivor-reduction mechanic modeled here, so it must NOT step down on the holder's
+    // death (the FERS/CalSTRS/etc. UI copy says exactly this).
     const pensEff = preRetSurv && cal >= dYearB
       ? pens
-      : (pensHolderDead ? pens * (survPensionPct / 100) : pens);
+      : (isDrsPension && pensHolderDead ? pens * (survPensionPct / 100) : pens);
     let rent = 0;
     let sellLump = 0;
     // Task 5 (Wave 2): track the first active "live" entry so we can build an

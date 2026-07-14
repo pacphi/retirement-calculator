@@ -31,6 +31,8 @@
 - [19. Wave 3 Engine-Depth Sources](#19-wave-3-engine-depth-sources)
 - [20. Full URL Index](#20-full-url-index)
 - [21. Investment Recommendations — Curated Fund Data](#21-investment-recommendations--curated-fund-data)
+- [22. Non-WA Pension Systems (FERS, CalSTRS, CalPERS, Texas TRS, NYSTRS, Ohio STRS, Military)](#22-non-wa-pension-systems-fers-calstrs-calpers-texas-trs-nystrs-ohio-strs-military)
+- [23. New International Locations — Latin America, Southeast Asia, Oceania, Africa](#23-new-international-locations--latin-america-southeast-asia-oceania-africa)
 
 ---
 
@@ -493,6 +495,54 @@ See `docs/investment-data-refresh.md` for the maintainer refresh process.
 - **[The Motley Fool — Where will QQQ be in 10 years?](https://www.fool.com/investing/2026/06/05/where-will-qqq-be-in-10-years/)** — 10-yr annualized return figure for QQQ (21.9%).
 - **[Ares Capital Corporation — Investor Relations](https://www.arescapitalcorp.com/investor-relations)** — Long-run return figure and BDC structure for ARCC.
 - **[SEC EDGAR — BXPE 10-K filing](https://www.sec.gov/Archives/edgar/data/1930054/000119312526106084/d71061d10k1.pdf)** — BXPE structure, accreditation requirement, minimum investment, and fee terms.
+
+---
+
+## 22. Non-WA Pension Systems (FERS, CalSTRS, CalPERS, Texas TRS, NYSTRS, Ohio STRS, Military)
+
+Sources behind the `pensionType` formulas in `src/finance/pension.js` and their constants in
+`src/retirementData.js` (FERS_*, CALSTRS_*, CALPERS_*, TX_TRS_*, NYSTRS_*, OHIO_STRS_*,
+MILITARY_*), landed across the `pension-location-data` autopilot pipeline phases 0–3. Full
+cited research brief, including what each system's phase-0 research could NOT source: see
+`docs/research/pension-systems-data.md`.
+
+- **[OPM — FERS Computation](https://www.opm.gov/retirement-center/fers-information/computation/)** **(primary)** — 1%/1.1% multiplier, High-3 definition.
+- **[OPM — FERS Eligibility](https://www.opm.gov/retirement-center/fers-information/eligibility/)** **(primary)** — MRA-by-birth-year table, immediate-retirement paths.
+- **[CalSTRS — The Age Factor (PDF)](https://www.calstrs.com/files/27c793b44/theagefactor.pdf)** **(primary)** — 2%-at-60 and 2%-at-62 (PEPRA) age-factor tables, career factor.
+- **[CalSTRS Member Handbook 2025 (PDF)](https://www.calstrs.com/files/6a92c8677/MemberHandbook2025.pdf)** **(primary)** — final-compensation basis, COLA, survivor options.
+- **[CalPERS — Benefit Factor Charts index](https://www.calpers.ca.gov/members/retirement-benefits/benefit-factor-charts)** **(primary)** — confirms CalPERS has no single canonical formula; representative-tier caveat.
+- **[CalPERS — Local Miscellaneous 2% at 55 Benefit Factors (PDF)](https://www.calpers.ca.gov/documents/benefit-factors-local-misc-2-at-55/download?inline=)**, **[CalPERS — State Misc & Industrial 2% at 62 Benefit Factors (PDF)](https://www.calpers.ca.gov/documents/state-miscellaneous-industrial-member-2-at-62-benefit-factors-pdf/download?inline=)** **(primary)** — the two representative age-factor tables modeled.
+- **[Texas TRS — Retirement Eligibility Requirements](https://trs.texas.gov/pension-benefits/active-member-resources/plan-retirement/retirement-eligibility-requirements)**, **[Texas TRS — Membership Tiers](https://trs.texas.gov/pension-benefits/know-benefits/understand-benefits/membership-tiers)** **(primary)** — 2.3% multiplier, Rule of 80, tier-dependent eligibility and reduction.
+- **[NYSTRS Tier 6 Overview (PDF)](https://www.nystrs.org/getmedia/be2ff65e-2f8e-4e5d-8b66-cc14a4e3ac11/tier_6.pdf)** **(primary)** — tiered pension factor, unreduced age.
+- **[NYSTRS — Cost-of-Living Adjustment, Wayback-archived](https://web.archive.org/web/20251116205005/https://www.nystrs.org/retirees/cost-of-living-adjustment/)** — COLA formula (nystrs.org blocks live automated access).
+- **[STRS Ohio — Eligibility Requirements](https://www.strsoh.org/during-your-career/eligibility-requirements.html)**, **[STRS Ohio: Plan Summary (PDF)](https://www.strsoh.org/_pdfs/20-101.pdf)** **(primary)** — 2.2% multiplier, unreduced-only eligibility (no published early-reduction table — not modeled, see pension.js `ohioStrsPensionAnnual`).
+- **[Army — Retired Pay Benefit Fact Sheet](https://myarmybenefits.us.army.mil/Benefit-Library/Federal-Benefits/Retired-Pay?serv=122)**, **[Army — Blended Retirement System](https://myarmybenefits.us.army.mil/Benefit-Library/Federal-Benefits/Blended-Retirement-System?serv=122)** **(primary)** — Legacy High-3 and BRS formulas, the hard 20-year vesting cliff (militarypay.defense.gov/dfas.mil block automated access; the Army's benefits portal is the alternate official source used).
+
+---
+
+## 23. New International Locations — Latin America, Southeast Asia, Oceania, Africa
+
+Sources behind the 13 `LOCATIONS`/`INTL_TAX` entries landed across the `pension-location-data`
+autopilot pipeline phases 4-6 (Mexico, Panama, Costa Rica, Thailand, Vietnam, Malaysia,
+Philippines, Australia, Uruguay, South Africa, Colombia, New Zealand, Japan). Full cited
+research brief, including cost-basket bases, exchange rates, and what could NOT be
+portal-verified: see `docs/research/location-cost-of-living-data.md`. Refresh process:
+`docs/location-data-refresh.md`.
+
+- **[Mexperience — Financial Criteria for Residency](https://www.mexperience.com/financial-criteria-for-residency-in-mexico/)**, **[Taxes for Expats — Mexico](https://www.taxesforexpats.com/country-guides/mexico/us-tax-preparation-in-mexico.html)** — Residente Temporal visa thresholds, IRA/401(k) treaty ambiguity.
+- **[Global Citizen Solutions — Pensionado Visa Panama](https://www.globalcitizensolutions.com/pensionado-visa-panama/)**, **[Country Tax Calc — Panama Tax Guide](https://www.countrytaxcalc.com/tax-guides/usa/moving-to-panama-tax-guide-2026/)** — territorial tax exemption, Pensionado visa terms.
+- **[Fragomen — Costa Rica Retirement Visa](https://www.fragomen.com/insights/costa-rica-retirement-visa-pensionado.html)**, **[Country Tax Calc — Costa Rica Tax Guide](https://www.countrytaxcalc.com/tax-guides/usa/moving-to-costa-rica-tax-guide-2026/)** — territorial tax exemption, Pensionado visa terms.
+- **[ExpatTax Thailand — Assessable Foreign-Sourced Income](https://www.expattaxthailand.com/understanding-assessable-foreign-sourced-income-in-thailand/)** — remittance-basis taxation (Por.161/2566), the closed-loophole rule.
+- **[Taxes for Expats — Retire in Vietnam](https://www.taxesforexpats.com/country-guides/vietnam/retire-in-vietnam.html)** — worldwide taxation, no US-Vietnam tax treaty.
+- **[Melbourne Capital Group — New MM2H Rules](https://www.melbournecapitalgroup.com/post/new-mm2h-rules-june-2024-key-changes-and-comparisons)** — Malaysia's MM2H visa tiers, individual foreign-source-income exemption.
+- **[PRA — SRRVisa](https://pra.gov.ph/SRRVisa)** **(primary)** — Philippines SRRV retiree visa terms, portal-verified.
+- **[Taxes for Expats — Retire in Australia](https://www.taxesforexpats.com/country-guides/australia/retire-in-australia.html)**, **[Aged Care Decisions — Nursing Home Cost Australia](https://agedcaredecisions.com.au/how-much-does-a-nursing-home-cost-in-australia/)** — worldwide taxation, the no-general-retirement-visa product-honesty flag.
+- **[Global Citizen Solutions — Uruguay Independent Means Visa](https://www.globalcitizensolutions.com/independent-means-visa-uruguay/)** **(primary)** — visa terms, portal-verified.
+- **[SA Consulate New York — Retired Person's Visa](https://www.southafrica-newyork.net/retired-persons-visa/)** **(primary)**, **[KPMG — Flash Alert 2025-169](https://kpmg.com/xx/en/our-insights/gms-flash-alert/flash-alert-2025-169.html)** — Retired Person's Visa income threshold, 2025 foreign-pension-exemption removal.
+- **[PwC — Colombia Income Determination](https://taxsummaries.pwc.com/colombia/individual/income-determination)** — Law 2381 of 2024 foreign-pension exemption.
+- **[Immigration NZ — Temporary Retirement Visitor Visa](https://www.immigration.govt.nz/visas/temporary-retirement-visitor-visa/)** **(primary)**, **[IRD — Tax-Exempt Overseas Pensions](https://www.ird.govt.nz/income-tax/income-tax-for-individuals/adjust-your-income/types-of-income/tax-exempt-overseas-pensions)** — the high-barrier investor-visa product-honesty flag, 4-year transitional tax exemption.
+- **[Taxes for Expats — US-Japan Tax Treaty](https://www.taxesforexpats.com/country-guides/japan/us-japan-tax-treaty.html)**, **[Japan Finance Wiki — 401(k)s and IRAs Under Tax Treaty](https://wiki.japanfinance.org/countries/us/401ks-and-iras-under-tax-treaty/)**, **[Migaku — Retirement Visa Options in Japan](https://migaku.com/blog/language-fun/retirement-visa-options-in-japan-whats-actually-available)** — no US-recognized tax-deferred IRA/401(k) status, no dedicated retirement visa (the strongest product-honesty flag in this dataset).
+- **[Numbeo](https://www.numbeo.com/cost-of-living/)** — the cost-basket source (rent/groceries/utilities/transport/dining/entertainment/misc) for every major city cited in `docs/research/location-cost-of-living-data.md`; per-city URLs are in that document, not repeated here.
 
 ---
 

@@ -5,8 +5,18 @@ import { retirementDwellingAnnualCost } from "../finance/housing.js";
 import { spendingHeadroom } from "../finance/headroom.js";
 import { buildPlanInputs } from "../finance/plan.js";
 import { simulate } from "../finance/simulate.js";
-import { LOCATIONS, SINGLE_COST_FACTOR } from "../retirementData.js";
+import { LOCATIONS, SINGLE_COST_FACTOR, DEFAULT_PENSION_TYPE } from "../retirementData.js";
 import { SRC } from "../components/theme.js";
+
+// Chart/legend label per pensionType, so the income-stack entry names the plan the user
+// actually picked instead of always saying "DRS pension" (pre pension-location-data phase 2).
+const PENSION_LABEL = {
+  drs: "WA DRS pension", fers: "FERS pension",
+  calstrs: "CalSTRS pension", calpers: "CalPERS pension",
+  txtrs: "Texas TRS pension", nystrs: "NYSTRS pension",
+  ohiostrs: "Ohio STRS pension", military: "Military pension",
+  generic: "Pension",
+};
 
 /**
  * usePlan(s)
@@ -97,8 +107,8 @@ export function usePlan(s, couple, stage) {
     { name: "Portfolio withdrawal", value: Math.round(steady.wd), color: SRC.wd },
     ...(steady.rentInc > 0 ? [{ name: "Rental", value: Math.round(steady.rentInc), color: SRC.rent }] : []),
     { name: "Social Security", value: Math.round(steady.ssHouse), color: SRC.ssA },
-    ...(s.pensionOn ? [{ name: "DRS pension", value: Math.round(steady.pension), color: SRC.pension }] : []),
-  ], [steady.wd, steady.rentInc, steady.ssHouse, steady.pension, s.pensionOn]);
+    ...(s.pensionOn ? [{ name: PENSION_LABEL[s.pensionType || DEFAULT_PENSION_TYPE], value: Math.round(steady.pension), color: SRC.pension }] : []),
+  ], [steady.wd, steady.rentInc, steady.ssHouse, steady.pension, s.pensionOn, s.pensionType]);
 
   const headroom = useMemo(
     () => spendingHeadroom(calc.inp, simulate, Number(s.horizonAge) || 95, { haircut: effHaircut, cutYear: effCutYear }),

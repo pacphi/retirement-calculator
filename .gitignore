@@ -33,3 +33,4 @@ ruvector.db
 /reports/
 /.stryker-tmp/
 /audits/
+.autopilot/queued/

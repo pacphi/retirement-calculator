@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, pension-location-data-base]
   pull_request:
-    branches: [main]
+    branches: [main, pension-location-data-base]
   workflow_dispatch:
 
 # Cancel superseded runs on the same ref.

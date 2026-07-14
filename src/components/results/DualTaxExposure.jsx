@@ -1,5 +1,5 @@
 import { C } from "../theme.js";
-import { SOURCES, US_STATE_TAX, INTL_TAX, LOCATIONS, inheritanceRulesForPlace } from "../../retirementData.js";
+import { SOURCES, US_STATE_TAX, INTL_TAX, LOCATIONS, inheritanceRulesForPlace, isGovernmentServicePensionType } from "../../retirementData.js";
 import { residenceTaxForYear } from "../../finance/residenceTax.js";
 
 /**
@@ -140,7 +140,12 @@ function buildExposureCards(profile, s) {
     : "Foreign accounts and assets over reporting thresholds may trigger FBAR and FATCA obligations annually.";
   return [
     { key: "worldwide", label: "US worldwide taxation", text: notes.worldwide, href: SOURCES.irsFtc, linkLabel: "IRS Foreign Tax Credit" },
-    s?.pensionOn ? { key: "govtPension", label: "Government pension — source rule", text: notes.govtPension, href: SOURCES.usModelTreaty, linkLabel: "US model treaty" } : null,
+    // notes.govtPension describes the treaty's government-service source rule, which applies to
+    // any government-service pensionType (WA DRS, FERS, the state teacher systems, military) --
+    // just not "generic" (an unknown/private employer pension the app can't characterize this way).
+    s?.pensionOn && isGovernmentServicePensionType(s?.pensionType)
+      ? { key: "govtPension", label: "Government pension — source rule", text: notes.govtPension, href: SOURCES.usModelTreaty, linkLabel: "US model treaty" }
+      : null,
     { key: "residenceTaxed", label: "Residence-country tax on IRA/401(k)", text: notes.residenceTaxed, href: SOURCES.irsFtc, linkLabel: "IRS Foreign Tax Credit" },
     { key: "filing", label: "Filing obligations (FBAR / FATCA" + (hasForeignInheritance ? " / Form 3520)" : ")"), text: filingText, href: SOURCES.irsForm3520, linkLabel: "IRS Form 3520" },
   ].filter(Boolean).filter((item) => item.text);

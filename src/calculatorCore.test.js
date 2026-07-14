@@ -9,6 +9,31 @@ import {
   composeNeed,
   drsEligibilityNote,
   fedTax,
+  genericPensionAnnual,
+  fersEligible,
+  fersEligibilityNote,
+  fersMultiplier,
+  fersPensionAnnual,
+  calstrsAgeFactor,
+  calstrsPensionAnnual,
+  calstrsEligibilityNote,
+  calpersAgeFactor,
+  calpersPensionAnnual,
+  calpersEligibilityNote,
+  txTrsEligible,
+  txTrsPensionAnnual,
+  txTrsEligibilityNote,
+  txTrsReductionFactor,
+  nystrsPensionFactor,
+  nystrsEarlyRetirementFactor,
+  nystrsPensionAnnual,
+  nystrsEligibilityNote,
+  ohioStrsUnreducedEligible,
+  ohioStrsPensionAnnual,
+  ohioStrsEligibilityNote,
+  militaryEligible,
+  militaryPensionAnnual,
+  militaryEligibilityNote,
   ltcSpendForYear,
   oneTimeSpendForYear,
   requiredMinimum,
@@ -32,7 +57,7 @@ import {
   travelSpendForYear,
   yearReturn,
 } from "./calculatorCore.js";
-import { LOCATIONS, SINGLE_COST_FACTOR, HOME_SELL_NET } from "./retirementData.js";
+import { LOCATIONS, SINGLE_COST_FACTOR, HOME_SELL_NET, INTL_TAX, inheritanceRulesForPlace, isGovernmentServicePensionType } from "./retirementData.js";
 import { remainingBalance } from "./finance/housing.js";
 import { makeDefaultPlan } from "./defaultPlan.js";
 
@@ -431,7 +456,9 @@ describe("DRS joint-survivor option pricing", () => {
 
   it("leaves the default plan untouched (no survivor election)", () => {
     const { steady } = calculatePlan(makeDefaultPlan());
-    expect(Math.round(steady.net)).toBe(123799); // golden pin unchanged
+    // golden pin re-baselined for pension-location-data phase 2: DEFAULT_PLAN.pensionOn
+    // flipped true→false (see defaultPlan.js and docs/research/pension-systems-data.md §1).
+    expect(Math.round(steady.net)).toBe(89021);
   });
 });
 
@@ -649,6 +676,334 @@ describe("numeric guards (mutation hardening)", () => {
     expect(pensionERF(54, 30, 2)).toBe(0);
     expect(pensionERF(60, 15, 3)).toBeGreaterThan(0); // Plan 3: 10-yr min met
     expect(pensionERF(60, 15, 2)).toBe(0);            // Plan 2: 20-yr min not met
+  });
+
+  // --- pension.js: generic defined-benefit fallback ---
+  it("genericPensionAnnual annualizes a monthly benefit and floors non-numeric input at 0", () => {
+    expect(genericPensionAnnual(2000)).toBe(24000);
+    expect(genericPensionAnnual(0)).toBe(0);
+    expect(genericPensionAnnual(undefined)).toBe(0);
+    expect(genericPensionAnnual("not a number")).toBe(0);
+  });
+
+  // --- pension.js: FERS ---
+  it("fersMultiplier applies the enhanced 1.1% only at 62+ with 20+ years, else the standard 1%", () => {
+    expect(fersMultiplier(62, 20)).toBe(0.011);
+    expect(fersMultiplier(63, 25)).toBe(0.011);
+    expect(fersMultiplier(62, 19)).toBe(0.01);  // years just under 20
+    expect(fersMultiplier(61, 20)).toBe(0.01);  // age just under 62
+    expect(fersMultiplier(55, 30)).toBe(0.01);
+  });
+
+  it("fersEligible honors the three immediate-retirement paths and their boundaries", () => {
+    // 62 + 5yrs path
+    expect(fersEligible(62, 5)).toBe(true);
+    expect(fersEligible(61, 5)).toBe(false);
+    expect(fersEligible(62, 4)).toBe(false);
+    // 60 + 20yrs path
+    expect(fersEligible(60, 20)).toBe(true);
+    expect(fersEligible(59, 20)).toBe(false);
+    expect(fersEligible(60, 19)).toBe(false);
+    // MRA(57) + 30yrs path
+    expect(fersEligible(57, 30)).toBe(true);
+    expect(fersEligible(56, 30)).toBe(false);
+    expect(fersEligible(57, 29)).toBe(false);
+    // MRA+10 (reduced) is not modeled — 57 with only 15 years is ineligible here
+    expect(fersEligible(57, 15)).toBe(false);
+  });
+
+  it("fersEligibilityNote is empty when eligible and explains the paths when not", () => {
+    expect(fersEligibilityNote(62, 5)).toBe("");
+    expect(fersEligibilityNote(50, 10)).toMatch(/62\+.*60\+.*57\+/s);
+  });
+
+  it("fersPensionAnnual applies the multiplier x years x High-3 only when eligible, 0 otherwise", () => {
+    expect(fersPensionAnnual(62, 20, 100000)).toBeCloseTo(0.011 * 20 * 100000, 6); // 22,000
+    expect(fersPensionAnnual(60, 20, 100000)).toBeCloseTo(0.01 * 20 * 100000, 6);  // enhanced needs 62+, not just 60+
+    expect(fersPensionAnnual(50, 10, 100000)).toBe(0); // ineligible
+  });
+
+  // --- pension.js: CalSTRS ---
+  it("calstrsAgeFactor looks up the 2at60 and 2at62 tables and caps/floors at the table edges", () => {
+    expect(calstrsAgeFactor(60, "2at60")).toBeCloseTo(0.02, 6);
+    expect(calstrsAgeFactor(63, "2at60")).toBeCloseTo(0.024, 6);
+    expect(calstrsAgeFactor(70, "2at60")).toBeCloseTo(0.024, 6); // caps at the top table entry
+    expect(calstrsAgeFactor(49, "2at60")).toBe(0); // below the floor -- not eligible
+    expect(calstrsAgeFactor(62, "2at62")).toBeCloseTo(0.02, 6);
+    expect(calstrsAgeFactor(54, "2at62")).toBe(0); // below the 2at62 floor (55)
+  });
+
+  it("calstrsPensionAnnual adds the 30+-year career factor only for 2at60, capped at 2.4%", () => {
+    expect(calstrsPensionAnnual(60, 25, 100000, "2at60")).toBeCloseTo(0.02 * 25 * 100000, 6);
+    // 30+ years adds 0.2%, so 2.0% + 0.2% = 2.2% at age 60
+    expect(calstrsPensionAnnual(60, 30, 100000, "2at60")).toBeCloseTo(0.022 * 30 * 100000, 6);
+    // near the cap: 63+ is already 2.4%, so +0.2% must clamp to 2.4%, not 2.6%
+    expect(calstrsPensionAnnual(63, 30, 100000, "2at60")).toBeCloseTo(0.024 * 30 * 100000, 6);
+    // 2at62 gets no career-factor enhancement even with 30+ years
+    expect(calstrsPensionAnnual(62, 30, 100000, "2at62")).toBeCloseTo(0.02 * 30 * 100000, 6);
+    expect(calstrsPensionAnnual(49, 10, 100000, "2at60")).toBe(0); // ineligible
+  });
+
+  it("calstrsEligibilityNote is empty when eligible and names the floor per tier when not", () => {
+    expect(calstrsEligibilityNote(55, 5, "2at60")).toBe("");
+    expect(calstrsEligibilityNote(49, 5, "2at60")).toMatch(/50.*30/s);
+    expect(calstrsEligibilityNote(50, 5, "2at62")).toMatch(/55/);
+  });
+
+  it("calstrsPensionAnnual (2at60) requires 30+ years for the 50-54 age band, not just an age-table hit", () => {
+    // Regression guard: the age-factor table alone has a row for age 52, but the 50-54 band is
+    // only reachable with 30+ years of service -- 5 years must NOT be treated as eligible.
+    expect(calstrsPensionAnnual(52, 5, 100000, "2at60")).toBe(0);
+    expect(calstrsEligibilityNote(52, 5, "2at60")).toMatch(/50.*30/s);
+    expect(calstrsPensionAnnual(52, 30, 100000, "2at60")).toBeGreaterThan(0);
+    expect(calstrsEligibilityNote(52, 30, "2at60")).toBe("");
+    // 55+ only needs the standard 5-year vesting minimum, not 30.
+    expect(calstrsPensionAnnual(55, 5, 100000, "2at60")).toBeGreaterThan(0);
+  });
+
+  // --- pension.js: CalPERS ---
+  it("calpersAgeFactor looks up the classic and PEPRA representative tiers", () => {
+    expect(calpersAgeFactor(55, "classic2at55")).toBeCloseTo(0.02, 6);
+    expect(calpersAgeFactor(49, "classic2at55")).toBe(0); // below floor (50)
+    expect(calpersAgeFactor(62, "pepra2at62")).toBeCloseTo(0.02, 6);
+    expect(calpersAgeFactor(51, "pepra2at62")).toBe(0); // below floor (52)
+  });
+
+  it("calpersPensionAnnual multiplies factor x years x final comp, 0 when ineligible", () => {
+    expect(calpersPensionAnnual(55, 20, 100000, "classic2at55")).toBeCloseTo(0.02 * 20 * 100000, 6);
+    expect(calpersPensionAnnual(49, 20, 100000, "classic2at55")).toBe(0);
+  });
+
+  it("calpersEligibilityNote names the tier-specific minimum age", () => {
+    expect(calpersEligibilityNote(55, 5, "classic2at55")).toBe("");
+    expect(calpersEligibilityNote(49, 5, "classic2at55")).toMatch(/50/);
+    expect(calpersEligibilityNote(51, 5, "pepra2at62")).toMatch(/52/);
+  });
+
+  it("calpersPensionAnnual requires the 5-year vesting minimum even when the age-table lookup hits", () => {
+    // Regression guard: age 51 is within the Classic table's range, but with only 1 year of
+    // service the 5-year minimum isn't met -- must NOT be treated as eligible.
+    expect(calpersPensionAnnual(51, 1, 100000, "classic2at55")).toBe(0);
+    expect(calpersEligibilityNote(51, 1, "classic2at55")).toMatch(/50/);
+    expect(calpersPensionAnnual(51, 5, 100000, "classic2at55")).toBeGreaterThan(0);
+  });
+
+  // --- pension.js: Texas TRS ---
+  it("txTrsEligible honors the 65+5yr, Rule-of-80, 55+5yr-reduced, and 30yr-any-age paths", () => {
+    expect(txTrsEligible(65, 5)).toBe(true);
+    expect(txTrsEligible(64, 4)).toBe(false);
+    expect(txTrsEligible(62, 18)).toBe(true); // 62+18=80, Rule of 80 met
+    expect(txTrsEligible(55, 5)).toBe(true); // early, reduced
+    expect(txTrsEligible(45, 30)).toBe(true); // 30+ years, any age
+    expect(txTrsEligible(50, 3)).toBe(false);
+  });
+
+  it("txTrsPensionAnnual is unreduced at 65+5yrs or Rule-of-80, and reduced otherwise", () => {
+    expect(txTrsPensionAnnual(65, 20, 100000)).toBeCloseTo(0.023 * 20 * 100000, 6);
+    expect(txTrsPensionAnnual(62, 18, 100000)).toBeCloseTo(0.023 * 18 * 100000, 6); // Rule of 80, unreduced
+    // 55 + 5yrs, Rule of 80 NOT met (55+5=60 < 80): reduced 5%/yr below the true unreduced age 65 -> 10 years short
+    const expected55 = 0.023 * 5 * 100000 * (1 - 10 * 0.05);
+    expect(txTrsPensionAnnual(55, 5, 100000)).toBeCloseTo(expected55, 2);
+    expect(txTrsPensionAnnual(50, 2, 100000)).toBe(0); // ineligible
+  });
+
+  it("txTrsPensionAnnual still reduces a member aged 62-64 who is eligible only via the early path (Rule of 80 not met)", () => {
+    // age 63, 6 years: 63+6=69 < 80, so Rule of 80 is NOT met -- eligible only via the early
+    // 55+/5yr path even though age >= 62, so this must be reduced, not paid in full.
+    const factor = txTrsReductionFactor(63, 6);
+    expect(factor).toBeLessThan(1); // regression guard for the age-62-64 full-pension bug
+    expect(factor).toBeCloseTo(1 - 2 * 0.05, 6); // 65 - 63 = 2 years short, 5%/yr
+    expect(txTrsPensionAnnual(63, 6, 100000)).toBeCloseTo(0.023 * 6 * 100000 * factor, 6);
+  });
+
+  it("txTrsEligibilityNote is empty when eligible and explains the paths when not", () => {
+    expect(txTrsEligibilityNote(65, 5)).toBe("");
+    expect(txTrsEligibilityNote(50, 2)).toMatch(/55.*30.*65/s);
+  });
+
+  // --- pension.js: NYSTRS Tier 6 ---
+  it("nystrsPensionFactor is tiered: <20yr flat 1.67%, exactly 20yr flat 1.75%, >20yr 35%+2%/yr", () => {
+    expect(nystrsPensionFactor(10)).toBeCloseTo(10 * 0.0167, 6);
+    expect(nystrsPensionFactor(20)).toBeCloseTo(20 * 0.0175, 6);
+    expect(nystrsPensionFactor(25)).toBeCloseTo(0.35 + 5 * 0.02, 6);
+  });
+
+  it("nystrsEarlyRetirementFactor is 1 at/after 63, interpolates the sourced anchors below it", () => {
+    expect(nystrsEarlyRetirementFactor(63, 10)).toBe(1);
+    expect(nystrsEarlyRetirementFactor(65, 10)).toBe(1);
+    expect(nystrsEarlyRetirementFactor(55, 10)).toBeCloseTo(0.73, 6);
+    expect(nystrsEarlyRetirementFactor(61, 10)).toBeCloseTo(0.94, 6);
+    // midpoint between the 61->0.94 and 63->1.0 anchors
+    expect(nystrsEarlyRetirementFactor(62, 10)).toBeCloseTo(0.97, 6);
+    expect(nystrsEarlyRetirementFactor(58, 30)).toBe(1); // 30+ years unreduced at 58
+  });
+
+  it("nystrsPensionAnnual applies the factor x FAS x early-retirement reduction, 0 when ineligible", () => {
+    expect(nystrsPensionAnnual(63, 25, 100000)).toBeCloseTo((0.35 + 5 * 0.02) * 100000, 6);
+    expect(nystrsPensionAnnual(54, 10, 100000)).toBe(0); // below the age-55 minimum
+  });
+
+  it("nystrsEligibilityNote is empty when eligible and names the minimum otherwise", () => {
+    expect(nystrsEligibilityNote(55, 5)).toBe("");
+    expect(nystrsEligibilityNote(50, 5)).toMatch(/55/);
+  });
+
+  // --- pension.js: Ohio STRS (unreduced path only -- no published early-reduction table) ---
+  it("ohioStrsUnreducedEligible honors the 65+5yr and 32yr-any-age paths only", () => {
+    expect(ohioStrsUnreducedEligible(65, 5)).toBe(true);
+    expect(ohioStrsUnreducedEligible(50, 32)).toBe(true);
+    expect(ohioStrsUnreducedEligible(60, 27)).toBe(false); // reduced path -- not modeled as eligible here
+    expect(ohioStrsUnreducedEligible(64, 5)).toBe(false);
+  });
+
+  it("ohioStrsPensionAnnual pays 2.2% x years x FAS only when unreduced-eligible, else 0", () => {
+    expect(ohioStrsPensionAnnual(65, 20, 100000)).toBeCloseTo(0.022 * 20 * 100000, 6);
+    expect(ohioStrsPensionAnnual(60, 27, 100000)).toBe(0); // reduced-only eligibility -- deliberately not modeled
+  });
+
+  it("ohioStrsEligibilityNote explains the reduced path isn't modeled, when applicable", () => {
+    expect(ohioStrsEligibilityNote(65, 5)).toBe("");
+    expect(ohioStrsEligibilityNote(60, 27)).toMatch(/generic/);
+  });
+
+  // --- pension.js: Military (Legacy High-3 / BRS) ---
+  it("militaryEligible enforces the hard 20-year cliff", () => {
+    expect(militaryEligible(20)).toBe(true);
+    expect(militaryEligible(19)).toBe(false);
+  });
+
+  it("militaryPensionAnnual computes High-3 (50% + 2.5%/yr beyond 20) and BRS (2.0%/yr), 0 below 20 years", () => {
+    expect(militaryPensionAnnual(20, 100000, "highThree")).toBeCloseTo(0.50 * 100000, 6);
+    expect(militaryPensionAnnual(24, 100000, "highThree")).toBeCloseTo(0.60 * 100000, 6); // 50%+10%
+    expect(militaryPensionAnnual(20, 100000, "brs")).toBeCloseTo(0.40 * 100000, 6);
+    expect(militaryPensionAnnual(19, 100000, "highThree")).toBe(0);
+  });
+
+  it("militaryEligibilityNote is empty at 20+ years and explains the cliff below it", () => {
+    expect(militaryEligibilityNote(20)).toBe("");
+    expect(militaryEligibilityNote(15)).toMatch(/20/);
+  });
+
+  // --- simulate.js: pensionType branching ---
+  it("simulate computes a generic pension flat and ignores DRS-only fields", () => {
+    const i = {
+      ...baseState, ageA: 65, ageB: 65, stopA: 65, stopB: 65, claimA: 65, claimB: 65,
+      pensionOn: true, pensionType: "generic", pensionAge: 65, genericPensionMonthly: 3000,
+    };
+    const row = simulate(i, { haircut: 1, cutYear: 9999 }).rows.find((r) => r.cal === 2026);
+    expect(row.pens).toBeCloseTo(36000, 0);
+  });
+
+  it("simulate computes a FERS pension via the FERS formula, not the DRS formula", () => {
+    const i = {
+      ...baseState, ageA: 62, ageB: 62, stopA: 62, stopB: 62, claimA: 62, claimB: 62,
+      pensionOn: true, pensionType: "fers", pensionAge: 62, pYears: 20, afc: 100000,
+    };
+    const row = simulate(i, { haircut: 1, cutYear: 9999 }).rows.find((r) => r.cal === 2026);
+    expect(row.pens).toBeCloseTo(0.011 * 20 * 100000, 0); // 22,000 -- not the DRS 2%x20x100000
+  });
+
+  it("does not grant the DRS pre-retirement survivor annuity to a FERS or generic pension", () => {
+    const preDeathFers = {
+      ...baseState, pensionOn: true, pensionType: "fers", pensionAge: 62, pYears: 20, afc: 100000,
+      life: { on: true, deathAgeA: 95, deathAgeB: 50, pensionPct: 100 },
+      survivor: { on: false, year: 9999, pensionPct: 0 },
+    };
+    const sim = simulate(preDeathFers, { haircut: 1, cutYear: 9999 });
+    // Spouse B dies at 50, long before the FERS pension would have started (62) --
+    // the DRS-only RCW 41.32.895 statutory annuity must NOT kick in for a FERS pension.
+    const afterDeath = sim.rows.find((r) => r.aB > 50);
+    expect(afterDeath.pens).toBe(0);
+  });
+
+  it("does not zero a FERS pension after the holder's modeled death (no survivor-reduction mechanic exists for it)", () => {
+    const i = {
+      ...baseState, pensionOn: true, pensionType: "fers", pensionAge: 62, pYears: 20, afc: 100000,
+      life: { on: true, deathAgeA: 95, deathAgeB: 70, pensionPct: 0 },
+      survivor: { on: false, year: 9999, pensionPct: 0 },
+    };
+    const sim = simulate(i, { haircut: 1, cutYear: 9999 });
+    // Spouse B (the FERS pension holder) dies at 70, well after the pension started at 62 --
+    // confirm the pension is still flowing post-death, not silently zeroed by the DRS-only
+    // survivor step-down logic (survPensionPct defaults to 0, which would zero it if applied).
+    const afterDeath = sim.rows.find((r) => r.aB > 70);
+    expect(afterDeath.pens).toBeCloseTo(0.011 * 20 * 100000, 0);
+  });
+
+  it("simulate computes a CalSTRS pension via the CalSTRS age-factor formula", () => {
+    const i = {
+      ...baseState, ageA: 60, ageB: 60, stopA: 60, stopB: 60, claimA: 62, claimB: 62,
+      pensionOn: true, pensionType: "calstrs", calstrsTier: "2at60", pensionAge: 60, pYears: 25, afc: 100000,
+    };
+    const row = simulate(i, { haircut: 1, cutYear: 9999 }).rows.find((r) => r.cal === 2026);
+    expect(row.pens).toBeCloseTo(0.02 * 25 * 100000, 0); // 50,000
+  });
+
+  it("simulate computes a CalPERS pension via the representative-tier formula", () => {
+    const i = {
+      ...baseState, ageA: 55, ageB: 55, stopA: 55, stopB: 55, claimA: 62, claimB: 62,
+      pensionOn: true, pensionType: "calpers", calpersTier: "classic2at55", pensionAge: 55, pYears: 20, afc: 100000,
+    };
+    const row = simulate(i, { haircut: 1, cutYear: 9999 }).rows.find((r) => r.cal === 2026);
+    expect(row.pens).toBeCloseTo(0.02 * 20 * 100000, 0); // 40,000
+  });
+
+  it("calstrsTier and calpersTier are independent fields, so a leftover CalSTRS tier value never leaks into a CalPERS calculation", () => {
+    // Regression guard: these two systems used to share one i.pensionTier field with
+    // non-overlapping value domains, so switching pension types left a stale tier value
+    // that silently drove the wrong benefit-factor table (see the DEFAULT_PENSION_TYPE /
+    // calstrsTier comment in simulate.js). A CalSTRS "2at62" leftover must not affect CalPERS.
+    const i = {
+      ...baseState, ageA: 62, ageB: 62, stopA: 62, stopB: 62, claimA: 62, claimB: 62,
+      pensionOn: true, pensionType: "calpers", calstrsTier: "2at62", calpersTier: "pepra2at62",
+      pensionAge: 62, pYears: 20, afc: 100000,
+    };
+    const row = simulate(i, { haircut: 1, cutYear: 9999 }).rows.find((r) => r.cal === 2026);
+    expect(row.pens).toBeCloseTo(calpersPensionAnnual(62, 20, 100000, "pepra2at62"), 0);
+  });
+
+  it("simulate computes a Texas TRS pension via the 2.3% formula", () => {
+    const i = {
+      ...baseState, ageA: 65, ageB: 65, stopA: 65, stopB: 65, claimA: 65, claimB: 65,
+      pensionOn: true, pensionType: "txtrs", pensionAge: 65, pYears: 25, afc: 80000,
+    };
+    const row = simulate(i, { haircut: 1, cutYear: 9999 }).rows.find((r) => r.cal === 2026);
+    expect(row.pens).toBeCloseTo(0.023 * 25 * 80000, 0); // 46,000
+  });
+
+  it("simulate computes a NYSTRS pension via the tiered pension-factor formula", () => {
+    const i = {
+      ...baseState, ageA: 63, ageB: 63, stopA: 63, stopB: 63, claimA: 65, claimB: 65,
+      pensionOn: true, pensionType: "nystrs", pensionAge: 63, pYears: 25, afc: 90000,
+    };
+    const row = simulate(i, { haircut: 1, cutYear: 9999 }).rows.find((r) => r.cal === 2026);
+    expect(row.pens).toBeCloseTo((0.35 + 5 * 0.02) * 90000, 0); // 40,500, unreduced at 63
+  });
+
+  it("simulate computes an Ohio STRS pension only on the unreduced path", () => {
+    const eligible = {
+      ...baseState, ageA: 65, ageB: 65, stopA: 65, stopB: 65, claimA: 65, claimB: 65,
+      pensionOn: true, pensionType: "ohiostrs", pensionAge: 65, pYears: 20, afc: 80000,
+    };
+    const row = simulate(eligible, { haircut: 1, cutYear: 9999 }).rows.find((r) => r.cal === 2026);
+    expect(row.pens).toBeCloseTo(0.022 * 20 * 80000, 0); // 35,200
+
+    const reducedOnly = { ...eligible, ageA: 60, ageB: 60, stopA: 60, stopB: 60, pensionAge: 60, pYears: 27 };
+    const row2 = simulate(reducedOnly, { haircut: 1, cutYear: 9999 }).rows.find((r) => r.cal === 2026);
+    expect(row2.pens).toBe(0); // reduced path deliberately not modeled -- no published reduction table
+  });
+
+  it("simulate computes a military pension with the 20-year cliff and plan-specific multiplier", () => {
+    const highThree = {
+      ...baseState, ageA: 45, ageB: 45, stopA: 45, stopB: 45, claimA: 62, claimB: 62,
+      pensionOn: true, pensionType: "military", militaryPlan: "highThree", pensionAge: 45, pYears: 20, afc: 100000,
+    };
+    const row = simulate(highThree, { haircut: 1, cutYear: 9999 }).rows.find((r) => r.cal === 2026);
+    expect(row.pens).toBeCloseTo(0.50 * 100000, 0); // 50,000
+
+    const belowCliff = { ...highThree, pYears: 19 };
+    const row2 = simulate(belowCliff, { haircut: 1, cutYear: 9999 }).rows.find((r) => r.cal === 2026);
+    expect(row2.pens).toBe(0);
   });
 
   // --- simulate.js (row-level dollar identities) ---
@@ -1257,6 +1612,195 @@ describe("location-cost spending basis", () => {
     const row = plan.simChosen.rows.find((r) => r.cal === 2032); // age 56, retired, under 65
     const hc = (us.hcPre / 2) * 2 * 12; // both retired & under 65 → full ACA bridge
     expect(row.need).toBe(Math.round(basket + hc));
+  });
+});
+
+describe("Tier 1 locations (Mexico, Panama, Costa Rica)", () => {
+  const TIER1_NAMES = ["Mexico", "Panama", "Costa Rica"];
+
+  it("adds all three Tier 1 locations to LOCATIONS with a dataAsOf year and a full cost basket", () => {
+    for (const name of TIER1_NAMES) {
+      const loc = LOCATIONS.find((l) => l.name === name);
+      expect(loc, `${name} missing from LOCATIONS`).toBeTruthy();
+      expect(loc.region).not.toBe("US");
+      expect(loc.dataAsOf).toBe(2026);
+      expect(Object.values(loc.m).every((v) => typeof v === "number" && v > 0)).toBe(true);
+    }
+  });
+
+  it("adds a matching INTL_TAX entry for each Tier 1 location, following the treaty-aware shape", () => {
+    for (const name of TIER1_NAMES) {
+      const tax = INTL_TAX[name];
+      expect(tax, `${name} missing from INTL_TAX`).toBeTruthy();
+      expect(tax.isInternational).toBe(true);
+      expect(tax.pensionExclusion).toBe("full");
+      expect(tax.exposureNotes.worldwide).toBeTruthy();
+      expect(tax.exposureNotes.govtPension).toBeTruthy();
+      expect(tax.exposureNotes.residenceTaxed).toBeTruthy();
+      expect(tax.exposureNotes.filing).toBeTruthy();
+    }
+  });
+
+  it("Panama and Costa Rica model 0 residence tax on retirement income (territorial systems)", () => {
+    expect(INTL_TAX["Panama"].retireRate).toBe(0);
+    expect(INTL_TAX["Costa Rica"].retireRate).toBe(0);
+  });
+
+  it("inheritanceRulesForPlace routes all three Tier 1 locations through the non-US (foreign) branch", () => {
+    for (const name of TIER1_NAMES) {
+      const rules = inheritanceRulesForPlace(name);
+      expect(rules.foreign).toBe(true);
+      expect(rules.region).not.toBe("US");
+      // Foreign-branch constants (sellNet 0.90, rentYield 0.020, ownRate 0.012), not the US branch's.
+      expect(rules.sellNet).toBe(0.90);
+      expect(rules.rentYield).toBe(0.020);
+      expect(rules.ownRate).toBe(0.012);
+    }
+  });
+});
+
+describe("Tier 2 locations (Thailand, Vietnam, Malaysia, Philippines, Australia, Uruguay)", () => {
+  const TIER2_NAMES = ["Thailand", "Vietnam", "Malaysia", "Philippines", "Australia", "Uruguay"];
+
+  it("adds all six Tier 2 locations to LOCATIONS with a dataAsOf year and a full cost basket", () => {
+    for (const name of TIER2_NAMES) {
+      const loc = LOCATIONS.find((l) => l.name === name);
+      expect(loc, `${name} missing from LOCATIONS`).toBeTruthy();
+      expect(loc.region).not.toBe("US");
+      expect(loc.dataAsOf).toBe(2026);
+      expect(Object.values(loc.m).every((v) => typeof v === "number" && v > 0)).toBe(true);
+    }
+  });
+
+  it("adds a matching INTL_TAX entry for each Tier 2 location, following the treaty-aware shape", () => {
+    for (const name of TIER2_NAMES) {
+      const tax = INTL_TAX[name];
+      expect(tax, `${name} missing from INTL_TAX`).toBeTruthy();
+      expect(tax.isInternational).toBe(true);
+      expect(tax.pensionExclusion).toBe("full");
+      expect(tax.exposureNotes.worldwide).toBeTruthy();
+      expect(tax.exposureNotes.govtPension).toBeTruthy();
+      expect(tax.exposureNotes.residenceTaxed).toBeTruthy();
+      expect(tax.exposureNotes.filing).toBeTruthy();
+    }
+  });
+
+  it("does not apply one default addlTaxRate -- the range spans territorial (0) to Australia's worldwide 0.10", () => {
+    expect(LOCATIONS.find((l) => l.name === "Philippines").addlTaxRate).toBe(0);
+    expect(LOCATIONS.find((l) => l.name === "Malaysia").addlTaxRate).toBeCloseTo(0.005, 6);
+    expect(LOCATIONS.find((l) => l.name === "Australia").addlTaxRate).toBe(0.10);
+    expect(LOCATIONS.find((l) => l.name === "Vietnam").addlTaxRate).toBeGreaterThan(
+      LOCATIONS.find((l) => l.name === "Thailand").addlTaxRate
+    ); // Vietnam (no US treaty) modeled with materially higher tax uncertainty than Thailand
+  });
+
+  it("surfaces Australia's no-viable-retiree-visa product-honesty flag in its note", () => {
+    const australia = LOCATIONS.find((l) => l.name === "Australia");
+    expect(australia.note).toMatch(/no general retirement visa/i);
+  });
+
+  it("inheritanceRulesForPlace routes all six Tier 2 locations through the non-US (foreign) branch", () => {
+    for (const name of TIER2_NAMES) {
+      const rules = inheritanceRulesForPlace(name);
+      expect(rules.foreign).toBe(true);
+      expect(rules.region).not.toBe("US");
+      expect(rules.sellNet).toBe(0.90);
+      expect(rules.rentYield).toBe(0.020);
+      expect(rules.ownRate).toBe(0.012);
+    }
+  });
+});
+
+describe("isGovernmentServicePensionType", () => {
+  it("is true for every pensionType except generic", () => {
+    for (const t of ["drs", "fers", "calstrs", "calpers", "txtrs", "nystrs", "ohiostrs", "military"]) {
+      expect(isGovernmentServicePensionType(t)).toBe(true);
+    }
+  });
+
+  it("is false for generic and defaults absent pensionType to true (drs)", () => {
+    expect(isGovernmentServicePensionType("generic")).toBe(false);
+    expect(isGovernmentServicePensionType(undefined)).toBe(true);
+  });
+});
+
+describe("INTL_TAX govtPension exposure notes", () => {
+  it("no longer name Washington DRS specifically -- every entry's wording is pension-type-neutral", () => {
+    for (const key of Object.keys(INTL_TAX)) {
+      expect(INTL_TAX[key].exposureNotes.govtPension).not.toMatch(/Washington DRS/);
+    }
+  });
+
+  it("shares the common government-service-pension framing across entries (deduplication regression guard)", () => {
+    expect(INTL_TAX["Austria"].exposureNotes.govtPension).toMatch(/^Your pension is a government-service pension/);
+    expect(INTL_TAX["Panama"].exposureNotes.govtPension).toMatch(/^Your pension is a government-service pension/);
+    // Vietnam's is a genuinely bespoke sentence (no US-Vietnam treaty) -- still pension-neutral.
+    expect(INTL_TAX["Vietnam"].exposureNotes.govtPension).toMatch(/^Your pension is normally treaty-protected/);
+  });
+});
+
+describe("Tier 3/4 locations (South Africa, Colombia, New Zealand, Japan) — completes the location roadmap", () => {
+  const TIER34_NAMES = ["South Africa", "Colombia", "New Zealand", "Japan"];
+
+  it("adds all four Tier 3/4 locations to LOCATIONS with a dataAsOf year and a full cost basket", () => {
+    for (const name of TIER34_NAMES) {
+      const loc = LOCATIONS.find((l) => l.name === name);
+      expect(loc, `${name} missing from LOCATIONS`).toBeTruthy();
+      expect(loc.region).not.toBe("US");
+      expect(loc.dataAsOf).toBe(2026);
+      expect(Object.values(loc.m).every((v) => typeof v === "number" && v > 0)).toBe(true);
+    }
+  });
+
+  it("covers a sixth continent (Africa) via South Africa, completing coverage across Europe/N.America/S.America/Asia/Oceania/Africa", () => {
+    const regions = new Set(LOCATIONS.map((l) => l.region));
+    expect(regions.has("Africa")).toBe(true);
+    expect(regions.has("Europe")).toBe(true);
+    expect(regions.has("US")).toBe(true);
+    expect(regions.has("Latin America")).toBe(true);
+    expect(regions.has("Southeast Asia") || regions.has("East Asia")).toBe(true);
+    expect(regions.has("Oceania")).toBe(true);
+  });
+
+  it("adds a matching INTL_TAX entry for each Tier 3/4 location, following the treaty-aware shape", () => {
+    for (const name of TIER34_NAMES) {
+      const tax = INTL_TAX[name];
+      expect(tax, `${name} missing from INTL_TAX`).toBeTruthy();
+      expect(tax.isInternational).toBe(true);
+      expect(tax.pensionExclusion).toBe("full");
+      expect(tax.exposureNotes.worldwide).toBeTruthy();
+      expect(tax.exposureNotes.govtPension).toBeTruthy();
+      expect(tax.exposureNotes.residenceTaxed).toBeTruthy();
+      expect(tax.exposureNotes.filing).toBeTruthy();
+    }
+  });
+
+  it("surfaces New Zealand's and Japan's product-honesty flags -- neither has a practical retiree-visa pathway", () => {
+    const nz = LOCATIONS.find((l) => l.name === "New Zealand");
+    const japan = LOCATIONS.find((l) => l.name === "Japan");
+    expect(nz.note).toMatch(/PRODUCT-HONESTY FLAG/);
+    expect(nz.note).toMatch(/no direct path to permanent residency/i);
+    expect(japan.note).toMatch(/PRODUCT-HONESTY FLAG/);
+    expect(japan.note).toMatch(/no dedicated retirement visa/i);
+  });
+
+  it("flags Japan's IRA/401(k) treatment as materially different from every other location (no tax-deferred recognition)", () => {
+    expect(INTL_TAX["Japan"].exposureNotes.residenceTaxed).toMatch(/does NOT recognize US tax-deferred/);
+  });
+
+  it("Colombia models a near-zero residence rate under its Law 2381 foreign-pension exemption", () => {
+    expect(INTL_TAX["Colombia"].retireRate).toBeLessThanOrEqual(0.02);
+  });
+
+  it("inheritanceRulesForPlace routes all four Tier 3/4 locations through the non-US (foreign) branch", () => {
+    for (const name of TIER34_NAMES) {
+      const rules = inheritanceRulesForPlace(name);
+      expect(rules.foreign).toBe(true);
+      expect(rules.region).not.toBe("US");
+      expect(rules.sellNet).toBe(0.90);
+      expect(rules.rentYield).toBe(0.020);
+      expect(rules.ownRate).toBe(0.012);
+    }
   });
 });
 

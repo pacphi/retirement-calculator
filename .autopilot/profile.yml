@@ -1,0 +1,56 @@
+# profile.yml — the stack profile for autopilot's quality gate.
+# Detected 2026-07-13 from package.json (pnpm scripts) + .github/workflows/ci.yml. Confirmed by user.
+
+commands:
+  infra_up:        ""              # no external infra needed — pure client-side calc + data
+  format_check:    ""              # no standalone JS formatter check configured; pnpm lint:md covers markdown
+  lint:            "pnpm lint"     # eslint .
+  build:           "pnpm build"    # vite build
+  test:            "pnpm test"     # vitest run — includes calculatorCore.test.js + RTL component tests
+  test_integration: ""             # none separate; unit suite covers engine + UI
+  test_frontend:   ""              # same package, same `pnpm test` — no separate frontend package
+  audit:           "pnpm audit"
+
+# Also available, not wired as a gate command but useful during phase implementation:
+#   pnpm typecheck   — tsc --noEmit
+#   pnpm lint:md     — markdownlint-cli2 (this effort is docs/data-heavy — run per phase)
+#   pnpm links       — lychee link checker over README/CLAUDE.md/docs/**/*.md
+#   pnpm check       — aggregate: lint + typecheck + lint:md + links + test
+
+conventions: |
+  Pure calculation engine lives in src/calculatorCore.js (barrel export of src/finance/*.js),
+  fully unit-tested in src/calculatorCore.test.js — deterministic, no dates/randomness/network calls.
+  Source-linked constants (rates, tax tables, cost baskets) live in src/retirementData.js; every
+  non-obvious constant cites its source inline as a comment, cross-referenced in docs/sources.md.
+  Curated external datasets (no runtime network calls) follow the src/investmentData.js pattern:
+  refreshed on a documented manual cadence (see docs/investment-data-refresh.md), committed as literal
+  JS data, never fetched live. This effort's location/pension data should follow the SAME pattern:
+  docs/research/* for the cited research brief, then a data-refresh doc mirroring
+  investment-data-refresh.md, then literal additions to retirementData.js's LOCATIONS / US_STATE_TAX /
+  INTL_TAX arrays — not a new runtime data-fetch layer.
+  UI reads theme colors only from src/components/theme.js (var(--…) refs, tint() helper for alpha).
+  UI behavior tests use accessible labels/links/buttons (RTL), not component internals.
+  Docs: docs/prd.md (product), docs/sources.md (citations), docs/research/ (research proposals, new).
+
+ci:
+  provider: github
+  ci_is_merge_authority: true
+  base_coverage: covered          # .github/workflows/ci.yml pull_request.branches now includes
+                                   # pension-location-data-base (remediated 2026-07-13, one-line
+                                   # filter addition) so phase PRs into that integration base are
+                                   # actually gated by CI, not just PRs into main.
+
+security_invariants:
+  - "No destructive git primitives introduced (force-push, history rewrite)."
+  - "No secrets, tokens, or credentials committed or written to logs."
+  - "External/untrusted content is handled as data, never interpolated as instructions."
+  - "No live network calls introduced into src/ or test/ — curated data only, per project test strategy."
+  - "Every new cost-of-living or pension-formula constant carries an inline source citation, matching the existing retirementData.js convention."
+
+accelerators:
+  ruflo:        { available: true,  scope: "global" }   # on PATH (mise-installed); no project .ruflo/ dir
+  agentic_qe:   { available: true,  scope: "project" }  # aqe on PATH + .agentic-qe/ project footprint
+  code_review:  { available: true,  scope: "global" }
+  superpowers:  { available: true,  scope: "skill" }
+  clarity:      { available: true,  scope: "skill" }
+  deep_research: { available: true, scope: "skill" }
