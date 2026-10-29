@@ -12,6 +12,12 @@ coverage/
 # Editor & OS cruft
 .DS_Store
 
+# Local secrets and per-developer instructions (Vite reads .env files; none are shared)
+.env
+.env.local
+.env.*.local
+CLAUDE.local.md
+
 # AI agent tooling — machine-local state, caches, and databases.
 # These are regenerated per machine/session and are not meant to be shared.
 .agentic-qe/
