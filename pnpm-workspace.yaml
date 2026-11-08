@@ -11,3 +11,6 @@ overrides:
   js-yaml: ^4.1.2
   markdown-it: ^14.1.2
   qs@>=6.11.1 <6.15.2: ">=6.15.2"
+  # GHSA-73wf-gq98-2v4g, GHSA-c83g-rgw3-j3cx: fixed in browserslist 4.28.7 (same
+  # major). Remove once every consumer resolves to 4.28.7 or later on its own.
+  "browserslist@<4.28.7": ^4.29.5
