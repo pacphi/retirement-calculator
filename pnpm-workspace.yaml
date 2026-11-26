@@ -9,5 +9,9 @@ onlyBuiltDependencies:
   - esbuild
 overrides:
   js-yaml: ^4.1.2
-  markdown-it: ^14.1.2
+  # GHSA-gfr2-rv44-r23c, GHSA-r7fv-28h4-cvq7, GHSA-253c-mchw-3w2r and
+  # GHSA-vfgh-jcmw-g37q are fixed in markdown-it 14.3.3 (same major).
+  # markdownlint-cli2 0.22.x pins markdown-it 14.1.1 exactly. Remove this
+  # override once markdownlint-cli2 is on a release that pins a fixed version.
+  markdown-it: ^14.3.3
   qs@>=6.11.1 <6.15.2: ">=6.15.2"
