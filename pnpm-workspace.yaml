@@ -8,6 +8,15 @@ minimumReleaseAgeExclude:
 onlyBuiltDependencies:
   - esbuild
 overrides:
-  js-yaml: ^4.1.2
+  js-yaml: ^4.3.2
+  # GHSA-r4xh-jqrq-34v2 and GHSA-7w5x-hrqm-74c2, fixed in smol-toml 1.9.0; transitive of markdownlint-cli2.
+  # Exit: drop once markdownlint-cli2 ships smol-toml >= 1.9.1.
+  smol-toml@<1.9.0: ^1.9.1
+  # GHSA-v245-v573-v5vm, fixed in 5.0.2
+  linkify-it@<5.0.2: ^5.0.2
+  # GHSA-fxqj-rqcc-2cmp and GHSA-r28c-9q8g-f849, fixed in 8.5.23
+  postcss@<8.5.23: ^8.5.23
+  # GHSA-w5vr-8v7q-w6rv, fixed in 2.11.0
+  baseline-browser-mapping@<2.11.0: ^2.11.0
   markdown-it: ^14.1.2
   qs@>=6.11.1 <6.15.2: ">=6.15.2"
