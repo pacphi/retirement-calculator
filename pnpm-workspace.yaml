@@ -3,23 +3,10 @@ allowBuilds:
 onlyBuiltDependencies:
   - esbuild
 overrides:
-  # GHSA-2883-xcg3-v3hh, GHSA-52cp-r559-cp3m, GHSA-5p4m-2wfm-xmqj: fixed in js-yaml 4.3.2 (same major).
-  # markdownlint-cli2 0.22.x pins js-yaml exactly. Exit: drop once markdownlint-cli2 pins >= 4.3.2.
-  js-yaml: ^4.3.2
-  # GHSA-gfr2-rv44-r23c, GHSA-r7fv-28h4-cvq7, GHSA-253c-mchw-3w2r and
-  # GHSA-vfgh-jcmw-g37q are fixed in markdown-it 14.3.3 (same major).
-  # markdownlint-cli2 0.22.x pins markdown-it 14.1.1 exactly. Remove this
-  # override once markdownlint-cli2 is on a release that pins a fixed version.
-  markdown-it: ^14.3.3
   qs@>=6.11.1 <6.15.2: ">=6.15.2"
   # GHSA-73wf-gq98-2v4g, GHSA-c83g-rgw3-j3cx: fixed in browserslist 4.28.7 (same
   # major). Remove once every consumer resolves to 4.28.7 or later on its own.
   "browserslist@<4.28.7": ^4.29.5
-  # GHSA-r4xh-jqrq-34v2 and GHSA-7w5x-hrqm-74c2, fixed in smol-toml 1.9.0; transitive of markdownlint-cli2.
-  # Exit: drop once markdownlint-cli2 ships smol-toml >= 1.9.1.
-  smol-toml@<1.9.0: ^1.9.1
-  # GHSA-v245-v573-v5vm, fixed in 5.0.2
-  linkify-it@<5.0.2: ^5.0.2
   # GHSA-fxqj-rqcc-2cmp and GHSA-r28c-9q8g-f849, fixed in 8.5.23
   postcss@<8.5.23: ^8.5.23
   # GHSA-w5vr-8v7q-w6rv, fixed in 2.11.0
