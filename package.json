@@ -3,7 +3,7 @@
   "version": "2.5.0",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@11.28.6",
+  "packageManager": "pnpm@11.29.0",
   "engines": {
     "node": ">=24"
   },
@@ -31,7 +31,7 @@
   "dependencies": {
     "d3-array": "^3.2.4",
     "d3-random": "^3.0.1",
-    "lucide-react": "^1.23.0",
+    "lucide-react": "^1.79.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "recharts": "^3.8.1"
@@ -40,20 +40,20 @@
     "@eslint/js": "^10.0.1",
     "@stryker-mutator/core": "^9.6.1",
     "@stryker-mutator/vitest-runner": "^9.6.1",
-    "@testing-library/dom": "^10.4.1",
+    "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
-    "@testing-library/user-event": "^14.6.1",
-    "@vitejs/plugin-react": "^6.0.2",
-    "@vitest/coverage-v8": "^4.1.9",
-    "eslint": "^10.5.0",
-    "fast-check": "^4.8.0",
-    "globals": "^17.6.0",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.13",
+    "@vitejs/plugin-react": "^6.3.0",
+    "@vitest/coverage-v8": "^4.1.12",
+    "eslint": "^10.15.0",
+    "fast-check": "^4.11.0",
+    "globals": "^17.14.0",
     "jsdom": "^29.1.1",
     "markdownlint-cli2": "^0.22.1",
-    "prettier": "^3.8.4",
+    "prettier": "^3.10.1",
     "typescript": "^6.0.3",
-    "vite": "^8.0.16",
-    "vitest": "^4.1.11"
+    "vite": "^8.3.8",
+    "vitest": "^4.1.12"
   }
 }
