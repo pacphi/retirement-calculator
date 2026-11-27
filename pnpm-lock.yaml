@@ -25,7 +25,7 @@ importers:
         version: 3.2.4
       d3-random:
         specifier: ^3.0.1
-        version: 3.0.1
+        version: 3.0.2
       lucide-react:
         specifier: ^1.79.0
         version: 1.79.0(react@19.2.7)
@@ -1200,8 +1200,8 @@ packages:
     resolution: {integrity: sha512-p3KP5HCf/bvjBSSKuXid6Zqijx7wIfNW+J/maPs+iwR35at5JCbLUT0LzF1cnjbCHWhqzQTIN2Jpe8pRebIEFQ==}
     engines: {node: '>=12'}
 
-  d3-random@3.0.1:
-    resolution: {integrity: sha512-FXMe9GfxTxqd5D6jFsQ+DJ8BJS4E/fT5mqqdjovykEB2oFbTMDVdg1MGFxfQW+FBOGoB++k8swBrgwSHT1cUXQ==}
+  d3-random@3.0.2:
+    resolution: {integrity: sha512-PxJi9LNV+7mulaYO77nd+oGurXGL1fhedXjHnB3pWLUcqDnQtF4VASoqnQGHgoXLByVdv5QJ/2kfwkGn5HTS8g==}
     engines: {node: '>=12'}
 
   d3-scale@4.0.2:
@@ -3456,7 +3456,7 @@ snapshots:
 
   d3-path@3.1.0: {}
 
-  d3-random@3.0.1: {}
+  d3-random@3.0.2: {}
 
   d3-scale@4.0.2:
     dependencies:
